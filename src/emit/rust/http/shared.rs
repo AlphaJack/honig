@@ -60,10 +60,10 @@ pub(crate) fn op_path(op: &Operation) -> TokenStream {
 
 pub(crate) fn shape(space: &Space<'_>, t: &Ty) -> TokenStream {
     match space.kind_of(t.non_null()) {
-        JsonKind::Array => quote!(runtime::Shape::Array),
-        JsonKind::Object => quote!(runtime::Shape::Object),
+        JsonKind::Array => quote!(::honig::__private::Shape::Array),
+        JsonKind::Object => quote!(::honig::__private::Shape::Object),
         JsonKind::Null | JsonKind::Bool | JsonKind::Integer | JsonKind::Number | JsonKind::String | JsonKind::Any => {
-            quote!(runtime::Shape::Primitive)
+            quote!(::honig::__private::Shape::Primitive)
         }
     }
 }
@@ -86,18 +86,18 @@ pub(crate) fn style_variant(style: Style) -> TokenStream {
         Style::TabDelimited => "TabDelimited",
     };
     let s = ident(name);
-    quote!(runtime::Style::#s)
+    quote!(::honig::__private::Style::#s)
 }
 
-/// Returns `runtime::Enc` for a style. A named constant for the common defaults. Otherwise
+/// Returns `::honig::__private::Enc` for a style. A named constant for the common defaults. Otherwise
 /// a struct literal whose field names say what each flag means.
 pub(crate) fn enc(style: Style, explode: bool, allow_reserved: bool) -> TokenStream {
     match (style, explode, allow_reserved) {
-        (Style::Form, true, false) => quote!(runtime::Enc::FORM),
-        (Style::Simple, false, false) => quote!(runtime::Enc::SIMPLE),
+        (Style::Form, true, false) => quote!(::honig::__private::Enc::FORM),
+        (Style::Simple, false, false) => quote!(::honig::__private::Enc::SIMPLE),
         _ => {
             let s = style_variant(style);
-            quote!(runtime::Enc { style: #s, explode: #explode, allow_reserved: #allow_reserved })
+            quote!(::honig::__private::Enc { style: #s, explode: #explode, allow_reserved: #allow_reserved })
         }
     }
 }
@@ -213,21 +213,21 @@ pub(crate) fn boxing(space: &Space<'_>, op: &Operation) -> Boxing {
     Boxing { resp: box_plan(&sizes), body_enum, resp_enums }
 }
 
-/// Is `c` a binary body typed `runtime::Blob`? It is in memory, streamed out or (for a request) still arriving.
+/// Is `c` a binary body typed `::honig::Blob`? It is in memory, streamed out or (for a request) still arriving.
 pub(crate) fn blob(c: &Content) -> bool {
     c.kind == MediaKind::Bytes && c.ty == Ty::Bytes
 }
 
-/// Returns the Rust type of one content: `runtime::Items<T>` for sequential bodies, `runtime::Blob` for binary bodies.
+/// Returns the Rust type of one content: `::honig::Items<T>` for sequential bodies, `::honig::Blob` for binary bodies.
 pub(crate) fn content_ty(space: &Space<'_>, c: &Content) -> TokenStream {
     if blob(c) {
-        return quote!(runtime::Blob);
+        return quote!(::honig::Blob);
     }
     if let Ty::Vec(item) = &c.ty
         && c.streams()
     {
         let t = ty(space, item, true);
-        return quote!(runtime::Items<#t>);
+        return quote!(::honig::Items<#t>);
     }
     ty(space, &c.ty, true)
 }
@@ -290,7 +290,7 @@ pub(crate) fn types_import(needed: bool) -> Option<TokenStream> {
     })
 }
 
-/// Returns `server` as a `runtime::ServerUrl`.
+/// Returns `server` as a `::honig::ServerUrl`.
 pub(crate) fn server_url(server: &crate::ir::Server) -> TokenStream {
     let (template, vars) = (lit(&server.url), server_variables(server));
     let name = server.name.as_deref().map_or_else(
@@ -300,7 +300,7 @@ pub(crate) fn server_url(server: &crate::ir::Server) -> TokenStream {
             quote!(Some(#n))
         },
     );
-    quote!(runtime::ServerUrl { template: #template, name: #name, variables: #vars })
+    quote!(::honig::ServerUrl { template: #template, name: #name, variables: #vars })
 }
 
 fn server_variables(server: &crate::ir::Server) -> TokenStream {
@@ -326,15 +326,15 @@ pub(crate) fn chooses_part_types(op: &Operation) -> bool {
 pub(crate) fn part_types_field(op: &Operation) -> Option<TokenStream> {
     chooses_part_types(op).then(|| {
         quote! {
-            pub part_types: runtime::PartTypes,
+            pub part_types: ::honig::PartTypes,
         }
     })
 }
 
-/// Returns `part_types: runtime::PartTypes::new(),` where [`chooses_part_types`]. No choice, so every part goes as its
+/// Returns `part_types: ::honig::PartTypes::new(),` where [`chooses_part_types`]. No choice, so every part goes as its
 /// first listed type.
 pub(crate) fn part_types_init(op: &Operation) -> Option<TokenStream> {
-    chooses_part_types(op).then(|| quote!(part_types: runtime::PartTypes::new(),))
+    chooses_part_types(op).then(|| quote!(part_types: ::honig::PartTypes::new(),))
 }
 
 /// Returns the media types of the success responses of an operation in the order of the description as (media type,

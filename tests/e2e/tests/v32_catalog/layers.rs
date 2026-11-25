@@ -30,8 +30,8 @@ fn rate_limited(limit: u32) -> axum::Router {
     api::Server::new(Catalog::default())
         .operation_layer(tower::filter::AsyncFilterLayer::new(move |req: api::Request| {
             let over = used.fetch_add(1, Ordering::Relaxed) >= limit;
-            let refusal = api::ApiError::new(api::http::StatusCode::TOO_MANY_REQUESTS, "rate limit exceeded")
-                .with_header(api::http::header::RETRY_AFTER, api::http::HeaderValue::from_static("60"));
+            let refusal = api::ApiError::new(honig::http::StatusCode::TOO_MANY_REQUESTS, "rate limit exceeded")
+                .with_header(honig::http::header::RETRY_AFTER, honig::http::HeaderValue::from_static("60"));
             std::future::ready(if over { Err(refusal) } else { Ok(req) })
         }))
         .into_axum()
@@ -51,7 +51,7 @@ fn writes_limited(limit: u32) -> axum::Router {
             };
             let over = limited && used.fetch_add(1, Ordering::Relaxed) >= limit;
             std::future::ready(if over {
-                Err(api::ApiError::new(api::http::StatusCode::TOO_MANY_REQUESTS, "too many writes"))
+                Err(api::ApiError::new(honig::http::StatusCode::TOO_MANY_REQUESTS, "too many writes"))
             } else {
                 Ok(req)
             })
@@ -72,8 +72,8 @@ fn plain_text_errors() -> axum::Router {
             let mut response = reason.head();
             response
                 .headers_mut()
-                .insert(api::http::header::CONTENT_TYPE, api::http::HeaderValue::from_static("text/plain"));
-            *response.body_mut() = api::Body::from(reason.detail().unwrap_or_default());
+                .insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::from_static("text/plain"));
+            *response.body_mut() = honig::Body::from(reason.detail().unwrap_or_default());
             response
         })
         .into_axum()
@@ -89,7 +89,7 @@ fn with_cors() -> axum::Router {
     server
         .into_axum()
         .fallback(move || {
-            std::future::ready(errors.response(api::http::StatusCode::NOT_FOUND, "no such page").into_response())
+            std::future::ready(errors.response(honig::http::StatusCode::NOT_FOUND, "no such page").into_response())
         })
         .layer(tower_http::cors::CorsLayer::permissive())
 }
@@ -142,7 +142,7 @@ async fn a_rejection_names_its_operation() {
         })
         .into_service();
     for path in ["/v1/products/not-a-number", "/v1/nowhere"] {
-        let req = api::runtime::new_request("GET", path.to_owned(), vec![]).unwrap();
+        let req = honig::__private::new_request("GET", path.to_owned(), vec![]).unwrap();
         router.handle(req).await;
     }
     assert_eq!(*seen.lock().unwrap(), [Some(api::Operation::GetProduct), None]);
@@ -167,9 +167,9 @@ async fn layers_outside_answer_in_the_error_schema() {
 /// filter owns the request, so it collects the body itself. The operation then decodes the same bytes and collects
 /// nothing again.
 async fn verify(mut req: api::Request) -> Result<api::Request, api::ApiError> {
-    let len = api::read_body(&mut req).await?.len();
+    let len = honig::read_body(&mut req).await?.len();
     let ok = req.headers().get("x-signature").and_then(|v| v.to_str().ok()) == Some(len.to_string().as_str());
-    if ok { Ok(req) } else { Err(api::ApiError::new(api::http::StatusCode::UNAUTHORIZED, "bad signature")) }
+    if ok { Ok(req) } else { Err(api::ApiError::new(honig::http::StatusCode::UNAUTHORIZED, "bad signature")) }
 }
 // ANCHOR_END: signed-body
 
@@ -190,9 +190,10 @@ fn a_guard_checks_a_signature_over_the_body_that_the_operation_then_decodes() {
         }))
         .with_api_key("secret")
     };
-    let created = api::block_on(client(|n| n.to_string()).create_product(create_product::Params::new(super::lamp())));
+    let created = honig::block_on(client(|n| n.to_string()).create_product(create_product::Params::new(super::lamp())));
     assert!(matches!(created, Ok(create_product::Response::Created(_))), "{created:?}");
-    let refused = api::block_on(client(|_| "0".to_owned()).create_product(create_product::Params::new(super::lamp())));
+    let refused =
+        honig::block_on(client(|_| "0".to_owned()).create_product(create_product::Params::new(super::lamp())));
     assert!(
         matches!(
             refused,
@@ -250,9 +251,9 @@ impl e2e::v32_scopes::api::Api for Issues {
         &self,
         token: &str,
         _: &e2e::v32_scopes::api::Request,
-    ) -> Result<Option<api::Granted<(), e2e::v32_scopes::api::server::PatScope>>, api::ApiError> {
+    ) -> Result<Option<honig::Granted<(), e2e::v32_scopes::api::server::PatScope>>, api::ApiError> {
         let scopes = vec![e2e::v32_scopes::api::server::PatScope::IssuesRead];
-        Ok((token == "read").then_some(api::Granted { value: (), scopes }))
+        Ok((token == "read").then_some(honig::Granted { value: (), scopes }))
     }
 
     async fn list_issues(
@@ -285,7 +286,7 @@ async fn one_tower_layer_serves_any_api() {
     let catalog = api::Server::new(Catalog::default()).operation_layer(counts.clone()).into_axum();
     let issues = e2e::v32_scopes::api::Server::new(Issues).operation_layer(counts.clone()).into_service();
     assert_eq!(get(catalog, "/v1/products").await.status(), 200);
-    let mut req = e2e::v32_scopes::api::runtime::new_request("GET", "/issues".to_owned(), vec![]).unwrap();
+    let mut req = honig::__private::new_request("GET", "/issues".to_owned(), vec![]).unwrap();
     req.headers_mut().append("authorization", honig::http::HeaderValue::from_static("Bearer read"));
     assert_eq!(issues.handle(req).await.status().as_u16(), 204);
     let seen: Vec<(&str, u32)> = counts.0.lock().unwrap().iter().map(|(k, v)| (*k, *v)).collect();

@@ -7,16 +7,16 @@ use e2e::v32_validation::api::{self, operations as ops, types};
 use serde_json::json;
 
 /// A field that the handler adds to the wide event.
-const TENANT: api::EventKey = api::EventKey::new("tenant");
+const TENANT: honig::EventKey = honig::EventKey::new("tenant");
 
 struct Users;
 
 fn shipment(body: &serde_json::Value) -> api::Response {
-    let mut req = api::runtime::new_request("POST", "/shipments".to_owned(), vec![]).unwrap();
+    let mut req = honig::__private::new_request("POST", "/shipments".to_owned(), vec![]).unwrap();
     req.headers_mut()
         .insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::from_static("application/json"));
     *req.body_mut() = honig::Body::from(serde_json::to_vec(body).unwrap());
-    api::block_on(api::Server::new(Users).into_service().handle(req))
+    honig::block_on(api::Server::new(Users).into_service().handle(req))
 }
 
 /// Each entry of the RFC 9457 `errors` member of a 400 response: its `pointer` and `detail`.
@@ -121,7 +121,7 @@ impl api::Api for Users {
         std::future::ready(if p.body.name.as_str() == "Taken" {
             let detail = "the name is taken".to_owned();
             let body = types::Problem { code: types::ProblemCode::Taken, status: 409, detail: detail.clone() };
-            Err(api::ApiError::new(api::http::StatusCode::CONFLICT, detail)
+            Err(api::ApiError::new(honig::http::StatusCode::CONFLICT, detail)
                 .with_body("application/problem+json", &body))
         } else {
             Ok(ops::create_user::Response::Created(Box::new(p.body)))
@@ -151,11 +151,11 @@ impl api::Api for Users {
 }
 
 fn post(path: &str, media: &str, body: Vec<u8>) -> api::Response {
-    let mut req = api::runtime::new_request("POST", path.to_owned(), vec![]).unwrap();
+    let mut req = honig::__private::new_request("POST", path.to_owned(), vec![]).unwrap();
     req.headers_mut()
         .insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::try_from(media.to_owned()).unwrap());
     *req.body_mut() = honig::Body::from(body);
-    api::block_on(api::Server::new(Users).into_service().handle(req))
+    honig::block_on(api::Server::new(Users).into_service().handle(req))
 }
 
 /// A body declared with several media types is checked whichever one arrives.
@@ -190,12 +190,12 @@ fn untyped_keywords_of_a_body_enum_are_checked_without_read_only_fields() {
 }
 
 fn send(query: &str, team: &str, body: &serde_json::Value) -> api::Response {
-    let mut req = api::runtime::new_request("POST", "/users".to_owned(), vec![query.to_owned()]).unwrap();
+    let mut req = honig::__private::new_request("POST", "/users".to_owned(), vec![query.to_owned()]).unwrap();
     req.headers_mut().append("x-team", honig::http::HeaderValue::try_from(team.to_owned()).unwrap());
     req.headers_mut()
         .insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::from_static("application/json"));
     *req.body_mut() = honig::Body::from(serde_json::to_vec(body).unwrap());
-    api::block_on(api::Server::new(Users).into_service().handle(req))
+    honig::block_on(api::Server::new(Users).into_service().handle(req))
 }
 
 #[test]
@@ -318,11 +318,11 @@ fn one_wide_event_per_request() {
     for body in
         [json!({"name": "Ann", "role": "user"}), json!({"name": "Ann", "role": "user", "age": 150, "score": 1.2})]
     {
-        let mut req = api::runtime::new_request("POST", "/users".to_owned(), vec![]).unwrap();
+        let mut req = honig::__private::new_request("POST", "/users".to_owned(), vec![]).unwrap();
         req.headers_mut()
             .insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::from_static("application/json"));
         *req.body_mut() = honig::Body::from(serde_json::to_vec(&body).unwrap());
-        let resp = api::block_on(service.handle(req));
+        let resp = honig::block_on(service.handle(req));
         events.extend(resp.extensions().get::<api::RequestEvent>().map(api::RequestEvent::fields));
     }
     assert_eq!(events.len(), 2);
@@ -395,11 +395,11 @@ fn the_bounds_of_a_union_branch_are_checked() {
 }
 
 fn login(body: &serde_json::Value) -> api::Response {
-    let mut req = api::runtime::new_request("POST", "/logins".to_owned(), vec![]).unwrap();
+    let mut req = honig::__private::new_request("POST", "/logins".to_owned(), vec![]).unwrap();
     req.headers_mut()
         .insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::from_static("application/json"));
     *req.body_mut() = honig::Body::from(serde_json::to_vec(body).unwrap());
-    api::block_on(api::Server::new(Users).into_service().handle(req))
+    honig::block_on(api::Server::new(Users).into_service().handle(req))
 }
 
 #[test]
@@ -433,11 +433,11 @@ fn a_lone_if_then_types_its_requirement() {
 }
 
 fn create_user(body: &serde_json::Value) -> api::Response {
-    let mut req = api::runtime::new_request("POST", "/users".to_owned(), vec![]).unwrap();
+    let mut req = honig::__private::new_request("POST", "/users".to_owned(), vec![]).unwrap();
     req.headers_mut()
         .insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::from_static("application/json"));
     *req.body_mut() = honig::Body::from(serde_json::to_vec(body).unwrap());
-    api::block_on(api::Server::new(Users).into_service().handle(req))
+    honig::block_on(api::Server::new(Users).into_service().handle(req))
 }
 
 /// The own error type of the handler goes out as it is at its status.
@@ -467,7 +467,7 @@ fn an_unfillable_error_schema_falls_back_to_rfc_9457() {
     assert_eq!(violations(&r), ["#/age 200 must be less than 150"], "{body}");
 }
 
-/// `email` and `idn-hostname` are types that only a valid value can be (`api::EmailStr` and `api::IdnHostnameStr`). A
+/// `email` and `idn-hostname` are types that only a valid value can be (`honig::EmailStr` and `api::IdnHostnameStr`). A
 /// request that contains another value is refused while decoding.
 #[test]
 fn mail_addresses_and_host_names_are_types() {
@@ -481,7 +481,7 @@ fn mail_addresses_and_host_names_are_types() {
         let text = String::from_utf8_lossy(r.body().bytes());
         assert!(text.contains(&format!("`{bad}` is not a valid")), "{text}");
     }
-    assert!(api::EmailStr::try_from("x").is_err(), "nor can a handler build one");
+    assert!(honig::EmailStr::try_from("x").is_err(), "nor can a handler build one");
 }
 
 /// `multipleOf` on a number divides and allows 1e-9: decimal multiples a binary float cannot represent exactly pass.

@@ -27,20 +27,22 @@ fn squash(s: &str) -> String {
     s.replace(",]", "]").replace(",)", ")").replace(",}", "}")
 }
 
-/// The `security` of every `runtime::Op` of a generated server without whitespace. A shared `ops::SECURITY_<n>`
+/// The `security` of every `::honig::__private::Op` of a generated server without whitespace. A shared `ops::SECURITY_<n>`
 /// is shown as `operations.rs` declares it.
 fn security_consts(files: &[(String, String)]) -> Vec<String> {
     let (server, ops) = (squash(common::file(files, "server.rs")), squash(common::file(files, "operations.rs")));
     let value = |name: &str| {
-        let decl = format!("pubconst{name}:&[&[runtime::Requirement]]=");
+        let decl = format!("pubconst{name}:&[&[::honig::__private::Requirement]]=");
         ops.split_once(&decl).and_then(|(_, rest)| rest.split_once(';')).expect("declared").0.to_owned()
     };
     // `security` is the first member that an `Op` sets; one without it has none.
     server
-        .split("runtime::Op=")
+        .split("::honig::__private::Op=")
         .skip(1)
         .map(|rest| {
-            rest.strip_prefix("runtime::Op{security:").and_then(|r| r.split_once(',')).map_or("&[]", |(s, _)| s)
+            rest.strip_prefix("::honig::__private::Op{security:")
+                .and_then(|r| r.split_once(','))
+                .map_or("&[]", |(s, _)| s)
         })
         .map(|s| s.strip_prefix("ops::").map_or_else(|| s.to_owned(), value))
         .collect()
@@ -68,7 +70,7 @@ fn security_scheme_named_by_local_uri_is_enforced() {
         let mut d = doc(&secured_op(&json!([{key: []}])), &bearer());
         d["$self"] = json!("https://example.com/api");
         let consts = security_consts(&common::generate("sec-local-uri", &d, &Options::default()));
-        assert_eq!(consts, [r#"&[&[(runtime::Scheme::Bearer("local"),&[])]]"#], "{key}");
+        assert_eq!(consts, [r#"&[&[(::honig::__private::Scheme::Bearer("local"),&[])]]"#], "{key}");
     }
 }
 
@@ -98,7 +100,10 @@ fn security_scheme_named_by_external_uri_is_bundled_and_enforced() {
     let path = common::write("sec-external-uri", &d, &[("other.json", &other)]);
     let files = crate::generate::generate(&path, &Options::default()).expect("generates").files;
     let consts = security_consts(&files);
-    assert_eq!(consts, [r#"&[&[(runtime::Scheme::ApiKey("partner",runtime::KeyIn::Header,"X-Key"),&[])]]"#]);
+    assert_eq!(
+        consts,
+        [r#"&[&[(::honig::__private::Scheme::ApiKey("partner",::honig::__private::KeyIn::Header,"X-Key"),&[])]]"#]
+    );
 }
 
 #[test]
@@ -364,8 +369,8 @@ fn a_limit_beside_a_type_of_yours_is_checked() {
     let types = common::file(&made.expect("a valid description generates").files, "types.rs")
         .split_whitespace()
         .collect::<String>();
-    assert!(types.contains("implruntime::formats::CheckforCentsLimits"), "{types}");
-    assert!(types.contains("runtime::formats::Json<super::types::CentsLimits>"), "{types}");
+    assert!(types.contains("impl::honig::__private::formats::CheckforCentsLimits"), "{types}");
+    assert!(types.contains("::honig::__private::formats::Json<super::types::CentsLimits>"), "{types}");
 }
 
 /// A link expression `$response.body#/idd` that reaches no property of the response body is always absent: a warning
@@ -398,7 +403,7 @@ fn a_length_on_base64_bytes_is_checked() {
     let d = doc(&json!({}), &json!({"schemas": {"Token": {"type": "string", "format": "byte", "maxLength": 8}}}));
     let made = crate::generate::generate(&common::write("byte-length", &d, &[]), &Options::default());
     let types = common::file(&made.expect("a valid description generates").files, "types.rs").to_owned();
-    assert!(types.contains("runtime::check_len("), "{types}");
+    assert!(types.contains("::honig::__private::check_len("), "{types}");
 }
 
 /// A valid schema whose keywords no generated check enforces still generates: a warning names what goes unchecked. A
@@ -1062,7 +1067,7 @@ fn every_runtime_expression_form_reaches_a_value_source() {
 #[test]
 fn embedded_expressions_in_a_template_are_each_evaluated() {
     let ops = squash(&operations_of("expr-template", &linked(&json!({"v": "/x/{$request.path.id}?s={$statusCode}"}))));
-    assert!(ops.contains(r#"runtime::template(&["/x/","?s=",""],vec!["#), "{ops}");
+    assert!(ops.contains(r#"::honig::__private::template(&["/x/","?s=",""],vec!["#), "{ops}");
     assert!(ops.contains(r#"exchange.eval("$statusCode")"#), "{ops}");
 }
 
@@ -1084,7 +1089,7 @@ fn callback_url_expression_is_evaluated() {
     let ops = squash(&operations_of("callback-url", &d));
     assert!(ops.contains("pubmodcallbacks{"), "{ops}");
     assert!(
-        ops.contains("pubfnon_event_url(request:&super::Params,exchange:&runtime::Exchange<'_>)->Option<String>"),
+        ops.contains("pubfnon_event_url(request:&super::Params,exchange:&::honig::Exchange<'_>)->Option<String>"),
         "{ops}"
     );
     assert!(ops.contains(r#"exchange.eval("$request.body#/callbackUrl")"#), "{ops}");
@@ -1095,7 +1100,7 @@ fn callback_url_expression_is_evaluated() {
 fn template_splitting_keeps_other_braces_literal() {
     // Through a link: the literal parts appear verbatim.
     let ops = squash(&operations_of("expr-braces", &linked(&json!({"v": "{a}{$method}{"}))));
-    assert!(ops.contains(r#"runtime::template(&["{a}","{"],vec![exchange.eval("$method")])"#), "{ops}");
+    assert!(ops.contains(r#"::honig::__private::template(&["{a}","{"],vec![exchange.eval("$method")])"#), "{ops}");
 }
 
 // Security Requirement Object (3.1+): "For other security scheme types, the
@@ -1151,8 +1156,8 @@ fn every_scope_and_role_is_a_variant_of_its_schemes_enum() {
         assert!(ops.contains(&format!("\"{name}\"=>Some(Self::{v})")), "{v} from_name");
     }
     assert!(!ops.contains("pubenumScope{"), "no enum that merges the schemes");
-    assert!(server.contains("Option<runtime::Granted<Self::Pat,PatScope>>"), "verify_pat grants `PatScope`");
-    assert!(server.contains("Option<runtime::Granted<Self::Oauth,OauthScope>>"), "verify_oauth grants `OauthScope`");
+    assert!(server.contains("Option<::honig::Granted<Self::Pat,PatScope>>"), "verify_pat grants `PatScope`");
+    assert!(server.contains("Option<::honig::Granted<Self::Oauth,OauthScope>>"), "verify_oauth grants `OauthScope`");
 }
 
 #[test]
@@ -1160,7 +1165,7 @@ fn or_of_roles_on_one_scheme_keeps_both_alternatives() {
     let consts = security_consts(&common::generate("scope-or", &fine_grained(), &Options::default()));
     assert!(
         consts.contains(
-            &r#"&[&[(runtime::Scheme::Bearer("pat"),&["issues:read"])],&[(runtime::Scheme::Bearer("pat"),&["issues:write"])]]"#
+            &r#"&[&[(::honig::__private::Scheme::Bearer("pat"),&["issues:read"])],&[(::honig::__private::Scheme::Bearer("pat"),&["issues:write"])]]"#
                 .to_owned()
         ),
         "{consts:#?}"
@@ -1203,7 +1208,7 @@ fn a_required_const_of_an_error_schema_gets_its_value() {
     let fields = server.split_once("fields:&[").and_then(|(_, rest)| rest.split_once(']')).expect("fields").0;
     assert_eq!(
         fields,
-        r#"("detail",runtime::ProblemMember::Detail),("object",runtime::ProblemMember::Const("\"error\"")),("type",runtime::ProblemMember::Const("\"https://shop.example.com/errors/refused\""))"#,
+        r#"("detail",::honig::ProblemMember::Detail),("object",::honig::ProblemMember::Const("\"error\"")),("type",::honig::ProblemMember::Const("\"https://shop.example.com/errors/refused\""))"#,
     );
 }
 
@@ -1233,7 +1238,7 @@ fn an_unfillable_error_body_requires_error_response() {
     assert!(generated.diagnostics.is_empty(), "{:?}", generated.diagnostics);
     let server = squash(common::file(&generated.files, "server.rs"));
     assert!(
-        server.contains("fnerror_response(rejection:runtime::Rejection<Operation>)->runtime::Response;"),
+        server.contains("fnerror_response(rejection:::honig::Rejection<Operation>)->::honig::Response;"),
         "{server}"
     );
 }
@@ -1283,7 +1288,7 @@ fn a_problem_json_error_body_needs_no_error_response() {
     let server = squash(&server_of("error-problem", &d));
     assert!(
         server.contains(
-            "fnerror_response(rejection:runtime::Rejection<Operation>)->runtime::Response{rejection.response()}"
+            "fnerror_response(rejection:::honig::Rejection<Operation>)->::honig::Response{rejection.response()}"
         ),
         "{server}"
     );

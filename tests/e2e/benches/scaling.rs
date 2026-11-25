@@ -4,7 +4,7 @@
 //! `tests/bench-support/src/callgrind.rs`.
 
 use bench_support::{Path, Work, callgrind};
-use e2e::v32_validation::api::{self, types};
+use e2e::v32_validation::api::types;
 use serde_json::{Value, json};
 
 /// Body sizes in bytes, each 4 times the one before.
@@ -41,7 +41,7 @@ fn decode(body: &Value) -> (usize, Work) {
     let bytes = serde_json::to_vec(body).unwrap_or_default();
     let len = bytes.len();
     let work: Work = Box::new(move || {
-        std::hint::black_box(api::runtime::json_decode::<types::Tree>(Some(200), &bytes).ok());
+        std::hint::black_box(honig::__private::json_decode::<types::Tree>(Some(200), &bytes).ok());
     });
     (len, work)
 }

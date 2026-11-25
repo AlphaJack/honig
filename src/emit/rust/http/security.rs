@@ -28,7 +28,7 @@ impl Securities {
         Self(sets)
     }
 
-    /// Returns the requirements of the operation as a `&[&[runtime::Requirement]]` expression.
+    /// Returns the requirements of the operation as a `&[&[::honig::__private::Requirement]]` expression.
     pub(crate) fn of(&self, api: &Api, op: &Operation) -> TokenStream {
         if op.security.is_empty() {
             return quote!(&[]);
@@ -44,16 +44,16 @@ impl Securities {
         sets.sort_by_key(|(n, _)| *n);
         let consts = sets.iter().map(|(n, alts)| {
             let name = format_ident!("SECURITY_{n}");
-            quote!(#[doc(hidden)] pub const #name: &[&[runtime::Requirement]] = #alts;)
+            quote!(#[doc(hidden)] pub const #name: &[&[::honig::__private::Requirement]] = #alts;)
         });
         if sets.is_empty() {
             return TokenStream::new();
         }
-        quote!(use super::runtime; #(#consts)*)
+        quote!(#(#consts)*)
     }
 }
 
-/// Returns the security requirements of the operation as a `&[&[runtime::Requirement]]` expression.
+/// Returns the security requirements of the operation as a `&[&[::honig::__private::Requirement]]` expression.
 fn security_alts(api: &Api, op: &Operation) -> TokenStream {
     let alts = op.security.iter().map(|alt| {
         let schemes = alt
@@ -64,20 +64,20 @@ fn security_alts(api: &Api, op: &Operation) -> TokenStream {
                 let scheme = match &s.kind {
                     SchemeKind::ApiKey { location, param } => {
                         let loc = match location.as_str() {
-                            "query" => quote!(runtime::KeyIn::Query),
-                            "cookie" => quote!(runtime::KeyIn::Cookie),
-                            _ => quote!(runtime::KeyIn::Header),
+                            "query" => quote!(::honig::__private::KeyIn::Query),
+                            "cookie" => quote!(::honig::__private::KeyIn::Cookie),
+                            _ => quote!(::honig::__private::KeyIn::Header),
                         };
                         let param = lit(param);
-                        quote!(runtime::Scheme::ApiKey(#n, #loc, #param))
+                        quote!(::honig::__private::Scheme::ApiKey(#n, #loc, #param))
                     }
-                    SchemeKind::Basic => quote!(runtime::Scheme::Basic(#n)),
-                    SchemeKind::Bearer => quote!(runtime::Scheme::Bearer(#n)),
+                    SchemeKind::Basic => quote!(::honig::__private::Scheme::Basic(#n)),
+                    SchemeKind::Bearer => quote!(::honig::__private::Scheme::Bearer(#n)),
                     SchemeKind::OtherHttp(h) => {
                         let h = lit(h);
-                        quote!(runtime::Scheme::Http(#n, #h))
+                        quote!(::honig::__private::Scheme::Http(#n, #h))
                     }
-                    SchemeKind::MutualTls => quote!(runtime::Scheme::MutualTls(#n)),
+                    SchemeKind::MutualTls => quote!(::honig::__private::Scheme::MutualTls(#n)),
                 };
                 let scopes = scopes.iter().map(|x| lit(x));
                 quote!((#scheme, &[#(#scopes),*]))

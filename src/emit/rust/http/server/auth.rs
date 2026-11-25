@@ -36,10 +36,10 @@ pub(crate) fn verify_methods(api: &Api, ops: &[&Operation], allow_unimplemented:
         let own = ident(&variant);
         let found = match scope_enum(api, scheme) {
             None => quote!(Self::#own),
-            Some(scope) => quote!(runtime::Granted<Self::#own, #scope>),
+            Some(scope) => quote!(::honig::Granted<Self::#own, #scope>),
         };
         let (arg, unused) = match scheme.kind {
-            SchemeKind::Basic => (quote!(login: runtime::Basic<'_>,), quote!(login)),
+            SchemeKind::Basic => (quote!(login: ::honig::Basic<'_>,), quote!(login)),
             SchemeKind::MutualTls => (quote!(), quote!(())),
             SchemeKind::ApiKey { .. } | SchemeKind::Bearer | SchemeKind::OtherHttp(_) => {
                 (quote!(credential: &str,), quote!(credential))
@@ -59,8 +59,8 @@ pub(crate) fn verify_methods(api: &Api, ops: &[&Operation], allow_unimplemented:
         };
         quote! {
             #[doc = #doc]
-            fn #name(&self, #arg request: &runtime::Request)
-                -> impl Future<Output = Result<Option<#found>, runtime::ApiError>> + Send #body
+            fn #name(&self, #arg request: &::honig::Request)
+                -> impl Future<Output = Result<Option<#found>, ::honig::ApiError>> + Send #body
         }
     });
     quote!(#(#methods)*)
@@ -107,7 +107,7 @@ pub(crate) fn scheme_value_enum(api: &Api, ops: &[&Operation], name: &str, tr: &
     });
     Some(quote! {
         /// What the `verify_` method of a scheme found. The server carries it to the operation's `Security`. A layer
-        /// finds the alternative that passed as `runtime::Passed` of it in the request's extensions.
+        /// finds the alternative that passed as `::honig::Passed` of it in the request's extensions.
         pub enum #name<A: #tr> {
             #(#variants(A::#variants),)*
         }
@@ -183,7 +183,7 @@ pub(crate) fn security_type(op: &Operation, m: &TokenStream) -> TokenStream {
 }
 
 /// Returns the conversion of what the server verified for `op` to its `Security`: a closure from
-/// `Option<runtime::Passed<value>>` to `Option<Security>` that `runtime::Call::map` applies. `None` is 401.
+/// `Option<::honig::Passed<value>>` to `Option<Security>` that `::honig::__private::Call::map` applies. `None` is 401.
 pub(crate) fn security_of(api: &Api, op: &Operation, m: &TokenStream) -> TokenStream {
     let variants = security_variants(api, op);
     let anonymous = variants.iter().any(|(_, s)| s.is_empty());
@@ -209,7 +209,7 @@ pub(crate) fn security_of(api: &Api, op: &Operation, m: &TokenStream) -> TokenSt
         quote!(let passed = passed?;)
     };
     quote! {
-        |passed: Option<runtime::Passed<_>>| {
+        |passed: Option<::honig::Passed<_>>| {
             #take
             let mut values = passed.values.into_iter();
             match passed.alternative {
@@ -220,27 +220,27 @@ pub(crate) fn security_of(api: &Api, op: &Operation, m: &TokenStream) -> TokenSt
     }
 }
 
-/// Returns `runtime::Operations::verify` of the server of `ops`: the `verify_` method of the scheme of the credential,
+/// Returns `::honig::__private::Operations::verify` of the server of `ops`: the `verify_` method of the scheme of the credential,
 /// on the `Api` that `api` reaches (`&*self.0`), its value a variant of `values` (`SchemeValue`).
 pub(crate) fn verify_fn(api: &Api, ops: &[&Operation], reach: &TokenStream, values: &TokenStream) -> TokenStream {
     let value_type = if used_schemes(api, ops).is_empty() { quote!(()) } else { quote!(#values<A>) };
     let signature = |names: TokenStream| {
         quote! {
-            fn verify<'r>(&'r self, #names) -> runtime::BoxFuture<'r, Result<Option<runtime::Verified<#value_type>>, runtime::ApiError>>
+            fn verify<'r>(&'r self, #names) -> ::honig::__private::BoxFuture<'r, Result<Option<::honig::Verified<#value_type>>, ::honig::ApiError>>
         }
     };
     let used = used_schemes(api, ops);
     if used.is_empty() {
-        let signature = signature(quote!(_: &'static str, _: &'r str, _: &'r runtime::Request));
+        let signature = signature(quote!(_: &'static str, _: &'r str, _: &'r ::honig::Request));
         return quote!(#signature { Box::pin(std::future::ready(Ok(None))) });
     }
     let credential =
         if used.iter().all(|(s, _)| matches!(s.kind, SchemeKind::MutualTls)) { quote!(_) } else { quote!(credential) };
-    let signature = signature(quote!(scheme: &'static str, #credential: &'r str, request: &'r runtime::Request));
+    let signature = signature(quote!(scheme: &'static str, #credential: &'r str, request: &'r ::honig::Request));
     let arms = used.into_iter().map(|(scheme, variant)| {
         let (key, name) = (lit(&scheme.name), verify_name(&variant));
         let call = match scheme.kind {
-            SchemeKind::Basic => quote!(api.#name(runtime::Basic::of(credential), request).await?),
+            SchemeKind::Basic => quote!(api.#name(::honig::Basic::of(credential), request).await?),
             SchemeKind::MutualTls => quote!(api.#name(request).await?),
             SchemeKind::ApiKey { .. } | SchemeKind::Bearer | SchemeKind::OtherHttp(_) => {
                 quote!(api.#name(credential, request).await?)
@@ -248,8 +248,8 @@ pub(crate) fn verify_fn(api: &Api, ops: &[&Operation], reach: &TokenStream, valu
         };
         let v = ident(&variant);
         let verified = match scope_enum(api, scheme) {
-            None => quote!(#call.map(|v| runtime::Verified::new(#values::#v(v)))),
-            Some(scope) => quote!(#call.map(|g| runtime::Verified {
+            None => quote!(#call.map(|v| ::honig::Verified::new(#values::#v(v)))),
+            Some(scope) => quote!(#call.map(|g| ::honig::Verified {
                 value: #values::#v(g.value),
                 scopes: g.scopes.into_iter().map(#scope::as_str).collect(),
             })),
@@ -319,7 +319,7 @@ pub(crate) fn credential_enum(api: &Api) -> Option<TokenStream> {
         }
 
         #[must_use]
-        pub fn credentials(request: &impl runtime::Secured) -> Vec<Credential<'_>> {
+        pub fn credentials(request: &impl ::honig::Secured) -> Vec<Credential<'_>> {
             request
                 .credentials()
                 .iter()

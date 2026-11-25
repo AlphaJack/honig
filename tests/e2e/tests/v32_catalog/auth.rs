@@ -16,7 +16,7 @@ pub(super) struct Server(pub(super) fn(&str, &api::Request) -> Option<String>);
 /// Who is calling: the layer in front of the router and the client's address.
 fn find_caller(_: &str, req: &api::Request) -> Option<String> {
     let principal = req.extensions().get::<Principal>()?;
-    let peer = api::peer(req.extensions())?;
+    let peer = honig::peer(req.extensions())?;
     Some(format!("{} from {peer}", principal.0))
 }
 // ANCHOR_END: request-context
@@ -45,14 +45,14 @@ impl api::Api for Server {
         _: ops::create_product::Params,
         _: &api::Context<'_, ops::create_product::Security<Self>>,
     ) -> Result<ops::create_product::Response, api::ApiError> {
-        Err(api::ApiError::new(api::http::StatusCode::NOT_IMPLEMENTED, "not here"))
+        Err(api::ApiError::new(honig::http::StatusCode::NOT_IMPLEMENTED, "not here"))
     }
     async fn get_product(
         &self,
         _: ops::get_product::Params,
         _: &api::Context<'_, ops::get_product::Security<Self>>,
     ) -> Result<ops::get_product::Response, api::ApiError> {
-        Err(api::ApiError::new(api::http::StatusCode::NOT_IMPLEMENTED, "not here"))
+        Err(api::ApiError::new(honig::http::StatusCode::NOT_IMPLEMENTED, "not here"))
     }
 }
 
@@ -63,7 +63,7 @@ fn serve() -> axum::Router {
 fn list(router: axum::Router) -> axum::http::Response<axum::body::Body> {
     let req =
         axum::http::Request::get("/v1/products").header("X-API-Key", "k").body(axum::body::Body::empty()).unwrap();
-    api::block_on(router.oneshot(req)).unwrap()
+    honig::block_on(router.oneshot(req)).unwrap()
 }
 
 #[test]
@@ -97,7 +97,7 @@ fn authenticated() -> axum::Router {
 fn list_with_key(key: &str) -> axum::http::Response<axum::body::Body> {
     let req =
         axum::http::Request::get("/v1/products").header("X-API-Key", key).body(axum::body::Body::empty()).unwrap();
-    api::block_on(authenticated().oneshot(req)).unwrap()
+    honig::block_on(authenticated().oneshot(req)).unwrap()
 }
 
 #[test]

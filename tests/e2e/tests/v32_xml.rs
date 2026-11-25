@@ -18,10 +18,10 @@ fn cdata_and_inline_nodes_on_the_wire() {
         blurb: Some(types::Blurb { format: None, text: "<b>sand</b> ]]> worms".to_owned() }),
         meta: Some(types::Meta { isbn: "978".to_owned(), pages: Some(412) }),
     };
-    let wire = String::from_utf8(api::runtime::xml_encode(&book).expect("encodes")).expect("utf-8");
+    let wire = String::from_utf8(honig::__private::xml_encode(&book).expect("encodes")).expect("utf-8");
     assert!(wire.contains("<blurb><![CDATA[<b>sand</b> ]]]]><![CDATA[> worms]]></blurb>"), "{wire}");
     assert!(wire.contains("<isbn>978</isbn><pages>412</pages>") && !wire.contains("<meta"), "inline: {wire}");
-    let back: types::Book = api::runtime::xml_decode(Some(200), wire.as_bytes()).expect("decodes");
+    let back: types::Book = honig::__private::xml_decode(Some(200), wire.as_bytes()).expect("decodes");
     assert_eq!(back.blurb, book.blurb);
     assert_eq!(back.meta, book.meta);
 }
@@ -49,9 +49,9 @@ fn request(accept: &str) -> api::Request {
     let keep = std::sync::Arc::clone(&sent);
     let client = api::Client::new(support::loopback(move |req: api::Request| {
         *keep.lock().unwrap() = Some(req);
-        std::future::ready(api::runtime::new_response(500))
+        std::future::ready(honig::__private::new_response(500))
     }));
-    let _ = api::block_on(client.add_book(ops::add_book::Params::new(book())));
+    let _ = honig::block_on(client.add_book(ops::add_book::Params::new(book())));
     let mut req = sent.lock().unwrap().take().expect("sent");
     req.headers_mut().remove("accept");
     req.headers_mut().append("accept", honig::http::HeaderValue::try_from(accept.to_owned()).unwrap());
@@ -60,7 +60,7 @@ fn request(accept: &str) -> api::Request {
 
 fn served(accept: &str) -> api::Response {
     let service = api::Server::new(Books).into_service();
-    api::block_on(service.handle(request(accept)))
+    honig::block_on(service.handle(request(accept)))
 }
 
 /// One `Book` in either media type. The server writes the one that `Accept` prefers. 406 when it accepts neither.
@@ -112,7 +112,7 @@ fn the_handler_sees_the_media_type_accept_chose() {
     {
         let seen = std::sync::Arc::new(MediaSeen::default());
         let service = api::Server::new(std::sync::Arc::clone(&seen)).into_service();
-        api::block_on(service.handle(request(accept)));
+        honig::block_on(service.handle(request(accept)));
         assert_eq!(*seen.0.lock().unwrap(), Some(want), "{accept}");
     }
 }
@@ -134,7 +134,7 @@ fn the_client_reads_one_type_from_either_media_type() {
             service.handle(req)
         }));
         let params = ops::add_book::Params { media, ..ops::add_book::Params::new(book()) };
-        let created = api::block_on(client.add_book(params)).unwrap();
+        let created = honig::block_on(client.add_book(params)).unwrap();
         assert_eq!(created, ops::add_book::Response::Created(book()), "{media:?}");
     }
 }

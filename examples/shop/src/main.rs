@@ -53,7 +53,7 @@ enum Command {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
-    let transport = api::ReqwestTransport::new(format!("http://{}/v1", cli.addr))?;
+    let transport = honig::ReqwestTransport::new(format!("http://{}/v1", cli.addr))?;
     let client = || api::Client::new(transport.clone()).with_api_key(shop::API_KEY);
     match cli.command {
         Command::Serve => serve(&cli.addr).await?,

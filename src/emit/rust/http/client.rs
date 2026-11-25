@@ -56,9 +56,9 @@ pub(crate) fn client(api: &Api, space: &Space<'_>, opts: &crate::emit::Options) 
     let (credentials, no_credentials) = if keeps {
         (
             quote! {
-                pub(super) credentials: runtime::Credentials,
+                pub(super) credentials: ::honig::__private::Credentials,
             },
-            quote!(credentials: runtime::Credentials::new()),
+            quote!(credentials: ::honig::__private::Credentials::new()),
         )
     } else {
         (TokenStream::new(), TokenStream::new())
@@ -69,11 +69,11 @@ pub(crate) fn client(api: &Api, space: &Space<'_>, opts: &crate::emit::Options) 
     let types_import = crate::emit::rust::http::shared::types_import(uses_types);
     quote! {
         #header
-        use super::{operations as ops, runtime};
+        use super::operations as ops;
         #types_import
 
         #servers_doc
-        pub const SERVERS: &[runtime::ServerUrl] = &[#(#servers),*];
+        pub const SERVERS: &[::honig::ServerUrl] = &[#(#servers),*];
 
         #[derive(Debug, Clone)]
         pub struct Client<T> {
@@ -92,7 +92,7 @@ pub(crate) fn client(api: &Api, space: &Space<'_>, opts: &crate::emit::Options) 
             #(#setters)*
         }
 
-        impl<T: runtime::Transport> Client<T> {
+        impl<T: ::honig::Transport> Client<T> {
             #(#tokens)*
             #(#devices)*
             #(#flows)*
@@ -115,19 +115,19 @@ pub(crate) fn webhook_client(space: &Space<'_>, api: &Api, sec: &Securities) -> 
             #[derive(Debug, Clone)]
             pub struct WebhookClient<T> {
                 pub transport: T,
-                pub(super) credentials: runtime::Credentials,
+                pub(super) credentials: ::honig::__private::Credentials,
             }
 
             impl<T> WebhookClient<T> {
                 pub const fn new(transport: T) -> Self {
-                    Self { transport, credentials: runtime::Credentials::new() }
+                    Self { transport, credentials: ::honig::__private::Credentials::new() }
                 }
 
                 #with
                 #(#setters)*
             }
 
-            impl<T: runtime::Transport> WebhookClient<T> {
+            impl<T: ::honig::Transport> WebhookClient<T> {
                 #(#hooks)*
             }
         }
@@ -163,7 +163,7 @@ pub(crate) fn client_path(op: &Operation, m: &TokenStream, hook: bool) -> (Optio
             Err(name) => match path_param(op, &name) {
                 Some(p) => {
                     let (wire, v, e) = (lit(&p.wire), value_expr(p), param_enc(p));
-                    quote!(path.push_str(&runtime::encode_path(#wire, &#v, #e)?);)
+                    quote!(path.push_str(&::honig::__private::encode_path(#wire, &#v, #e)?);)
                 }
                 None => {
                     let l = lit(&format!("{{{name}}}"));
@@ -179,10 +179,11 @@ pub(crate) fn client_path(op: &Operation, m: &TokenStream, hook: bool) -> (Optio
         let init = if path.is_empty() { quote!(let path = #start;) } else { quote!(let mut path = #start;) };
         match op.servers.len() {
             0 => (None, quote!(#init #(#path)*)),
-            1 => (None, quote!(#init #(#path)* let path = runtime::operation_path(#m::SERVERS, path);)),
-            _ => {
-                (server_arg(op, m), quote!(#init #(#path)* let path = runtime::operation_path(&[server.url()], path);))
-            }
+            1 => (None, quote!(#init #(#path)* let path = ::honig::__private::operation_path(#m::SERVERS, path);)),
+            _ => (
+                server_arg(op, m),
+                quote!(#init #(#path)* let path = ::honig::__private::operation_path(&[server.url()], path);),
+            ),
         }
     }
 }
@@ -207,7 +208,7 @@ pub(crate) fn client_op(space: &Space<'_>, api: &Api, sec: &Securities, op: &Ope
         Location::Query => Some(query_param(space, p)),
         Location::QueryString => {
             let (v, form) = (value_expr(p), p.content == Some(MediaKind::Form));
-            Some(quote!(runtime::encode_querystring(&mut query, &#v, #form);))
+            Some(quote!(::honig::__private::encode_querystring(&mut query, &#v, #form);))
         }
         Location::Path | Location::Header | Location::Cookie | Location::Part => None,
     });
@@ -227,11 +228,11 @@ pub(crate) fn client_op(space: &Space<'_>, api: &Api, sec: &Securities, op: &Ope
             let (v, a) = (pascal_ident(v), lit(&format!("{chosen}{others}{errors}")));
             quote!(#m::Media::#v => #a,)
         });
-        Some(quote!(runtime::Message::set_header(&mut req, "Accept", match p.media { #(#arms)* })?;))
+        Some(quote!(::honig::Message::set_header(&mut req, "Accept", match p.media { #(#arms)* })?;))
     } else {
         accept(op).map(|a| {
             let a = lit(&a);
-            quote!(runtime::Message::set_header(&mut req, "Accept", #a)?;)
+            quote!(::honig::Message::set_header(&mut req, "Accept", #a)?;)
         })
     };
     let take = take_params(op, &p);
@@ -240,19 +241,19 @@ pub(crate) fn client_op(space: &Space<'_>, api: &Api, sec: &Securities, op: &Ope
         #path
         #query_decl
         #(#query)*
-        let mut req = runtime::new_request(#method, path, query)?;
+        let mut req = ::honig::__private::new_request(#method, path, query)?;
         #accept
         #headers_and_body
-        runtime::apply_auth(&mut req, &self.credentials, #security, Self::WITH)?;
-        runtime::propagate_trace(&mut req);
+        ::honig::__private::apply_auth(&mut req, &self.credentials, #security, Self::WITH)?;
+        ::honig::__private::propagate_trace(&mut req);
     };
     let stream = (!hook).then(|| stream_method(space, op, &p, &prelude, &respond)).flatten();
     quote! {
         #doc
         #deprecated
-        pub async fn #name(&self, #url_arg #p: impl runtime::IntoArg<'_, #params_ty>) -> Result<#response_ty, runtime::ClientError> {
+        pub async fn #name(&self, #url_arg #p: impl ::honig::__private::IntoArg<'_, #params_ty>) -> Result<#response_ty, ::honig::ClientError> {
             #prelude
-            let resp = runtime::send(&self.transport, req).await?;
+            let resp = ::honig::send(&self.transport, req).await?;
             #response
         }
         #stream
@@ -263,7 +264,7 @@ pub(crate) fn client_op(space: &Space<'_>, api: &Api, sec: &Securities, op: &Ope
 /// refuse it anyway, so it stays out.
 fn query_param(space: &Space<'_>, p: &Param) -> TokenStream {
     let (wire, v, e) = (lit(&p.wire), value_expr(p), param_enc(p));
-    let encode = quote!(runtime::encode_query(&mut query, #wire, &#v, #e)?;);
+    let encode = quote!(::honig::__private::encode_query(&mut query, #wire, &#v, #e)?;);
     crate::emit::rust::http::shared::spec_default(space, p).map_or_else(
         || encode.clone(),
         |d| {
@@ -315,16 +316,16 @@ pub(crate) fn stream_target(op: &Operation) -> Option<StreamTarget<'_>> {
     for (ci, c) in r.contents.iter().enumerate() {
         let framing = match c.kind {
             MediaKind::JsonLines => {
-                quote!(runtime::ItemStream::new(Some(status), body, runtime::Framing::JsonLines))
+                quote!(::honig::ItemStream::new(Some(status), body, ::honig::Framing::JsonLines))
             }
-            MediaKind::JsonSeq => quote!(runtime::ItemStream::new(Some(status), body, runtime::Framing::JsonSeq)),
+            MediaKind::JsonSeq => quote!(::honig::ItemStream::new(Some(status), body, ::honig::Framing::JsonSeq)),
             MediaKind::Sse => quote!(
-                runtime::ItemStream::new(Some(status), body, runtime::Framing::Sse)
+                ::honig::ItemStream::new(Some(status), body, ::honig::Framing::Sse)
                     .reconnecting(self.transport.clone(), again)
             ),
             // An `itemSchema` part list (3.2 "Streaming Multipart" and byte ranges). Its boundary is in `media`.
             MediaKind::MultipartMixed if c.positional_prefix.is_none() => {
-                quote!(runtime::ItemStream::multipart(Some(status), body, &media))
+                quote!(::honig::ItemStream::multipart(Some(status), body, &media))
             }
             MediaKind::Json
             | MediaKind::Linkset
@@ -390,20 +391,21 @@ pub(crate) fn stream_method(
         checked.pop();
     }
     // One `else if` chain (clippy `collapsible_else_if`).
-    let branches = checked.iter().map(|(_, (_, f, ms, _))| quote!(if #(runtime::media_matches(&ct, #ms))||* { #f }));
+    let branches =
+        checked.iter().map(|(_, (_, f, ms, _))| quote!(if #(::honig::__private::media_matches(&ct, #ms))||* { #f }));
     let framing = if checked.is_empty() { fallback } else { quote!(#(#branches)else* else { #fallback }) };
     let framing = match validated {
         Some(v) => quote!((#framing) #v),
         None => framing,
     };
-    let ct = (groups.len() > 1).then(|| quote!(let ct = runtime::Message::content_type(&resp).to_owned();));
-    let media = multipart.then(|| quote!(let media = runtime::Message::content_type(&resp).to_owned();));
+    let ct = (groups.len() > 1).then(|| quote!(let ct = ::honig::Message::content_type(&resp).to_owned();));
+    let media = multipart.then(|| quote!(let media = ::honig::Message::content_type(&resp).to_owned();));
     let all_media = seq.iter().map(|(_, m, _)| lit(m));
     // An event stream reconnects with the request that it sent. It is kept before the send.
     let again = seq
         .iter()
         .any(|(_, _, f)| f.to_string().contains("Sse"))
-        .then(|| quote!(let again = runtime::resendable(&req);));
+        .then(|| quote!(let again = ::honig::__private::resendable(&req);));
     let m = op_path(op);
     let server = server_arg(op, &m);
     let f = format_ident!("{}_stream", snake(&op.name));
@@ -417,17 +419,17 @@ pub(crate) fn stream_method(
     Some(quote! {
         #doc
         #deprecated
-        pub async fn #f(&self, #server #p: impl runtime::IntoArg<'_, #m::Params>) -> Result<runtime::Streamed<runtime::ItemStream<#item>, #m::Response>, runtime::ClientError> #owned {
+        pub async fn #f(&self, #server #p: impl ::honig::__private::IntoArg<'_, #m::Params>) -> Result<::honig::Streamed<::honig::ItemStream<#item>, #m::Response>, ::honig::ClientError> #owned {
             #prelude
             #again
-            let resp = runtime::send_streaming(&self.transport, req).await?;
+            let resp = ::honig::send_streaming(&self.transport, req).await?;
             let status = resp.status().as_u16();
             if status == #code {
-                runtime::check_response_media(status, runtime::Message::content_type(&resp), None, &[#(#all_media),*])?;
+                ::honig::__private::check_response_media(status, ::honig::Message::content_type(&resp), None, &[#(#all_media),*])?;
                 #ct
                 #media
                 let body = resp.into_body().into_stream();
-                return Ok(runtime::Streamed::Ok(#framing));
+                return Ok(::honig::Streamed::Ok(#framing));
             }
             #other
         }
@@ -440,9 +442,9 @@ pub(crate) fn stream_method(
 fn other_statuses(m: &TokenStream, response: &TokenStream) -> TokenStream {
     quote! {
         let (head, body) = resp.into_parts();
-        let resp = runtime::Response::from_parts(head, runtime::Body::new(body.collect().await?));
-        let other: Result<#m::Response, runtime::ClientError> = async move { #response }.await;
-        Ok(runtime::Streamed::Whole(other?))
+        let resp = ::honig::Response::from_parts(head, ::honig::Body::new(body.collect().await?));
+        let other: Result<#m::Response, ::honig::ClientError> = async move { #response }.await;
+        Ok(::honig::Streamed::Whole(other?))
     }
 }
 
@@ -475,8 +477,8 @@ pub(crate) fn blob_stream_method(
         let (c, media) = (code(*c), r.contents.iter().map(|c| lit(&c.media)));
         quote! {
             if resp.status() == #c {
-                runtime::check_response_media(#c, runtime::Message::content_type(&resp), None, &[#(#media),*])?;
-                return Ok(runtime::Streamed::Ok(resp));
+                ::honig::__private::check_response_media(#c, ::honig::Message::content_type(&resp), None, &[#(#media),*])?;
+                return Ok(::honig::Streamed::Ok(resp));
             }
         }
     });
@@ -488,9 +490,9 @@ pub(crate) fn blob_stream_method(
     Some(quote! {
         #doc
         #deprecated
-        pub async fn #f(&self, #server #p: impl runtime::IntoArg<'_, #m::Params>) -> Result<runtime::Streamed<runtime::Response, #m::Response>, runtime::ClientError> {
+        pub async fn #f(&self, #server #p: impl ::honig::__private::IntoArg<'_, #m::Params>) -> Result<::honig::Streamed<::honig::Response, #m::Response>, ::honig::ClientError> {
             #prelude
-            let resp = runtime::send_streaming(&self.transport, req).await?;
+            let resp = ::honig::send_streaming(&self.transport, req).await?;
             #(#branches)*
             #other
         }
@@ -520,9 +522,9 @@ fn reads_body(op: &Operation) -> bool {
 fn take_params(op: &Operation, p: &proc_macro2::Ident) -> Option<TokenStream> {
     (p == "p").then(|| {
         if reads_body(op) {
-            quote!(let p = runtime::IntoArg::into_arg(p);)
+            quote!(let p = ::honig::__private::IntoArg::into_arg(p);)
         } else {
-            quote!(let p = runtime::IntoArg::into_arg(p).into_owned();)
+            quote!(let p = ::honig::__private::IntoArg::into_arg(p).into_owned();)
         }
     })
 }
@@ -531,18 +533,18 @@ fn take_params(op: &Operation, p: &proc_macro2::Ident) -> Option<TokenStream> {
 pub(crate) fn client_headers_and_body(op: &Operation, m: &TokenStream, bx: &Boxing) -> TokenStream {
     let headers = op.params.iter().filter(|p| p.location == Location::Header).map(|p| {
         let (v, e, wire) = (value_expr(p), param_enc(p), lit(&p.wire));
-        quote!(if let Some(h) = runtime::encode_header(&#v, #e)? { runtime::Message::set_header(&mut req, #wire, h)?; })
+        quote!(if let Some(h) = ::honig::__private::encode_header(&#v, #e)? { ::honig::Message::set_header(&mut req, #wire, h)?; })
     });
     let cookie_params: Vec<&Param> = op.params.iter().filter(|p| p.location == Location::Cookie).collect();
     let cookies = (!cookie_params.is_empty()).then(|| {
         let each = cookie_params.iter().map(|p| {
             let (wire, v, e) = (lit(&p.wire), value_expr(p), param_enc(p));
-            quote!(runtime::encode_cookie(&mut cookies, #wire, &#v, #e)?;)
+            quote!(::honig::__private::encode_cookie(&mut cookies, #wire, &#v, #e)?;)
         });
         quote! {
             let mut cookies: Vec<String> = Vec::new();
             #(#each)*
-            runtime::set_cookies(&mut req, cookies)?;
+            ::honig::__private::set_cookies(&mut req, cookies)?;
         }
     });
     let part_params: Vec<&Param> = op.params.iter().filter(|p| p.location == Location::Part).collect();
@@ -552,7 +554,7 @@ pub(crate) fn client_headers_and_body(op: &Operation, m: &TokenStream, bx: &Boxi
         let each = part_params.iter().map(|p| {
             let (v, e, wire) = (value_expr(p), param_enc(p), lit(&p.wire));
             let part = lit(p.part.as_deref().unwrap_or_default());
-            quote!(if let Some(h) = runtime::encode_header(&#v, #e)? { parts.push((#part, #wire, h)); })
+            quote!(if let Some(h) = ::honig::__private::encode_header(&#v, #e)? { parts.push((#part, #wire, h)); })
         });
         quote! {
             let mut parts: Vec<(&str, &str, String)> = Vec::new();
@@ -580,7 +582,7 @@ pub(crate) fn client_headers_and_body(op: &Operation, m: &TokenStream, bx: &Boxi
 /// Emits the check that a body decodes as a type its status declares: the response must say it is one.
 fn media_check(r: &Resp) -> Option<TokenStream> {
     let media = r.contents.iter().map(|c| lit(&c.media));
-    (!r.contents.is_empty()).then(|| quote!(runtime::check_media_of(&head, &body, &[#(#media),*])?;))
+    (!r.contents.is_empty()).then(|| quote!(::honig::__private::check_media_of(&head, &body, &[#(#media),*])?;))
 }
 
 /// Matches the status and decode the documented response. The statuses in `skip` are left out: a `<op>_stream` method
@@ -604,14 +606,14 @@ pub(crate) fn client_response(
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
     };
-    let unexpected = quote!(Err(runtime::ClientError::UnexpectedStatus { status: head.status, body }));
+    let unexpected = quote!(Err(::honig::ClientError::UnexpectedStatus { status: head.status, body }));
     if kept.is_empty() {
         return quote! { #parts #guard #unexpected };
     }
     let ct = kept
         .iter()
         .any(|(_, r)| needs_ct(&r.contents))
-        .then(|| quote!(let ct = runtime::content_type_of(&head.headers);));
+        .then(|| quote!(let ct = ::honig::__private::content_type_of(&head.headers);));
     let arms: Vec<(&Resp, TokenStream, TokenStream)> = kept
         .iter()
         .map(|&(i, r)| {
@@ -685,7 +687,7 @@ fn response_arm(
                 let e = crate::emit::rust::http::shared::status_enum(r);
                 quote! {
                     let Ok(typed) = #op_mod::#e::try_from(status) else {
-                        return Err(runtime::ClientError::UnexpectedStatus { status: head.status, body });
+                        return Err(::honig::ClientError::UnexpectedStatus { status: head.status, body });
                     };
                 }
             });
@@ -697,21 +699,21 @@ fn response_arm(
             let headers = r.headers.iter().map(|h| {
                 let (n, wire, s) = (snake_ident(&h.name), lit(&h.wire), shape(space, &h.ty));
                 let at = lit(&format!("/header/{}", h.wire.replace('~', "~0").replace('/', "~1")));
-                let failed = quote!(|e| runtime::ClientError::Decode { status: Some(status), message: e.to_string(), body: body.clone(), pointer: String::new() });
+                let failed = quote!(|e| ::honig::ClientError::Decode { status: Some(status), message: e.to_string(), body: body.clone(), pointer: String::new() });
                 let raw = if h.wire.eq_ignore_ascii_case("set-cookie") {
                     let array = matches!(space.kind_of(h.ty.non_null()), JsonKind::Array);
-                    quote!(runtime::header_lines(&head.headers, #wire, #array))
+                    quote!(::honig::__private::header_lines(&head.headers, #wire, #array))
                 } else if h.json {
-                    quote!(runtime::first_header(&head.headers, #wire).as_deref().map(runtime::json_header))
+                    quote!(::honig::__private::first_header(&head.headers, #wire).as_deref().map(::honig::__private::json_header))
                 } else if h.linkset {
-                    quote!(runtime::linkset_header(runtime::joined_header(&head.headers, #wire).as_deref()))
+                    quote!(::honig::__private::linkset_header(::honig::__private::joined_header(&head.headers, #wire).as_deref()))
                 } else {
                     let explode = h.explode;
-                    quote!(runtime::decode_header(runtime::joined_header(&head.headers, #wire).as_deref(), #at, runtime::Style::Simple, #s, #explode).map_err(#failed)?)
+                    quote!(::honig::__private::decode_header(::honig::__private::joined_header(&head.headers, #wire).as_deref(), #at, ::honig::__private::Style::Simple, #s, #explode).map_err(#failed)?)
                 };
                 // A library type has the text of its format checked first, as in a request.
                 let checked = crate::emit::rust::http::codec::validated_map(space, &h.ty);
-                let from = if h.json { quote!(runtime::from_json_param) } else { quote!(runtime::from_param) };
+                let from = if h.json { quote!(::honig::__private::from_json_param) } else { quote!(::honig::__private::from_param) };
                 quote! {
                     #n: #from(#raw, #at) #checked
                         .map_err(#failed)?,
@@ -735,7 +737,7 @@ fn not_modified_guard(op: &Operation) -> Option<TokenStream> {
     });
     (conditional && !declared).then(|| {
         quote!(if head.status == 304 {
-            return Err(runtime::ClientError::NotModified { headers: head.headers });
+            return Err(::honig::ClientError::NotModified { headers: head.headers });
         })
     })
 }

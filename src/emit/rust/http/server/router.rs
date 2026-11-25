@@ -41,7 +41,7 @@ pub(crate) fn axum_paths(api: &Api) -> BTreeSet<String> {
 /// function of its own. One level of chunks and not a chain: nested futures would grow with the operation count and hit
 /// the layout depth limit of the compiler.
 pub(crate) fn dispatch_fns(path_ops: &[&Operation]) -> TokenStream {
-    let sig = quote!(routed: runtime::Routed<'_>, call: runtime::Call<'_, Option<runtime::Passed<<Routes<A> as runtime::Operations>::Value>>, Operation>);
+    let sig = quote!(routed: ::honig::__private::Routed<'_>, call: ::honig::__private::Call<'_, Option<::honig::Passed<<Routes<A> as ::honig::__private::Operations>::Value>>, Operation>);
     // The future of each operation is boxed. So `dispatch` stays a small match. Otherwise it would be one state
     // machine that contains every operation (and your handler) inline. That is large in code and on the stack.
     let arm = |op: &&Operation| {
@@ -51,7 +51,7 @@ pub(crate) fn dispatch_fns(path_ops: &[&Operation]) -> TokenStream {
     if path_ops.len() <= DISPATCH_CHUNK {
         let arms = path_ops.iter().map(arm);
         return quote! {
-            async fn dispatch<A: Api>(api: &A, op: Operation, #sig) -> runtime::Response {
+            async fn dispatch<A: Api>(api: &A, op: Operation, #sig) -> ::honig::Response {
                 match op { #(#arms)* }
             }
         };
@@ -72,13 +72,13 @@ pub(crate) fn dispatch_fns(path_ops: &[&Operation]) -> TokenStream {
             quote!(#at => Box::pin(#name(api, routed, call)).await,)
         });
         quote! {
-            async fn #f<A: Api>(api: &A, at: usize, #sig) -> runtime::Response {
+            async fn #f<A: Api>(api: &A, at: usize, #sig) -> ::honig::Response {
                 match at { #(#arms)* }
             }
         }
     });
     quote! {
-        async fn dispatch<A: Api>(api: &A, op: Operation, #sig) -> runtime::Response {
+        async fn dispatch<A: Api>(api: &A, op: Operation, #sig) -> ::honig::Response {
             match op { #(#groups)* }
         }
         #(#parts)*
@@ -99,7 +99,7 @@ pub(crate) struct TrieNode {
 /// Returns the route trie (root first) and the (method, operation) pairs of each template.
 /// Templates go in in specificity order. So where two reach the same
 /// node (`/a/{id}`, `/a/{name}`) their methods join one group with the first first.
-/// Group numbers follow specificity. `runtime::route` picks the lowest leaf
+/// Group numbers follow specificity. `::honig::__private::route` picks the lowest leaf
 /// among mixed siblings that both match.
 pub(crate) fn route_trie(routes: &[&Operation]) -> (Vec<TrieNode>, Vec<Vec<TokenStream>>) {
     let mut nodes = vec![TrieNode::default()];
@@ -133,12 +133,12 @@ pub(crate) fn route_trie(routes: &[&Operation]) -> (Vec<TrieNode>, Vec<Vec<Token
     (nodes, groups)
 }
 
-/// Returns `runtime::Node`s of the trie. Literal children are sorted by length and then bytes
-/// as `runtime::route` searches them.
+/// Returns `::honig::__private::Node`s of the trie. Literal children are sorted by length and then bytes
+/// as `::honig::__private::route` searches them.
 pub(crate) fn trie_nodes(nodes: &[TrieNode]) -> Vec<TokenStream> {
     let index = |n: Option<usize>| {
         n.map_or_else(
-            || quote!(runtime::Node::NONE),
+            || quote!(::honig::__private::Node::NONE),
             |n| {
                 let n = num(n);
                 quote!(#n)
@@ -158,15 +158,15 @@ pub(crate) fn trie_nodes(nodes: &[TrieNode]) -> Vec<TokenStream> {
                 let parts = pieces.iter().map(|p| match p {
                     Ok(l) => {
                         let l = lit(l);
-                        quote!(runtime::Part::Lit(#l))
+                        quote!(::honig::__private::Part::Lit(#l))
                     }
-                    Err(()) => quote!(runtime::Part::Var),
+                    Err(()) => quote!(::honig::__private::Part::Var),
                 });
                 let c = num(*c);
                 quote!((&[#(#parts),*], #c))
             });
             let (var, leaf) = (index(n.var), index(n.leaf));
-            quote!(runtime::node(&[#(#lits),*], &[#(#mixed),*], #var, #leaf))
+            quote!(::honig::__private::node(&[#(#lits),*], &[#(#mixed),*], #var, #leaf))
         })
         .collect()
 }
@@ -224,16 +224,16 @@ pub(crate) fn base_paths(servers: &[crate::ir::Server]) -> Vec<String> {
 /// of its template are. `strip_base` binds `found` without the base path when it has one.
 fn route_body(strip_base: &TokenStream) -> TokenStream {
     quote! {
-        let (path, _) = runtime::split_target(target);
-        let path = runtime::normalize_path(path);
+        let (path, _) = ::honig::__private::split_target(target);
+        let path = ::honig::__private::normalize_path(path);
         let path: &str = &path;
         #strip_base
         let Some((methods, caps)) = found.and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps))) else {
-            return Err(runtime::Reason::NotFound);
+            return Err(::honig::Reason::NotFound);
         };
-        runtime::find_method(methods, method)
-            .map(|(_, op)| (*op, runtime::Spans::of(path, &caps)))
-            .ok_or_else(|| runtime::Reason::MethodNotAllowed(runtime::allowed_methods(methods)))
+        ::honig::__private::find_method(methods, method)
+            .map(|(_, op)| (*op, ::honig::__private::Spans::of(path, &caps)))
+            .ok_or_else(|| ::honig::Reason::MethodNotAllowed(::honig::__private::allowed_methods(methods)))
     }
 }
 
@@ -244,11 +244,11 @@ fn call_body() -> TokenStream {
         Box::pin(async move {
             let mut req = req;
             let uri = call.uri().clone();
-            let (path, raw_query) = runtime::split_target(runtime::path_and_query(&uri));
-            let path = runtime::normalize_path(path);
+            let (path, raw_query) = ::honig::__private::split_target(::honig::__private::path_and_query(&uri));
+            let path = ::honig::__private::normalize_path(path);
             let caps = call.captures(&path);
-            let query = runtime::parse_query(raw_query);
-            let routed = runtime::Routed { request: &mut req, caps: &caps, raw_query, query: &query };
+            let query = ::honig::__private::parse_query(raw_query);
+            let routed = ::honig::__private::Routed { request: &mut req, caps: &caps, raw_query, query: &query };
             dispatch(&*self.0, call.operation(), routed, call).await
         })
     }
@@ -263,11 +263,11 @@ pub(crate) fn router(api: &Api) -> TokenStream {
                 .iter()
                 .find_map(|b| path.strip_prefix(b).filter(|rest| rest.is_empty() || rest.starts_with('/')))
                 .map(|rest| if rest.is_empty() { "/" } else { rest })
-                .and_then(|rest| runtime::route(ROUTES, rest))
-                .or_else(|| runtime::route(ROUTES, path));
+                .and_then(|rest| ::honig::__private::route(ROUTES, rest))
+                .or_else(|| ::honig::__private::route(ROUTES, path));
         }
     });
-    let strip_base = strip_base.unwrap_or_else(|| quote!(let found = runtime::route(ROUTES, path);));
+    let strip_base = strip_base.unwrap_or_else(|| quote!(let found = ::honig::__private::route(ROUTES, path);));
     let base_paths = (!bases.is_empty()).then(|| {
         let bases = bases.iter().map(|b| lit(b));
         quote! {
@@ -292,7 +292,7 @@ pub(crate) fn router(api: &Api) -> TokenStream {
     quote! {
         static METHODS: &[&[(&str, Operation)]] = &[#(#groups),*];
 
-        static ROUTES: &[runtime::Node] = &[#(#nodes),*];
+        static ROUTES: &[::honig::__private::Node] = &[#(#nodes),*];
 
         #base_paths
 
@@ -302,7 +302,7 @@ pub(crate) fn router(api: &Api) -> TokenStream {
 
         /// The server of this API: `Server::new(your_api)`, or `Server::new(arc)` to keep a handle on it. Add layers,
         /// then `into_axum` or `into_service`.
-        pub type Server<A> = runtime::Server<Routes<A>>;
+        pub type Server<A> = ::honig::Server<Routes<A>>;
 
         impl<A: Api> From<std::sync::Arc<A>> for Routes<A> {
             fn from(api: std::sync::Arc<A>) -> Self {
@@ -316,11 +316,11 @@ pub(crate) fn router(api: &Api) -> TokenStream {
             }
         }
 
-        impl<A: Api> runtime::Operations for Routes<A> {
+        impl<A: Api> ::honig::__private::Operations for Routes<A> {
             type Value = #value;
             type Operation = Operation;
 
-            fn error_response(&self) -> fn(runtime::Rejection<Operation>) -> runtime::Response {
+            fn error_response(&self) -> fn(::honig::Rejection<Operation>) -> ::honig::Response {
                 |rejection| A::error_response(rejection)
             }
 
@@ -328,17 +328,17 @@ pub(crate) fn router(api: &Api) -> TokenStream {
                 PATHS
             }
 
-            fn route(&self, method: &str, target: &str) -> Result<(Operation, runtime::Spans), runtime::Reason> {
+            fn route(&self, method: &str, target: &str) -> Result<(Operation, ::honig::__private::Spans), ::honig::Reason> {
                 #route
             }
 
-            fn errors(&self) -> runtime::ProblemSchemas {
+            fn errors(&self) -> ::honig::__private::ProblemSchemas {
                 error_schema
             }
 
             #verify
 
-            fn call<'r>(&'r self, req: runtime::Request, call: runtime::Call<'r, Option<runtime::Passed<#value>>, Operation>) -> runtime::BoxFuture<'r, runtime::Response> {
+            fn call<'r>(&'r self, req: ::honig::Request, call: ::honig::__private::Call<'r, Option<::honig::Passed<#value>>, Operation>) -> ::honig::__private::BoxFuture<'r, ::honig::Response> {
                 #call
             }
         }

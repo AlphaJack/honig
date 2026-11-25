@@ -73,17 +73,17 @@ pub(crate) fn server_encode(space: &Space<'_>, op: &Operation, op_mod: &TokenStr
             let (n, wire) = (snake_ident(&h.name), lit(&h.wire));
             if h.wire.eq_ignore_ascii_case("set-cookie") {
                 // One line per cookie (RFC 9110 section 5.3).
-                return quote!(for h in runtime::encode_header_lines(&#n)? { runtime::Message::set_header(&mut r, #wire, h)?; });
+                return quote!(for h in ::honig::__private::encode_header_lines(&#n)? { ::honig::Message::set_header(&mut r, #wire, h)?; });
             }
             let value = if h.json {
-                quote!(runtime::encode_json_header(&runtime::to_value(&#n)?))
+                quote!(::honig::__private::encode_json_header(&::honig::__private::to_value(&#n)?))
             } else if h.linkset {
-                quote!(runtime::encode_linkset_header(&runtime::to_value(&#n)?))
+                quote!(::honig::__private::encode_linkset_header(&::honig::__private::to_value(&#n)?))
             } else {
                 let e = crate::emit::rust::http::shared::enc(crate::ir::http::Style::Simple, h.explode, false);
-                quote!(runtime::encode_header(&#n, #e)?)
+                quote!(::honig::__private::encode_header(&#n, #e)?)
             };
-            quote!(if let Some(h) = #value { runtime::Message::set_header(&mut r, #wire, h)?; })
+            quote!(if let Some(h) = #value { ::honig::Message::set_header(&mut r, #wire, h)?; })
         });
         // A borrowed response binds a reference: the body encodes from it as it is, also when it is boxed.
         let e = if bx.resp[i] && carries { quote!(*body) } else { quote!(body) };
@@ -102,12 +102,12 @@ pub(crate) fn server_encode(space: &Space<'_>, op: &Operation, op_mod: &TokenStr
             _ => None,
         };
         let arm = if r.headers.is_empty() && r.contents.is_empty() {
-            quote!(runtime::new_response(#code))
+            quote!(::honig::__private::new_response(#code))
         } else if let Some((media, bytes)) = whole {
-            quote!(runtime::body_response(#code, #media, #bytes))
+            quote!(::honig::__private::body_response(#code, #media, #bytes))
         } else {
             quote! {{
-                let mut r = runtime::new_response(#code);
+                let mut r = ::honig::__private::new_response(#code);
                 #(#headers)*
                 #body
                 r
@@ -157,14 +157,14 @@ fn encode_fn(
     let media = by_media.then(|| quote!(, media: usize));
     if fallible {
         quote! {
-            fn #name(resp: #resp #media) -> Result<runtime::Response, runtime::ClientError> {
+            fn #name(resp: #resp #media) -> Result<::honig::Response, ::honig::ClientError> {
                 #bind
                 Ok(#expr)
             }
         }
     } else {
         quote! {
-            fn #name(resp: #resp #media) -> runtime::Response {
+            fn #name(resp: #resp #media) -> ::honig::Response {
                 #bind
                 #expr
             }

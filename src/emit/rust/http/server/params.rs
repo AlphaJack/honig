@@ -61,7 +61,7 @@ pub(crate) fn spread_object(space: &Space<'_>, op: &Operation, p: &Param, raw: T
         return raw;
     }
     let others = op.params.iter().filter(|o| o.location == Location::Query && o.wire != p.wire).map(|o| lit(&o.wire));
-    quote!(runtime::without_keys(#raw, &[#(#others),*]))
+    quote!(::honig::__private::without_keys(#raw, &[#(#others),*]))
 }
 
 /// Returns where parameter `p` is in the request as a JSON pointer: `/query/limit`. Validation points to it the same
@@ -104,7 +104,7 @@ pub(crate) fn param_source(
                     quote!(caps.get(#i))
                 }
             };
-            quote!(#cap.map(|c| runtime::decode_path(c, #at, #s, #shape, #explode)).transpose()?)
+            quote!(#cap.map(|c| ::honig::__private::decode_path(c, #at, #s, #shape, #explode)).transpose()?)
         }
         // `allowEmptyValue`: a bare `?flag` turns a boolean on; other
         // non-string types decode an empty value as absent.
@@ -112,22 +112,22 @@ pub(crate) fn param_source(
             let inner = if let Ty::Option(t) = &p.ty { t.as_ref() } else { &p.ty };
             let as_flag = *inner == Ty::Bool;
             let text = *inner == Ty::String;
-            quote!(runtime::empty_value(runtime::decode_query(query, #wire, #at, #s, #shape, #explode)?, #as_flag, #text))
+            quote!(::honig::__private::empty_value(::honig::__private::decode_query(query, #wire, #at, #s, #shape, #explode)?, #as_flag, #text))
         }
-        Location::Query => quote!(runtime::decode_query(query, #wire, #at, #s, #shape, #explode)?),
+        Location::Query => quote!(::honig::__private::decode_query(query, #wire, #at, #s, #shape, #explode)?),
         Location::QueryString => {
             let form = p.content == Some(MediaKind::Form);
-            quote!(runtime::decode_querystring(raw_query, #at, #form)?)
+            quote!(::honig::__private::decode_querystring(raw_query, #at, #form)?)
         }
         Location::Header => {
-            quote!(runtime::decode_header(runtime::joined_header(req.headers(), #wire).as_deref(), #at, #s, #shape, #explode)?)
+            quote!(::honig::__private::decode_header(::honig::__private::joined_header(req.headers(), #wire).as_deref(), #at, #s, #shape, #explode)?)
         }
         Location::Cookie => {
-            quote!(runtime::decode_cookie(runtime::Message::header(req, "cookie").as_deref(), #wire, #at, #s, #shape, #explode)?)
+            quote!(::honig::__private::decode_cookie(::honig::Message::header(req, "cookie").as_deref(), #wire, #at, #s, #shape, #explode)?)
         }
         Location::Part => {
             let part = lit(p.part.as_deref().unwrap_or_default());
-            quote!(runtime::decode_header(runtime::part_header(runtime::Message::content_type(req), &#body, #part, #wire).as_deref(), #at, #s, #shape, #explode)?)
+            quote!(::honig::__private::decode_header(::honig::__private::part_header(::honig::Message::content_type(req), &#body, #part, #wire).as_deref(), #at, #s, #shape, #explode)?)
         }
     }
 }
@@ -139,7 +139,7 @@ fn cap_index(vars: &[String], p: &Param) -> usize {
 
 /// Returns how the server decodes a plain scalar parameter from its text with no `Value` in between. That is an
 /// integer, number, boolean or string without `content`, `default` or `allowEmptyValue`. It is a `Result` expression.
-/// `None` for every other parameter. Those go through `runtime::from_param`.
+/// `None` for every other parameter. Those go through `::honig::__private::from_param`.
 pub(crate) fn text_decode(
     space: &Space<'_>,
     p: &Param,
@@ -158,17 +158,19 @@ pub(crate) fn text_decode(
     let text = match p.location {
         Location::Path => {
             let i = num(cap_index(vars, p));
-            return Some(quote!(runtime::path_param(caps, #i, #s, #at)));
+            return Some(quote!(::honig::__private::path_param(caps, #i, #s, #at)));
         }
         Location::Query if p.allow_empty => return None,
-        Location::Query => quote!(runtime::query_text(query, #wire, #at)?),
-        Location::Header => quote!(runtime::joined_header(req.headers(), #wire).map(runtime::trimmed_header)),
+        Location::Query => quote!(::honig::__private::query_text(query, #wire, #at)?),
+        Location::Header => {
+            quote!(::honig::__private::joined_header(req.headers(), #wire).map(::honig::__private::trimmed_header))
+        }
         Location::Cookie => {
-            quote!(runtime::cookie_text(runtime::Message::header(req, "cookie").as_deref(), #wire, #at, #s)?)
+            quote!(::honig::__private::cookie_text(::honig::Message::header(req, "cookie").as_deref(), #wire, #at, #s)?)
         }
         Location::QueryString | Location::Part => return None,
     };
-    Some(quote!(runtime::from_text(#text, #at)))
+    Some(quote!(::honig::__private::from_text(#text, #at)))
 }
 
 /// Decodes every parameter and the body into `Params`.
@@ -198,7 +200,8 @@ pub(crate) fn server_params(
     let fields = op.params.iter().map(|p| {
         let (wire, at) = (lit(&p.wire), lit(&param_pointer(p)));
         // A parameter with `content` is one serialized string on the wire.
-        let shape = if p.content.is_some() { quote!(runtime::Shape::Primitive) } else { shape(space, &p.ty) };
+        let shape =
+            if p.content.is_some() { quote!(::honig::__private::Shape::Primitive) } else { shape(space, &p.ty) };
         let (s, explode) = (style(p), p.explode);
         // Scalars decode from their text: no `Value` in between.
         // A library type has the text of its format checked first.
@@ -209,9 +212,9 @@ pub(crate) fn server_params(
         }
         let raw = spread_object(space, op, p, param_source(p, &vars, &s, &shape, explode, &wire, &at, &body_expr));
         let from = if p.content == Some(MediaKind::Json) && p.location != Location::QueryString {
-            quote!(runtime::from_json_param)
+            quote!(::honig::__private::from_json_param)
         } else {
-            quote!(runtime::from_param)
+            quote!(::honig::__private::from_param)
         };
         let n = snake_ident(&p.name);
         // An absent parameter with a `default` decodes as that default.
@@ -227,7 +230,7 @@ pub(crate) fn server_params(
     let body = op.body.as_ref().map(|b| {
         let d = Decode {
             status: quote!(None),
-            ct: quote!(runtime::Message::content_type(req)),
+            ct: quote!(::honig::Message::content_type(req)),
             body: body_expr.clone(),
             q: quote!(?),
             held: if inputs.take { Held::OwnedCow } else { Held::Borrowed },
@@ -238,13 +241,13 @@ pub(crate) fn server_params(
             quote!(body: #e,)
         } else {
             // Present when sent: an empty form body is still a body.
-            quote!(body: if #body_expr.is_empty() && runtime::Message::header(req, "content-type").is_none() { None } else { Some(#e) },)
+            quote!(body: if #body_expr.is_empty() && ::honig::Message::header(req, "content-type").is_none() { None } else { Some(#e) },)
         }
     });
     // `415` before decoding: JSON sent as `text/plain` is not JSON the description accepts.
     let media_check = op.body.as_ref().map(|b| {
         let media = b.contents.iter().map(|c| lit(&c.media));
-        quote!(runtime::check_media(runtime::Message::content_type(req), &[#(#media),*])?;)
+        quote!(::honig::__private::check_media(::honig::Message::content_type(req), &[#(#media),*])?;)
     });
     // Which listed type each part went out as is the client's choice; the parts carry their own `Content-Type`.
     let part_types = crate::emit::rust::http::shared::part_types_init(op);
@@ -269,13 +272,19 @@ fn decoder(
     // Every field except the body is a reference. It is copied out of a borrowed `Incoming` and moved out of an owned
     // one.
     let (param, bind) = if inputs.body {
-        (quote!(incoming: runtime::Incoming<'_>), quote!(let runtime::Incoming { #(#read,)* .. } = incoming;))
+        (
+            quote!(incoming: ::honig::__private::Incoming<'_>),
+            quote!(let ::honig::__private::Incoming { #(#read,)* .. } = incoming;),
+        )
     } else {
-        (quote!(incoming: &runtime::Incoming<'_>), quote!(let runtime::Incoming { #(#read,)* .. } = *incoming;))
+        (
+            quote!(incoming: &::honig::__private::Incoming<'_>),
+            quote!(let ::honig::__private::Incoming { #(#read,)* .. } = *incoming;),
+        )
     };
     if inputs.fallible {
         quote! {
-            fn #f(#param) -> Result<#m::Params, runtime::Reason> {
+            fn #f(#param) -> Result<#m::Params, ::honig::Reason> {
                 #bind
                 #media_check
                 Ok(#value)

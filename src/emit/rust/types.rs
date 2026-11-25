@@ -97,15 +97,9 @@ pub(super) fn emit(api: &crate::ir::Api, space: &Space<'_>, opts: &crate::emit::
     }
     // A library exports the constructors. A binary may build a type only by decoding it.
     let header = binary.then(|| quote!(#![allow(dead_code, reason = "a binary may build none of the types by hand")]));
-    // A description without schemas has no type to validate.
-    let runtime_import = (!items.is_empty()).then(|| {
-        quote!(
-            use super::runtime;
-        )
-    });
     let builders = builders_mod(&builders, builders_name_types);
     let strs = format_strs(space, &items);
-    quote! { #header #runtime_import #strs #(#items)* #builders }
+    quote! { #header #strs #(#items)* #builders }
 }
 
 /// Returns `pub use` of honig's checked text types that `items` hold, so that they sit beside the types of the
@@ -114,10 +108,10 @@ fn format_strs(space: &Space<'_>, items: &[TokenStream]) -> Option<TokenStream> 
     let text: String = items.iter().map(ToString::to_string).collect();
     let taken = space.types.name_keys();
     let names: Vec<_> = (super::syntax::FORMAT_STRS.iter())
-        .filter(|n| text.contains(&format!("runtime :: {n} ")) && !taken.contains(**n))
+        .filter(|n| text.contains(&format!(":: honig :: {n} ")) && !taken.contains(**n))
         .map(|n| ident(n))
         .collect();
-    (!names.is_empty()).then(|| quote!(pub use runtime::{#(#names),*};))
+    (!names.is_empty()).then(|| quote!(pub use ::honig::{#(#names),*};))
 }
 
 /// Inlines types declared as an alias of an identical earlier one (one inline schema per operation): index to the
@@ -317,14 +311,14 @@ fn external(items: &mut Vec<TokenStream>, def: &TypeDef, path: &str) {
             #[doc = #doc]
             #[derive(Debug, Clone, Copy)]
             pub struct #check;
-            impl runtime::formats::Check for #check {
-                fn check(json: &serde_json::Value) -> Result<(), runtime::BuildError> {
-                    let mut violations: Vec<runtime::Violation> = Vec::new();
+            impl ::honig::__private::formats::Check for #check {
+                fn check(json: &serde_json::Value) -> Result<(), ::honig::BuildError> {
+                    let mut violations: Vec<::honig::Violation> = Vec::new();
                     {
                         let out = &mut violations;
                         #checks
                     }
-                    runtime::first(violations).map_err(runtime::BuildError::value)
+                    ::honig::__private::first(violations).map_err(::honig::BuildError::value)
                 }
             }
         });
@@ -374,7 +368,7 @@ fn extra_derives(def: &TypeDef, derives: &[(String, Vec<String>)]) -> Option<Tok
     })
 }
 
-/// Returns `impl runtime::XmlShape`: element names and how each property maps to XML.
+/// Returns `impl ::honig::__private::XmlShape`: element names and how each property maps to XML.
 fn xml_shape(space: &Space<'_>, def: &TypeDef, s: &Struct) -> TokenStream {
     let n = pascal_ident(&def.name);
     let name = lit(def.xml.name.as_deref().unwrap_or(&pascal(&def.name)));
@@ -397,7 +391,7 @@ fn xml_shape(space: &Space<'_>, def: &TypeDef, s: &Struct) -> TokenStream {
             && matches!(space.types.get(*id).kind, Kind::Struct(_))
         {
             let c = pascal_ident(&space.types.get(*id).name);
-            Some(quote!(child: Some(<#c as runtime::XmlShape>::xml),))
+            Some(quote!(child: Some(<#c as ::honig::__private::XmlShape>::xml),))
         } else {
             None
         };
@@ -427,15 +421,15 @@ fn xml_shape(space: &Space<'_>, def: &TypeDef, s: &Struct) -> TokenStream {
         let set: Vec<TokenStream> = texts.chain(flags).chain(child).collect();
         let wire = lit(&f.wire);
         if set.is_empty() {
-            quote!(runtime::XmlField::new(#wire))
+            quote!(::honig::__private::XmlField::new(#wire))
         } else {
-            quote!(runtime::XmlField { #(#set)* ..runtime::XmlField::new(#wire) })
+            quote!(::honig::__private::XmlField { #(#set)* ..::honig::__private::XmlField::new(#wire) })
         }
     });
     quote! {
-        impl runtime::XmlShape for #n {
-            fn xml() -> &'static runtime::XmlNode {
-                static NODE: runtime::XmlNode = runtime::XmlNode {
+        impl ::honig::__private::XmlShape for #n {
+            fn xml() -> &'static ::honig::__private::XmlNode {
+                static NODE: ::honig::__private::XmlNode = ::honig::__private::XmlNode {
                     name: #name,
                     namespace: #namespace,
                     prefix: #prefix,
@@ -501,7 +495,7 @@ fn derives(space: &Space<'_>, id: TypeId, default: bool) -> TokenStream {
     quote!(#[derive(Debug, Clone, PartialEq, #eq #default serde::Serialize, serde::Deserialize)])
 }
 
-/// Returns one field of `runtime::object!`: its kind, its name and its type, with the serde attributes that its kind
+/// Returns one field of `::honig::object!`: its kind, its name and its type, with the serde attributes that its kind
 /// does not imply (a rename, a spec default, a reader of a library format).
 fn field(space: &Space<'_>, f: &Field, owner: &str) -> TokenStream {
     let doc = doc_opt(f.doc.as_deref());
@@ -511,11 +505,11 @@ fn field(space: &Space<'_>, f: &Field, owner: &str) -> TokenStream {
     let wire = lit(&f.wire);
     let rename = (f.wire != snake(&f.name)).then(|| quote!(#[serde(rename = #wire)]));
     // A library type that accepts more than its format allows gets its text checked first. `wrap` wraps it as the
-    // field's own type does: `Option`, `runtime::Nullable` or itself.
+    // field's own type does: `Option`, `::honig::Nullable` or itself.
     let checked = |t: &Ty, wrap: &str| {
         holds_text(space, t).map(|h| {
-            let h = if wrap.is_empty() { h } else { format!("runtime::formats::{wrap}<{h}>") };
-            let read = lit(&format!("runtime::formats::read::<_, _, {h}>"));
+            let h = if wrap.is_empty() { h } else { format!("::honig::__private::formats::{wrap}<{h}>") };
+            let read = lit(&format!("::honig::__private::formats::read::<_, _, {h}>"));
             quote!(deserialize_with = #read)
         })
     };
@@ -530,7 +524,8 @@ fn field(space: &Space<'_>, f: &Field, owner: &str) -> TokenStream {
     }
     if f.required && space.types.nullable(&f.ty).is_some() {
         // serde decodes a missing `Option` as `None`: its own deserializer makes the property required again.
-        let read = checked(&f.ty, "").unwrap_or_else(|| quote!(deserialize_with = "runtime::required_nullable"));
+        let read =
+            checked(&f.ty, "").unwrap_or_else(|| quote!(deserialize_with = "::honig::__private::required_nullable"));
         return plain(read);
     }
     if f.required {
@@ -542,7 +537,7 @@ fn field(space: &Space<'_>, f: &Field, owner: &str) -> TokenStream {
     }
     if let Some(inner) = space.types.nullable(&f.ty) {
         if let Some(read) = checked(inner, "OrNull") {
-            return plain(quote!(default, skip_serializing_if = "runtime::Nullable::is_absent", #read));
+            return plain(quote!(default, skip_serializing_if = "::honig::Nullable::is_absent", #read));
         }
         let t = ty(space, inner, false);
         return quote! { #[nullable] #doc #rename pub #name: #t, };
@@ -575,7 +570,7 @@ fn no_extra(extra: &proc_macro2::Ident) -> TokenStream {
 }
 
 /// Returns the Rust type of a struct field. It is its own when required or defaulted. Otherwise it is `Option` or
-/// `runtime::Nullable` when it also accepts `null`.
+/// `::honig::Nullable` when it also accepts `null`.
 fn field_ty(space: &Space<'_>, f: &Field) -> TokenStream {
     field_ty_in(space, f, false)
 }
@@ -588,7 +583,7 @@ fn field_ty_in(space: &Space<'_>, f: &Field, qualify: bool) -> TokenStream {
     match space.types.nullable(&f.ty) {
         Some(inner) => {
             let inner = ty(space, inner, qualify);
-            quote!(runtime::Nullable<#inner>)
+            quote!(::honig::Nullable<#inner>)
         }
         None => {
             let t = ty(space, &f.ty, qualify);
@@ -623,7 +618,7 @@ fn pattern_fields(
         readers.push(quote! {
             #[doc(hidden)]
             pub fn #read<'de, D: serde::Deserializer<'de>>(d: D) -> Result<std::collections::BTreeMap<String, #t>, D::Error> {
-                runtime::pattern_entries(d, &[#(#patterns),*], #i)
+                ::honig::__private::pattern_entries(d, &[#(#patterns),*], #i)
             }
         });
     }
@@ -632,9 +627,14 @@ fn pattern_fields(
     let (t, body) = match &s.additional {
         Some(t) => {
             let t = ty(space, t, false);
-            (quote!(std::collections::BTreeMap<String, #t>), quote!(runtime::other_entries(d, &[#(#patterns),*])))
+            (
+                quote!(std::collections::BTreeMap<String, #t>),
+                quote!(::honig::__private::other_entries(d, &[#(#patterns),*])),
+            )
         }
-        None => (quote!(runtime::Closed), quote!(runtime::no_other_entries(d, &[#(#patterns),*]))),
+        None => {
+            (quote!(::honig::__private::Closed), quote!(::honig::__private::no_other_entries(d, &[#(#patterns),*])))
+        }
     };
     fields.push(quote! {
         /// The undeclared names that no pattern matches.
@@ -656,8 +656,11 @@ fn extra_inits(s: &Struct, extra: &proc_macro2::Ident) -> Option<TokenStream> {
         return s.additional.is_some().then(|| no_extra(extra));
     }
     let maps = (0..s.patterns.len()).map(|i| super::syntax::pattern_field(s, i));
-    let other =
-        if s.additional.is_some() { quote!(std::collections::BTreeMap::new()) } else { quote!(runtime::Closed) };
+    let other = if s.additional.is_some() {
+        quote!(std::collections::BTreeMap::new())
+    } else {
+        quote!(::honig::__private::Closed)
+    };
     Some(quote!(#(#maps: std::collections::BTreeMap::new(),)* #extra: #other,))
 }
 
@@ -678,7 +681,8 @@ fn structure(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, s: &St
     let (held, readers) = pattern_fields(space, s, &name, &extra);
     let additional = s.additional.as_ref().filter(|_| s.patterns.is_empty()).map(|t| {
         let read = holds_text(space, t).map(|h| {
-            let read = lit(&format!("runtime::formats::read::<_, _, runtime::formats::Values<{h}>>"));
+            let read =
+                lit(&format!("::honig::__private::formats::read::<_, _, ::honig::__private::formats::Values<{h}>>"));
             quote!(, deserialize_with = #read)
         });
         let t = ty(space, t, false);
@@ -692,12 +696,12 @@ fn structure(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, s: &St
     // A lenient client's response type accepts a property that the server added. Its request copy refuses it.
     let closed = (s.closed && s.additional.is_none() && s.patterns.is_empty() && !def.lenient)
         .then(|| quote!(#[serde(deny_unknown_fields)]));
-    // `runtime::object!` writes the struct with `remote = "Self"` and the trait impls that decode through `NoSeq`: a
+    // `::honig::object!` writes the struct with `remote = "Self"` and the trait impls that decode through `NoSeq`: a
     // derived struct would also decode a JSON array field by field, and `type: object` allows none. An extra map
     // encodes through `UniqueKeys`: an entry named like a declared field would write the name twice.
     let encode = (s.additional.is_some() || !s.patterns.is_empty()).then(|| quote!(#[unique_keys]));
     items.push(quote! {
-        runtime::object! {
+        ::honig::object! {
             #encode
             #doc
             #derive
@@ -759,7 +763,7 @@ fn struct_new(space: &Space<'_>, name: &proc_macro2::Ident, s: &Struct, extra: &
             let fun = format_ident!("default_{}", snake(&f.name));
             quote!(#n: Self::#fun(),)
         } else if space.types.nullable(&f.ty).is_some() {
-            quote!(#n: runtime::Nullable::Absent,)
+            quote!(#n: ::honig::Nullable::Absent,)
         } else {
             quote!(#n: None,)
         }
@@ -794,7 +798,6 @@ fn builders_mod(builders: &[TokenStream], names_types: bool) -> Option<TokenStre
             /// of its field. `build` returns the first field that did not convert.
             pub mod builders {
                 #types_import
-                use super::runtime;
                 #(#builders)*
             }
         }
@@ -861,7 +864,7 @@ fn checked_builder(space: &Space<'_>, name: &proc_macro2::Ident, c: &Checked) ->
     Some((builder(space, name, &fields, s), names_types))
 }
 
-/// Returns the builder of `name` for the `builders` module: `runtime::typestate_builder!` over the fields of `shape`.
+/// Returns the builder of `name` for the `builders` module: `::honig::typestate_builder!` over the fields of `shape`.
 /// It accepts each property by name; `build` exists once every required one is set. `shape` is the struct that contains
 /// the fields: `name` itself, or the fields of a checked type whose `try_from` then checks the whole value.
 fn builder(space: &Space<'_>, name: &proc_macro2::Ident, shape: &proc_macro2::Ident, s: &Struct) -> TokenStream {
@@ -884,7 +887,7 @@ fn builder(space: &Space<'_>, name: &proc_macro2::Ident, shape: &proc_macro2::Id
         } else if f.required {
             (ty(space, &f.ty, true), quote!(value), quote!(Default::default()))
         } else if let Some(inner) = space.types.nullable(&f.ty) {
-            (ty(space, inner, true), quote!(nullable), quote!(runtime::Nullable::Absent))
+            (ty(space, inner, true), quote!(nullable), quote!(::honig::Nullable::Absent))
         } else {
             (ty(space, f.ty.non_null(), true), quote!(some), quote!(None))
         };
@@ -898,7 +901,7 @@ fn builder(space: &Space<'_>, name: &proc_macro2::Ident, shape: &proc_macro2::Id
     let extras = extra_inits(s, &extra).into_iter();
     let outer = (name != shape).then(|| quote!(, try_from super::#name));
     quote! {
-        runtime::typestate_builder! {
+        ::honig::typestate_builder! {
             #name => super::#shape #outer;
             required { #(#required),* }
             optional { #(#optional),* }
@@ -925,7 +928,7 @@ fn json_string(items: &mut Vec<TokenStream>, space: &Space<'_>, def: &TypeDef, t
         #doc
         #[derive(Debug, Clone, PartialEq, #eq)]
         pub struct #name(pub #t);
-        runtime::json_text_impls!(#name);
+        ::honig::json_text_impls!(#name);
     });
 }
 
@@ -944,7 +947,7 @@ fn int_enum(items: &mut Vec<TokenStream>, def: &TypeDef, values: &[(Name, i64)])
             quote!(other => Ok(Self::Other(other)),),
         )
     } else {
-        (TokenStream::new(), TokenStream::new(), quote!(other => Err(runtime::BuildError::value(format!(#allowed))),))
+        (TokenStream::new(), TokenStream::new(), quote!(other => Err(::honig::BuildError::value(format!(#allowed))),))
     };
     items.push(quote! {
         #doc
@@ -963,15 +966,15 @@ fn int_enum(items: &mut Vec<TokenStream>, def: &TypeDef, values: &[(Name, i64)])
             }
         }
         impl TryFrom<i64> for #n {
-            type Error = runtime::BuildError;
-            fn try_from(v: i64) -> Result<Self, runtime::BuildError> {
+            type Error = ::honig::BuildError;
+            fn try_from(v: i64) -> Result<Self, ::honig::BuildError> {
                 match v {
                     #(#nums => Ok(Self::#names),)*
                     #other
                 }
             }
         }
-        runtime::int_enum_impls!(#n);
+        ::honig::int_enum_impls!(#n);
     });
 }
 
@@ -982,7 +985,7 @@ fn newtype(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def: &Ty
     let derive = derives(space, id, false);
     // A library type has its text checked before the library parses it.
     let read = holds_text(space, t).map(|h| {
-        let read = lit(&format!("runtime::formats::read::<_, _, {h}>"));
+        let read = lit(&format!("::honig::__private::formats::read::<_, _, {h}>"));
         quote!(#[serde(deserialize_with = #read)])
     });
     let t = ty(space, t, false);
@@ -1051,7 +1054,7 @@ fn literal_constructor(
 fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def: &TypeDef, c: &Checked) {
     let n = pascal_ident(&def.name);
     let doc = doc_opt(def.doc.as_deref());
-    let path = quote!(&runtime::InstanceLocation::Root);
+    let path = quote!(&::honig::InstanceLocation::Root);
     let base = ty(space, &c.base, false);
     let kind = Base::of(c);
     // A scalar's own checks leave out `not`: it is checked here. `checks::checks` checks it for any other base.
@@ -1090,24 +1093,24 @@ fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def
             // The base decodes the text of its library formats checked, as a field of it would. Otherwise JSON text is
             // parsed once when the checks use it as JSON.
             let de = match holds(space, &c.base) {
-                Some(h) => quote!(runtime::checked_deserialize!(#n, #base, read #h);),
+                Some(h) => quote!(::honig::checked_deserialize!(#n, #base, read #h);),
                 None if reads_json(subschemas.as_ref(), &checks) => {
-                    quote!(runtime::checked_deserialize!(#n, #base, once);)
+                    quote!(::honig::checked_deserialize!(#n, #base, once);)
                 }
-                None => quote!(runtime::checked_deserialize!(#n, #base);),
+                None => quote!(::honig::checked_deserialize!(#n, #base);),
             };
             (checks, quote!(#eq), Some(de))
         }
     };
     let shared = match kind {
-        Base::Str => quote!(runtime::checked_str_impls!(#n);),
-        Base::Decimal => quote!(runtime::checked_decimal_impls!(#n);),
+        Base::Str => quote!(::honig::checked_str_impls!(#n);),
+        Base::Decimal => quote!(::honig::checked_decimal_impls!(#n);),
         Base::Int | Base::Float => {
             let literal =
                 (kind == Base::Int).then(|| literal_constructor(&n, &base, &c.base, &c.constraints)).flatten();
-            quote!(#literal runtime::checked_num_impls!(#n, #base);)
+            quote!(#literal ::honig::checked_num_impls!(#n, #base);)
         }
-        Base::Other => quote!(runtime::checked_impls!(#n, #base);),
+        Base::Other => quote!(::honig::checked_impls!(#n, #base);),
     };
     // An earlier checked type of the same base and keywords checks for this one.
     let twin = space.types.defs[..id.0].iter().find(|d| {
@@ -1118,7 +1121,7 @@ fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def
         Some(first) => {
             let first = pascal_ident(&first.name);
             let json = reads_json(subschemas.as_ref(), &checks).then(|| quote!(, json));
-            quote!(runtime::checked_twin!(#n, #first, #base #json);)
+            quote!(::honig::checked_twin!(#n, #first, #base #json);)
         }
         None => checked_try_from(&n, &base, subschemas.as_ref(), &checks),
     };
@@ -1146,20 +1149,20 @@ fn checked_try_from(
         quote!(Ok(Self(value)))
     } else {
         quote! {
-            let mut violations: Vec<runtime::Violation> = Vec::new();
+            let mut violations: Vec<::honig::Violation> = Vec::new();
             {
                 let out = &mut violations;
                 #subschemas
                 #checks
             }
-            runtime::first(violations).map(|()| Self(value)).map_err(runtime::BuildError::value)
+            ::honig::__private::first(violations).map(|()| Self(value)).map_err(::honig::BuildError::value)
         }
     };
     if !reads_json(subschemas, checks) {
         return quote! {
             impl TryFrom<#base> for #n {
-                type Error = runtime::BuildError;
-                fn try_from(value: #base) -> Result<Self, runtime::BuildError> {
+                type Error = ::honig::BuildError;
+                fn try_from(value: #base) -> Result<Self, ::honig::BuildError> {
                     #body
                 }
             }
@@ -1168,11 +1171,11 @@ fn checked_try_from(
     // The checks see the value as JSON: from the text that it was decoded from, or from the value written out once.
     quote! {
         impl #n {
-            fn checked(value: #base, json: &runtime::Content<'_>) -> Result<Self, runtime::BuildError> {
+            fn checked(value: #base, json: &::honig::__private::Content<'_>) -> Result<Self, ::honig::BuildError> {
                 #body
             }
         }
-        runtime::checked_json!(#n, #base);
+        ::honig::checked_json!(#n, #base);
     }
 }
 
@@ -1226,7 +1229,7 @@ fn constant(items: &mut Vec<TokenStream>, def: &TypeDef, value: &serde_json::Val
         impl #n {
             pub const VALUE: #ty = #v;
         }
-        runtime::const_impls!(#n, VALUE);
+        ::honig::const_impls!(#n, VALUE);
     });
 }
 
@@ -1248,6 +1251,6 @@ fn structured_constant(items: &mut Vec<TokenStream>, def: &TypeDef, value: &serd
                 VALUE.get_or_init(|| #json)
             }
         }
-        runtime::const_impls!(#n);
+        ::honig::const_impls!(#n);
     });
 }

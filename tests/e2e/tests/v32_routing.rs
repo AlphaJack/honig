@@ -96,10 +96,10 @@ impl api::Api for Server {
 }
 
 fn send(method: &'static str, path: &str) -> api::Response {
-    api::block_on(
+    honig::block_on(
         api::Server::new(Server { heavy: false })
             .into_service()
-            .handle(api::runtime::new_request(method, path.to_owned(), vec![]).unwrap()),
+            .handle(honig::__private::new_request(method, path.to_owned(), vec![]).unwrap()),
     )
 }
 
@@ -108,10 +108,10 @@ fn send(method: &'static str, path: &str) -> api::Response {
 #[test]
 fn a_large_handler_future_stays_off_the_stack() {
     let server = api::Server::new(Server { heavy: true }).into_service();
-    let answer = server.handle(api::runtime::new_request("GET", "/orders/search".to_owned(), vec![]).unwrap());
+    let answer = server.handle(honig::__private::new_request("GET", "/orders/search".to_owned(), vec![]).unwrap());
     let size = std::mem::size_of_val(&answer);
     assert!(size < 16 * 1024, "the request's future is {size} bytes");
-    assert_eq!(api::block_on(answer).status().as_u16(), 204);
+    assert_eq!(honig::block_on(answer).status().as_u16(), 204);
 }
 
 #[test]
@@ -247,7 +247,7 @@ mod axum_routes {
 
     fn status(method: &str, path: &str) -> u16 {
         let req = axum::http::Request::builder().method(method).uri(path).body(axum::body::Body::empty()).unwrap();
-        api::block_on(app().oneshot(req)).unwrap().status().as_u16()
+        honig::block_on(app().oneshot(req)).unwrap().status().as_u16()
     }
 
     #[test]
@@ -274,8 +274,9 @@ fn generic_tower_layers_fit_between_routing_and_the_operations() {
         .operation_layer(tower::load_shed::LoadShedLayer::new())
         .operation_layer(tower::limit::ConcurrencyLimitLayer::new(1))
         .into_service();
-    let r =
-        api::block_on(service.handle(api::runtime::new_request("GET", "/orders/search".to_owned(), vec![]).unwrap()));
+    let r = honig::block_on(
+        service.handle(honig::__private::new_request("GET", "/orders/search".to_owned(), vec![]).unwrap()),
+    );
     assert_eq!(r.status().as_u16(), 204);
 }
 
@@ -283,13 +284,13 @@ fn generic_tower_layers_fit_between_routing_and_the_operations() {
 /// when a layer rewrites its target on the way.
 #[test]
 fn a_layer_that_rewrites_the_target_does_not_reroute() {
-    let rewrite = tower::util::MapRequestLayer::new(|mut r: api::runtime::Request| {
+    let rewrite = tower::util::MapRequestLayer::new(|mut r: honig::Request| {
         *r.uri_mut() = "/orders/search".parse().unwrap();
         r
     });
     let service = api::Server::new(Server { heavy: false }).operation_layer(rewrite).into_service();
-    let request = api::runtime::new_request("GET", "/status/abc".to_owned(), vec![]).unwrap();
-    let r = api::block_on(service.handle(request));
+    let request = honig::__private::new_request("GET", "/status/abc".to_owned(), vec![]).unwrap();
+    let r = honig::block_on(service.handle(request));
     assert_eq!(r.status().as_u16(), 200, "`statusByKey`, as routed, not `searchOrders`");
     assert_eq!(r.body().bytes(), b"\"abc\"");
 }

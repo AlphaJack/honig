@@ -51,7 +51,7 @@ gloo-net = { version = "0.6", default-features = false, features = ["http"] }
     // `deny(warnings)`: a stray `+ Send` that refines the trait shows up as a lint.
     std::fs::write(
         out.join("src").join("lib.rs"),
-        "#![deny(warnings)]\npub mod api;\n#[cfg(target_arch = \"wasm32\")]\npub fn client() -> api::Client<api::runtime::GlooTransport> {\n    api::Client::new(api::runtime::GlooTransport::new(\"/api\").expect(\"a base path\"))\n}\n",
+        "#![deny(warnings)]\npub mod api;\n#[cfg(target_arch = \"wasm32\")]\npub fn client() -> api::Client<honig::__private::GlooTransport> {\n    api::Client::new(honig::__private::GlooTransport::new(\"/api\").expect(\"a base path\"))\n}\n",
     )
     .unwrap();
     for target in [Some("wasm32-unknown-unknown"), None] {
@@ -67,7 +67,7 @@ gloo-net = { version = "0.6", default-features = false, features = ["http"] }
     }
 }
 
-/// The date and time formats with `jiff`: a `time` keeps its offset and its leap second in `runtime::FullTime`.
+/// The date and time formats with `jiff`: a `time` keeps its offset and its leap second in `::honig::FullTime`.
 #[test]
 #[ignore = "compiles generated crates"]
 fn jiff_dates() {
@@ -153,7 +153,7 @@ fn library_types_read_only_their_format() {
     build_validated("validated-jiff", jiff, libs, &types);
 }
 
-/// A struct with a checked format in every place a field can contain one: itself, `Option`, `runtime::Nullable`, a
+/// A struct with a checked format in every place a field can contain one: itself, `Option`, `::honig::Nullable`, a
 /// list, a tuple, an array, an alias, the undeclared properties, a union branch and a newtype.
 fn validated_schemas() -> serde_json::Value {
     serde_json::json!({
@@ -376,37 +376,37 @@ struct Items;
 
 impl api::Api for Items {
 
-    async fn get_item(&self, _: ops::get_item::Params, _: &api::Context<'_>) -> Result<ops::get_item::Response, api::ApiError> {
+    async fn get_item(&self, _: ops::get_item::Params, _: &api::Context<'_>) -> Result<ops::get_item::Response, honig::ApiError> {
         Ok(ops::get_item::Response::Ok { body: "2024-06-19T08:30:06Z".parse().unwrap(), location: None })
     }
 
-    async fn post_stamp(&self, _: ops::post_stamp::Params, _: &api::Context<'_>) -> Result<ops::post_stamp::Response, api::ApiError> {
+    async fn post_stamp(&self, _: ops::post_stamp::Params, _: &api::Context<'_>) -> Result<ops::post_stamp::Response, honig::ApiError> {
         Ok(ops::post_stamp::Response::NoContent)
     }
 
-    async fn post_days(&self, p: ops::post_days::Params, _: &api::Context<'_>) -> Result<ops::post_days::Response, api::ApiError> {
+    async fn post_days(&self, p: ops::post_days::Params, _: &api::Context<'_>) -> Result<ops::post_days::Response, honig::ApiError> {
         Ok(match p.body.collect().await {
             Ok(_) => ops::post_days::Response::NoContent,
             Err(_) => ops::post_days::Response::UnprocessableEntity,
         })
     }
 
-    async fn get_log(&self, _: ops::get_log::Params, _: &api::Context<'_>) -> Result<ops::get_log::Response, api::ApiError> {
-        Ok(ops::get_log::Response::Ok(api::Items::List(vec![])))
+    async fn get_log(&self, _: ops::get_log::Params, _: &api::Context<'_>) -> Result<ops::get_log::Response, honig::ApiError> {
+        Ok(ops::get_log::Response::Ok(honig::Items::List(vec![])))
     }
 }
 
 /// The status the server answers.
 fn status(method: &str, uri: &str, header: Option<(&str, &str)>, body: &str) -> u16 {
-    use api::Service;
+    use honig::Service;
     let mut service = api::Server::new(Items).into_service();
     let ct = if uri == "/days" { "application/jsonl" } else { "application/json" };
-    let mut req = api::http::Request::builder().method(method).uri(uri).header("content-type", ct);
+    let mut req = honig::http::Request::builder().method(method).uri(uri).header("content-type", ct);
     if let Some((name, value)) = header {
         req = req.header(name, value);
     }
     let req = req.body(body.to_owned()).unwrap();
-    api::block_on(service.call(req)).unwrap().status().as_u16()
+    honig::block_on(service.call(req)).unwrap().status().as_u16()
 }
 
 #[test]
@@ -443,21 +443,21 @@ struct Answer {
     body: &'static str,
 }
 
-impl api::Service<api::Request> for Answer {
-    type Response = api::Response;
+impl honig::Service<honig::Request> for Answer {
+    type Response = honig::Response;
     type Error = std::convert::Infallible;
-    type Future = std::future::Ready<Result<api::Response, std::convert::Infallible>>;
+    type Future = std::future::Ready<Result<honig::Response, std::convert::Infallible>>;
 
     fn poll_ready(&mut self, _: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
         std::task::Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, _: api::Request) -> Self::Future {
-        let response = api::http::Response::builder()
+    fn call(&mut self, _: honig::Request) -> Self::Future {
+        let response = honig::http::Response::builder()
             .status(200)
             .header("content-type", self.content_type)
             .header("location", self.location)
-            .body(api::Body::from(self.body))
+            .body(honig::Body::from(self.body))
             .unwrap();
         std::future::ready(Ok(response))
     }
@@ -469,17 +469,17 @@ impl api::Service<api::Request> for Answer {
 fn the_client_reads_only_what_the_format_allows() {
     let item = |location: &'static str, body: &'static str| {
         let client = api::Client::new(Answer { content_type: "application/json", location, body });
-        api::block_on(client.get_item(ops::get_item::Params::new(ID.parse().unwrap()))).is_ok()
+        honig::block_on(client.get_item(ops::get_item::Params::new(ID.parse().unwrap()))).is_ok()
     };
     let log = |body: &'static str| {
         let client = api::Client::new(Answer { content_type: "application/jsonl", location: "/", body });
-        api::block_on(client.get_log(ops::get_log::Params {})).is_ok()
+        honig::block_on(client.get_log(ops::get_log::Params {})).is_ok()
     };
     let streamed = |body: &'static str| {
         let client = api::Client::new(Answer { content_type: "application/jsonl", location: "/", body });
-        api::block_on(async {
+        honig::block_on(async {
             match client.get_log_stream(ops::get_log::Params {}).await {
-                Ok(api::Streamed::Ok(items)) => api::Items::Stream(items).collect().await.is_ok(),
+                Ok(honig::Streamed::Ok(items)) => honig::Items::Stream(items).collect().await.is_ok(),
                 _ => false,
             }
         })
@@ -520,7 +520,7 @@ fn declared_security_needs_a_verify_method() {
             "pub mod api;\npub use api::*;\nstruct Shop;\nimpl api::Api for Shop {{\n    type Key = ();\n{verify}\n\
              async fn list_items(&self, _: api::operations::list_items::Params, \
              _: &api::Context<'_, api::operations::list_items::Security<Self>>) \
-             -> Result<api::operations::list_items::Response, api::ApiError> {{\n\
+             -> Result<api::operations::list_items::Response, honig::ApiError> {{\n\
              Ok(api::operations::list_items::Response::NoContent)\n}}\n}}\n\
              pub fn service() -> impl Sized {{\n    api::Server::new(Shop).into_service()\n}}\n"
         );
@@ -537,7 +537,7 @@ fn declared_security_needs_a_verify_method() {
     assert!(!unchecked.status.success(), "an `Api` that checks no credential builds");
     assert!(stderr.contains("missing: `verify_key`"), "{stderr}");
     let checked = build(
-        "async fn verify_key(&self, key: &str, _: &api::Request) -> Result<Option<()>, api::ApiError> { \
+        "async fn verify_key(&self, key: &str, _: &honig::Request) -> Result<Option<()>, honig::ApiError> { \
          Ok((key == \"secret\").then_some(())) }",
     );
     assert!(checked.status.success(), "{}", String::from_utf8_lossy(&checked.stderr));

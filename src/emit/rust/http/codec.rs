@@ -16,14 +16,14 @@ pub(crate) fn fallible_encode(c: &Content) -> bool {
     !matches!((c.kind, &c.ty), (MediaKind::Text, Ty::String) | (MediaKind::Bytes, _))
 }
 
-/// Returns `runtime::Framing` of a sequential media kind.
+/// Returns `::honig::Framing` of a sequential media kind.
 pub(crate) fn framing(kind: MediaKind) -> TokenStream {
     if kind == MediaKind::JsonSeq {
-        quote!(runtime::Framing::JsonSeq)
+        quote!(::honig::Framing::JsonSeq)
     } else if kind == MediaKind::Sse {
-        quote!(runtime::Framing::Sse)
+        quote!(::honig::Framing::Sse)
     } else {
-        quote!(runtime::Framing::JsonLines)
+        quote!(::honig::Framing::JsonLines)
     }
 }
 
@@ -51,16 +51,16 @@ pub(crate) fn encode_body(
 ) -> TokenStream {
     let m = lit(&send_media(c));
     if let Some(bytes) = body_bytes(e, c, by_ref) {
-        return quote!(runtime::Message::set_body(&mut #target, #m, #bytes););
+        return quote!(::honig::Message::set_body(&mut #target, #m, #bytes););
     }
     let arg = if by_ref { e.clone() } else { quote!(&#e) };
     match c.kind {
         // A range (`image/*`) goes out as the media type that the blob carries when it fits.
         MediaKind::Bytes if c.media.contains('*') => {
             let range = lit(&c.media);
-            quote!(runtime::set_blob_in(&mut #target, #range, #e);)
+            quote!(::honig::__private::set_blob_in(&mut #target, #range, #e);)
         }
-        MediaKind::Bytes => quote!(runtime::set_blob(&mut #target, #m, #e);),
+        MediaKind::Bytes => quote!(::honig::__private::set_blob(&mut #target, #m, #e);),
         MediaKind::Multipart if !c.transfer.is_empty() => {
             let types = part_types(c);
             // `contentEncoding: base64` fields. Each part is base64 with its `Content-Transfer-Encoding`.
@@ -68,29 +68,29 @@ pub(crate) fn encode_body(
             let transfer = quote!([#((#names, "Content-Transfer-Encoding", "base64".to_owned())),*]);
             let headers = if parts { quote!(&[&parts[..], &#transfer[..]].concat()) } else { quote!(&#transfer) };
             quote! {
-                let (ct, bytes) = runtime::multipart_encode_with(#arg, #types, #headers)?;
-                runtime::Message::set_body(&mut #target, ct, bytes);
+                let (ct, bytes) = ::honig::__private::multipart_encode_with(#arg, #types, #headers)?;
+                ::honig::Message::set_body(&mut #target, ct, bytes);
             }
         }
         MediaKind::Multipart => {
             let types = part_types(c);
             if parts {
                 quote! {
-                    let (ct, bytes) = runtime::multipart_encode_with(#arg, #types, &parts)?;
-                    runtime::Message::set_body(&mut #target, ct, bytes);
+                    let (ct, bytes) = ::honig::__private::multipart_encode_with(#arg, #types, &parts)?;
+                    ::honig::Message::set_body(&mut #target, ct, bytes);
                 }
             } else {
                 quote! {
-                    let (ct, bytes) = runtime::multipart_encode(#arg, #types)?;
-                    runtime::Message::set_body(&mut #target, ct, bytes);
+                    let (ct, bytes) = ::honig::__private::multipart_encode(#arg, #types)?;
+                    ::honig::Message::set_body(&mut #target, ct, bytes);
                 }
             }
         }
         MediaKind::MultipartMixed => {
             let types = part_types(c);
             quote! {
-                let (ct, bytes) = runtime::mixed_encode(#arg, #m, #types)?;
-                runtime::Message::set_body(&mut #target, ct, bytes);
+                let (ct, bytes) = ::honig::__private::mixed_encode(#arg, #m, #types)?;
+                ::honig::Message::set_body(&mut #target, ct, bytes);
             }
         }
         // What is left is a sequential body sent as it is produced. `body_bytes` handled every other kind.
@@ -103,7 +103,7 @@ pub(crate) fn encode_body(
         | MediaKind::JsonSeq
         | MediaKind::Sse => {
             let framing = framing(c.kind);
-            quote!(runtime::set_items(&mut #target, #m, #e, #framing)?;)
+            quote!(::honig::__private::set_items(&mut #target, #m, #e, #framing)?;)
         }
     }
 }
@@ -113,27 +113,27 @@ pub(crate) fn encode_body(
 pub(crate) fn body_bytes(e: &TokenStream, c: &Content, by_ref: bool) -> Option<TokenStream> {
     let arg = if by_ref { e.clone() } else { quote!(&#e) };
     Some(match c.kind {
-        MediaKind::Json => quote!(runtime::json_encode(#arg)?),
-        MediaKind::Linkset => quote!(runtime::linkset_encode(#arg)?.into_bytes()),
+        MediaKind::Json => quote!(::honig::__private::json_encode(#arg)?),
+        MediaKind::Linkset => quote!(::honig::__private::linkset_encode(#arg)?.into_bytes()),
         // An owned `String` body moves into the response (no copy). A named string type converts first. The
         // function form also accepts `*body` (the body of a boxed variant). `*body.into_bytes()` would misparse that.
         MediaKind::Text if matches!(c.ty, Ty::String) => quote!(String::into_bytes(#e)),
-        MediaKind::Text => quote!(runtime::text_encode_as(#e)?),
-        MediaKind::Xml => quote!(runtime::xml_encode(#arg)?),
+        MediaKind::Text => quote!(::honig::__private::text_encode_as(#e)?),
+        MediaKind::Xml => quote!(::honig::__private::xml_encode(#arg)?),
         MediaKind::Bytes if !blob(c) => e.clone(),
         MediaKind::Form if !form_types(c).is_empty() => {
             let styles = form_encode_styles(c);
             let types = form_types(c);
-            quote!(runtime::form_encode_with(#arg, &[#(#styles),*], &[#(#types),*])?)
+            quote!(::honig::__private::form_encode_with(#arg, &[#(#styles),*], &[#(#types),*])?)
         }
         MediaKind::Form if !c.form_styles.is_empty() => {
             let styles = form_encode_styles(c);
-            quote!(runtime::form_encode_styled(#arg, &[#(#styles),*])?)
+            quote!(::honig::__private::form_encode_styled(#arg, &[#(#styles),*])?)
         }
-        MediaKind::Form => quote!(runtime::form_encode(#arg)?),
-        MediaKind::JsonLines if !c.streams() => quote!(runtime::jsonl_encode(#arg)?),
-        MediaKind::JsonSeq if !c.streams() => quote!(runtime::json_seq_encode(#arg)?),
-        MediaKind::Sse if !c.streams() => quote!(runtime::sse_encode(#arg)?),
+        MediaKind::Form => quote!(::honig::__private::form_encode(#arg)?),
+        MediaKind::JsonLines if !c.streams() => quote!(::honig::__private::jsonl_encode(#arg)?),
+        MediaKind::JsonSeq if !c.streams() => quote!(::honig::__private::json_seq_encode(#arg)?),
+        MediaKind::Sse if !c.streams() => quote!(::honig::__private::sse_encode(#arg)?),
         MediaKind::Bytes
         | MediaKind::Multipart
         | MediaKind::MultipartMixed
@@ -202,7 +202,7 @@ fn form_decode_styles(c: &Content) -> Vec<TokenStream> {
         .map(|(p, st, ex, _, shape)| {
             let shape = ident(shape);
             let (p, st) = (lit(p), style_variant(*st));
-            quote!((#p, #st, runtime::Shape::#shape, #ex))
+            quote!((#p, #st, ::honig::__private::Shape::#shape, #ex))
         })
         .collect()
 }
@@ -230,12 +230,12 @@ fn form_encode_styles(c: &Content) -> Vec<TokenStream> {
         .collect()
 }
 
-/// Returns `.map(...)` that unwraps a decoded `runtime::formats::Validated` of `t`: the decoder decodes `t` with the
+/// Returns `.map(...)` that unwraps a decoded `::honig::__private::formats::Validated` of `t`: the decoder decodes `t` with the
 /// text of its library formats checked first. `None` when `t` contains none.
 pub(crate) fn validated_map(space: &Space<'_>, t: &Ty) -> Option<TokenStream> {
     let h = holds(space, t)?;
     let t = ty(space, t, true);
-    Some(quote!(.map(runtime::formats::Validated::<#t, #h>::into_inner)))
+    Some(quote!(.map(::honig::__private::formats::Validated::<#t, #h>::into_inner)))
 }
 
 /// Returns the expression that decodes one content and whether it is a `Result`.
@@ -244,12 +244,16 @@ pub(crate) fn decode_body(space: &Space<'_>, c: &Content, d: &Decode) -> (TokenS
     match c.kind {
         MediaKind::Json => {
             let checked = validated_map(space, &c.ty);
-            (quote!(runtime::json_decode(#status, &#body) #checked), true)
+            (quote!(::honig::__private::json_decode(#status, &#body) #checked), true)
         }
-        MediaKind::Linkset => (quote!(runtime::linkset_decode(#status, runtime::utf8_text(#status, &#body)?)), true),
-        MediaKind::Text if matches!(c.ty, Ty::String) => (quote!(runtime::text_decode(#status, &#body)), true),
-        MediaKind::Text => (quote!(runtime::text_decode_as(#status, &#body)), true),
-        MediaKind::Xml => (quote!(runtime::xml_decode(#status, &#body)), true),
+        MediaKind::Linkset => {
+            (quote!(::honig::__private::linkset_decode(#status, ::honig::__private::utf8_text(#status, &#body)?)), true)
+        }
+        MediaKind::Text if matches!(c.ty, Ty::String) => {
+            (quote!(::honig::__private::text_decode(#status, &#body)), true)
+        }
+        MediaKind::Text => (quote!(::honig::__private::text_decode_as(#status, &#body)), true),
+        MediaKind::Xml => (quote!(::honig::__private::xml_decode(#status, &#body)), true),
         MediaKind::Bytes => {
             let bytes = match d.held {
                 Held::Moved => quote!(Vec::from(#body)),
@@ -257,8 +261,8 @@ pub(crate) fn decode_body(space: &Space<'_>, c: &Content, d: &Decode) -> (TokenS
                 Held::OwnedCow => quote!(#body.into_owned()),
             };
             let typed = match (&d.stream, d.held) {
-                (Some(stream), Held::OwnedCow) => quote!(runtime::Blob::received(#body, &#stream)),
-                _ => quote!(runtime::Blob::from(#bytes)),
+                (Some(stream), Held::OwnedCow) => quote!(::honig::Blob::received(#body, &#stream)),
+                _ => quote!(::honig::Blob::from(#bytes)),
             };
             // A range (`image/*`) says less than the `Content-Type` that came: the blob keeps that.
             let typed = if c.media.contains('*') { quote!(#typed.received_as(#ct)) } else { typed };
@@ -267,14 +271,14 @@ pub(crate) fn decode_body(space: &Space<'_>, c: &Content, d: &Decode) -> (TokenS
         MediaKind::Form if !form_types(c).is_empty() => {
             let styles = form_decode_styles(c);
             let types = form_types(c);
-            (quote!(runtime::form_decode_with(#status, &#body, &[#(#styles),*], &[#(#types),*])), true)
+            (quote!(::honig::__private::form_decode_with(#status, &#body, &[#(#styles),*], &[#(#types),*])), true)
         }
         MediaKind::Form if !c.form_styles.is_empty() => {
             let styles = form_decode_styles(c);
-            (quote!(runtime::form_decode_styled(#status, &#body, &[#(#styles),*])), true)
+            (quote!(::honig::__private::form_decode_styled(#status, &#body, &[#(#styles),*])), true)
         }
-        MediaKind::Form => (quote!(runtime::form_decode(#status, &#body)), true),
-        MediaKind::Multipart => (quote!(runtime::multipart_decode(#status, #ct, &#body)), true),
+        MediaKind::Form => (quote!(::honig::__private::form_decode(#status, &#body)), true),
+        MediaKind::Multipart => (quote!(::honig::__private::multipart_decode(#status, #ct, &#body)), true),
         MediaKind::MultipartMixed => {
             let prefix = c.positional_prefix.map_or_else(
                 || quote!(None),
@@ -283,7 +287,7 @@ pub(crate) fn decode_body(space: &Space<'_>, c: &Content, d: &Decode) -> (TokenS
                     quote!(Some(#n))
                 },
             );
-            (quote!(runtime::mixed_decode(#status, #ct, &#body, #prefix)), true)
+            (quote!(::honig::__private::mixed_decode(#status, #ct, &#body, #prefix)), true)
         }
         MediaKind::JsonLines | MediaKind::JsonSeq | MediaKind::Sse => decode_sequence(space, c, d),
     }
@@ -300,8 +304,8 @@ fn decode_sequence(space: &Space<'_>, c: &Content, d: &Decode) -> (TokenStream, 
         // Each item has the text of its library formats checked first.
         let checked = if let Ty::Vec(item) = &c.ty { holds(space, item) } else { None };
         let received = match checked {
-            Some(h) => quote!(runtime::Items::received_validated::<#h>(&#body, &#stream, #framing)),
-            None => quote!(runtime::Items::received(&#body, &#stream, #framing)),
+            Some(h) => quote!(::honig::Items::received_validated::<#h>(&#body, &#stream, #framing)),
+            None => quote!(::honig::Items::received(&#body, &#stream, #framing)),
         };
         // `minItems`, `maxItems` and `uniqueItems` apply to the items as they arrive.
         return match item_limits(c.item_limits) {
@@ -319,22 +323,23 @@ fn decode_sequence(space: &Space<'_>, c: &Content, d: &Decode) -> (TokenStream, 
             "jsonl_decode"
         }
     );
-    let items = c.streams().then(|| quote!(.map(runtime::Items::List)));
+    let items = c.streams().then(|| quote!(.map(::honig::Items::List)));
     // Each item has the text of its library formats checked first.
     let item = if let Ty::Vec(item) = &c.ty { Some(item.as_ref()) } else { None };
     let checked = item.and_then(|item| {
         holds(space, item).map(|h| {
             let item = ty(space, item, true);
-            quote!(.map(|v: Vec<runtime::formats::Validated<#item, #h>>| {
-                v.into_iter().map(runtime::formats::Validated::into_inner).collect::<Vec<_>>()
+            quote!(.map(|v: Vec<::honig::__private::formats::Validated<#item, #h>>| {
+                v.into_iter().map(::honig::__private::formats::Validated::into_inner).collect::<Vec<_>>()
             }))
         })
     });
-    let limited = item_limits(c.item_limits).map(|l| quote!(.and_then(|v| runtime::limit_items(#status, v, #l))));
-    (quote!(runtime::#f(#status, &#body) #checked #limited #items), true)
+    let limited =
+        item_limits(c.item_limits).map(|l| quote!(.and_then(|v| ::honig::__private::limit_items(#status, v, #l))));
+    (quote!(::honig::__private::#f(#status, &#body) #checked #limited #items), true)
 }
 
-/// Returns `runtime::Limits` of a sequence's `minItems`, `maxItems` and `uniqueItems`. `None` without any.
+/// Returns `::honig::__private::Limits` of a sequence's `minItems`, `maxItems` and `uniqueItems`. `None` without any.
 pub(crate) fn item_limits(l: ItemLimits) -> Option<TokenStream> {
     if l.is_empty() {
         return None;
@@ -347,7 +352,7 @@ pub(crate) fn item_limits(l: ItemLimits) -> Option<TokenStream> {
         None => quote!(None),
     };
     let (min, max, unique) = (count(l.min), count(l.max), l.unique);
-    Some(quote!(runtime::Limits { min: #min, max: #max, unique: #unique }))
+    Some(quote!(::honig::__private::Limits { min: #min, max: #max, unique: #unique }))
 }
 
 /// How general a `content` key is with the most specific first. "Only the most specific key is applicable" (3.2).
@@ -410,7 +415,7 @@ pub(crate) fn decode_contents(
     }
     for (_, (c, b)) in order.into_iter().rev() {
         let (m, x) = (lit(&c.media), variant(c, wrap(*b, one(c))));
-        chain = quote!(if runtime::media_matches(#ct, #m) { #x } else #chain);
+        chain = quote!(if ::honig::__private::media_matches(#ct, #m) { #x } else #chain);
     }
     chain
 }

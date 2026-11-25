@@ -71,9 +71,9 @@ fn guarded(max_in_flight: usize) -> axum::Router {
         tower::ServiceBuilder::new()
             .layer(axum::error_handling::HandleErrorLayer::new(move |e: tower::BoxError| {
                 let status = if e.is::<tower::timeout::error::Elapsed>() {
-                    api::http::StatusCode::GATEWAY_TIMEOUT
+                    honig::http::StatusCode::GATEWAY_TIMEOUT
                 } else {
-                    api::http::StatusCode::SERVICE_UNAVAILABLE
+                    honig::http::StatusCode::SERVICE_UNAVAILABLE
                 };
                 std::future::ready(errors.response(status, e.to_string()))
             }))
@@ -96,7 +96,7 @@ fn full_stack() -> axum::Router {
             let passed = req.extensions().get::<api::Passed<api::server::SchemeValue<super::auth::Server>>>();
             let mut keys = passed.into_iter().flat_map(|p| p.values.iter().cloned().filter_map(|v| v.api_key()));
             let blocked = keys.any(|who| who == "mallory");
-            let refusal = api::ApiError::new(api::http::StatusCode::FORBIDDEN, "blocked");
+            let refusal = api::ApiError::new(honig::http::StatusCode::FORBIDDEN, "blocked");
             std::future::ready(if blocked { Err(refusal) } else { Ok(req) })
         }))
         .into_axum()

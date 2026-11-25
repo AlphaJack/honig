@@ -61,14 +61,14 @@ impl api::Api for Server {
 }
 
 fn get(path: &str, headers: &[(&str, &str)]) -> u16 {
-    let mut req = api::runtime::new_request("GET", path.to_owned(), vec![]).unwrap();
+    let mut req = honig::__private::new_request("GET", path.to_owned(), vec![]).unwrap();
     for (k, v) in headers {
         req.headers_mut().append(
             honig::http::HeaderName::try_from(*k).unwrap(),
             honig::http::HeaderValue::try_from((*v).to_owned()).unwrap(),
         );
     }
-    api::block_on(api::Server::new(Server).into_service().handle(req)).status().as_u16()
+    honig::block_on(api::Server::new(Server).into_service().handle(req)).status().as_u16()
 }
 
 #[test]
@@ -143,10 +143,10 @@ impl api::Api for Strict {
 fn an_and_requirement_needs_every_credential_valid() {
     let keyed = |key: &str, login: &str| {
         let path = format!("/keyed?key={key}");
-        let mut req = api::runtime::new_request("GET", path, vec![]).unwrap();
-        let basic = format!("Basic {}", api::runtime::base64(login.as_bytes()));
+        let mut req = honig::__private::new_request("GET", path, vec![]).unwrap();
+        let basic = format!("Basic {}", honig::__private::base64(login.as_bytes()));
         req.headers_mut().append("authorization", honig::http::HeaderValue::try_from(basic).unwrap());
-        api::block_on(api::Server::new(Strict).into_service().handle(req)).status().as_u16()
+        honig::block_on(api::Server::new(Strict).into_service().handle(req)).status().as_u16()
     };
     assert_eq!(keyed("k1", "ann:pw"), 204);
     assert_eq!(keyed("forged", "ann:pw"), 401, "a forged key with a valid login");
@@ -156,14 +156,14 @@ fn an_and_requirement_needs_every_credential_valid() {
 /// RFC 7636, Appendix B: the PKCE challenge is the own SHA-256 of honig.
 #[test]
 fn pkce_challenge_matches_the_rfc() {
-    let p = api::Pkce::from_verifier("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk");
+    let p = honig::Pkce::from_verifier("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk");
     assert_eq!(p.challenge, "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM");
 }
 
 /// A verifier longer than one 64-byte block exercises the block loop.
 #[test]
 fn pkce_challenge_of_a_long_verifier() {
-    let p = api::Pkce::from_verifier(&"x".repeat(200));
+    let p = honig::Pkce::from_verifier(&"x".repeat(200));
     assert_eq!(p.challenge, "qiDCPjIBg0BQZ54diJQbmm_tBVfJpwXLLDFeLmP9SG0");
 }
 
@@ -182,7 +182,7 @@ fn pkce_challenge_at_padding_edges() {
         (128, "JNobgdCxbfZCju5zxp_LKpPHa8bfcG8MZnD-a_6ABGQ"),
     ];
     for (n, want) in cases {
-        assert_eq!(api::Pkce::from_verifier(&"x".repeat(n)).challenge, want, "{n} bytes");
+        assert_eq!(honig::Pkce::from_verifier(&"x".repeat(n)).challenge, want, "{n} bytes");
     }
 }
 
@@ -193,7 +193,7 @@ fn recorder(seen: &Seen) -> impl api::Transport {
     let keep = seen.clone();
     support::loopback(move |req: api::Request| {
         *keep.lock().unwrap() = Some(req);
-        std::future::ready(api::runtime::new_response(204))
+        std::future::ready(honig::__private::new_response(204))
     })
 }
 
@@ -201,12 +201,12 @@ fn recorder(seen: &Seen) -> impl api::Transport {
 fn typed_setters_put_each_credential_where_its_scheme_says() {
     let seen = Seen::default();
     let client = Client::new(recorder(&seen)).with_api_key("k1").with_basic_auth("ann", "pw").with_bearer("t0k");
-    api::block_on(client.keyed(ops::keyed::Params {})).unwrap();
+    honig::block_on(client.keyed(ops::keyed::Params {})).unwrap();
     let req = seen.lock().unwrap().take().expect("sent");
     assert!(req.uri().to_string().ends_with("?key=k1"), "{}", req.uri().to_string());
     // `ann:pw` in base64.
     assert_eq!(req.headers().get("authorization").and_then(|v| v.to_str().ok()), Some("Basic YW5uOnB3"));
-    api::block_on(client.token(ops::token::Params {})).unwrap();
+    honig::block_on(client.token(ops::token::Params {})).unwrap();
     let req = seen.lock().unwrap().take().expect("sent");
     assert_eq!(req.headers().get("authorization").and_then(|v| v.to_str().ok()), Some("Bearer t0k"));
 }

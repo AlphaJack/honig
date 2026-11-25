@@ -20,7 +20,7 @@ impl api::Api for Server {
         let mut body = params.body;
         if !body.is_streamed() {
             return Err(api::ApiError::new(
-                api::http::StatusCode::INTERNAL_SERVER_ERROR,
+                honig::http::StatusCode::INTERNAL_SERVER_ERROR,
                 "the body was buffered before the handler",
             ));
         }
@@ -55,9 +55,9 @@ fn put(limit: usize, frames: &[&'static [u8]]) -> (u16, String) {
     let body = axum::body::Body::new(Frames(frames.iter().map(|f| bytes::Bytes::from_static(f)).collect()));
     let req = axum::http::Request::put("/files/a.bin").header("content-type", "application/octet-stream").body(body);
     let router = api::Server::new(Server).max_body_bytes(limit).into_axum();
-    let resp = api::block_on(router.oneshot(req.unwrap())).unwrap();
+    let resp = honig::block_on(router.oneshot(req.unwrap())).unwrap();
     let status = resp.status().as_u16();
-    let bytes = api::block_on(http_body_util::BodyExt::collect(resp.into_body())).unwrap().to_bytes();
+    let bytes = honig::block_on(http_body_util::BodyExt::collect(resp.into_body())).unwrap().to_bytes();
     (status, String::from_utf8_lossy(&bytes).into_owned())
 }
 
@@ -80,6 +80,6 @@ fn a_streamed_client_upload_reaches_the_handler_streamed() {
     let client = Client::new(server);
     let pieces = futures_util::stream::iter(vec![b"ab".to_vec(), b"cd".to_vec()]);
     let params = ops::put_file::Params::new("a.bin".to_owned(), api::Blob::stream(pieces));
-    let resp = api::block_on(client.put_file(params)).unwrap();
+    let resp = honig::block_on(client.put_file(params)).unwrap();
     assert_eq!(resp, ops::put_file::Response::Ok(types::PutFileOk { bytes: 4, chunks: 2 }));
 }

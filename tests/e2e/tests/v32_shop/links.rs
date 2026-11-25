@@ -37,7 +37,8 @@ fn mixed_multipart_sends_one_part_per_item() {
     let meta = types::PhotoBatchMeta { photographer: "Studio North".to_owned(), taken_at: None, count: None };
     let body = (meta, vec![api::Binary::from(vec![0xff, 0xd8, 0x00]), api::Binary::from(vec![1, 2])]);
     let types = [("0", "application/json"), ("*", "image/jpeg"), ("prefix", "1")];
-    let (ct, bytes) = api::runtime::mixed_encode(&body, "multipart/mixed", &types).unwrap_or_else(|e| panic!("{e}"));
+    let (ct, bytes) =
+        honig::__private::mixed_encode(&body, "multipart/mixed", &types).unwrap_or_else(|e| panic!("{e}"));
     assert!(ct.starts_with("multipart/mixed; boundary="));
     let text = String::from_utf8_lossy(&bytes);
     assert_eq!(text.matches("Content-Type: image/jpeg").count(), 2, "{text}");
@@ -45,6 +46,6 @@ fn mixed_multipart_sends_one_part_per_item() {
     assert!(text.contains(&serde_json::json!({"photographer": "Studio North"}).to_string()), "{text}");
     assert!(bytes.windows(3).any(|w| w == [0xff, 0xd8, 0x00]), "raw image bytes, not base64");
     let back: (types::PhotoBatchMeta, Vec<api::Binary>) =
-        api::runtime::mixed_decode(Some(200), &ct, &bytes, Some(1)).unwrap_or_else(|e| panic!("{e}"));
+        honig::__private::mixed_decode(Some(200), &ct, &bytes, Some(1)).unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(back, body);
 }

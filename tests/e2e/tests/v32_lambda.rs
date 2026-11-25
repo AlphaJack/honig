@@ -49,7 +49,7 @@ fn invoke(event: Value) -> Value {
     // ANCHOR_END: lambda
     let payload: LambdaRequest = serde_json::from_value(event).unwrap();
     let event = lambda_http::LambdaEvent::new(payload, lambda_http::Context::default());
-    serde_json::to_value(api::block_on(adapter.call(event)).unwrap()).unwrap()
+    serde_json::to_value(honig::block_on(adapter.call(event)).unwrap()).unwrap()
 }
 
 /// An HTTP API (payload 2.0) event on the `$default` stage.

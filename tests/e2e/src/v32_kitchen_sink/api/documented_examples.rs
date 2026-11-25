@@ -3,7 +3,7 @@
     unused_imports,
     reason = "which of them the examples need depends on the description"
 )]
-use super::{runtime, types};
+use super::types;
 fn value<T: serde::de::DeserializeOwned>(bad: &mut Vec<String>, at: &str, text: &str) {
     if let Err(e) = serde_json::from_str::<T>(text) {
         bad.push(format!("{at}: {e}"));
@@ -14,20 +14,23 @@ fn param<T: serde::de::DeserializeOwned>(
     at: &'static str,
     text: &str,
 ) {
-    if let Err(e) = runtime::from_param::<T>(serde_json::from_str(text).ok(), at) {
+    if let Err(e) = ::honig::__private::from_param::<
+        T,
+    >(serde_json::from_str(text).ok(), at) {
         bad.push(e.to_string());
     }
 }
 fn wire(
     bad: &mut Vec<String>,
     at: &str,
-    got: Result<String, runtime::ClientError>,
+    got: Result<String, ::honig::ClientError>,
     want: &str,
 ) {
     match got {
         Ok(
             got,
-        ) if got == want || runtime::pct_decode(&got).is_some_and(|g| g == want) => {}
+        ) if got == want
+            || ::honig::__private::pct_decode(&got).is_some_and(|g| g == want) => {}
         Ok(got) => bad.push(format!("{at}: sent `{got}`, documented `{want}`")),
         Err(e) => bad.push(format!("{at}: {e}")),
     }
@@ -70,15 +73,15 @@ fn documented_examples_decode() {
         "[{\"id\":1,\"name\":\"Lamp\",\"kind\":\"book\"}]",
     );
     let got = serde_json::from_str::<Vec<String>>("[\"a\",\"b\"]")
-        .map_err(|e| runtime::ClientError::Encode(e.to_string()))
+        .map_err(|e| ::honig::ClientError::Encode(e.to_string()))
         .map(|v| {
             let mut q = Vec::new();
-            runtime::encode_query(
+            ::honig::__private::encode_query(
                     &mut q,
                     "tags",
                     &v,
-                    runtime::Enc {
-                        style: runtime::Style::PipeDelimited,
+                    ::honig::__private::Enc {
+                        style: ::honig::__private::Style::PipeDelimited,
                         explode: false,
                         allow_reserved: false,
                     },
@@ -95,15 +98,15 @@ fn documented_examples_decode() {
     let got = serde_json::from_str::<
         std::collections::BTreeMap<String, String>,
     >("{\"color\":\"red\"}")
-        .map_err(|e| runtime::ClientError::Encode(e.to_string()))
+        .map_err(|e| ::honig::ClientError::Encode(e.to_string()))
         .map(|v| {
             let mut q = Vec::new();
-            runtime::encode_query(
+            ::honig::__private::encode_query(
                     &mut q,
                     "filter",
                     &v,
-                    runtime::Enc {
-                        style: runtime::Style::DeepObject,
+                    ::honig::__private::Enc {
+                        style: ::honig::__private::Style::DeepObject,
                         explode: true,
                         allow_reserved: false,
                     },
@@ -118,9 +121,9 @@ fn documented_examples_decode() {
         "filter[color]=red",
     );
     let got = serde_json::from_str::<i64>("3")
-        .map_err(|e| runtime::ClientError::Encode(e.to_string()))
+        .map_err(|e| ::honig::ClientError::Encode(e.to_string()))
         .map(|v| {
-            runtime::encode_header(&v, runtime::Enc::SIMPLE)
+            ::honig::__private::encode_header(&v, ::honig::__private::Enc::SIMPLE)
                 .unwrap_or_else(|e| panic!("{e}"))
                 .unwrap_or_default()
         });

@@ -43,7 +43,7 @@ const PRELUDE: &[&str] = &[
 /// one of the own modules of the generated module.
 pub(crate) const RESERVED: Reserved<'static> = Reserved {
     types: PRELUDE,
-    operations: &["runtime", "types", "operations", "client", "server", "documented_examples", "responses", "tags"],
+    operations: &["types", "operations", "client", "server", "documented_examples", "responses", "tags"],
 };
 
 fn escape(s: String) -> String {

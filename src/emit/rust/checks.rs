@@ -70,14 +70,14 @@ fn receiver(value: &TokenStream) -> TokenStream {
 /// Returns `&RE`: the `static` pattern of one check site, compiled on first use.
 fn pattern_static(pattern: &str) -> TokenStream {
     let p = lit(pattern);
-    quote!({ static RE: runtime::Pattern = runtime::Pattern::new(#p); &RE })
+    quote!({ static RE: ::honig::__private::Pattern = ::honig::__private::Pattern::new(#p); &RE })
 }
 
 /// Returns the length and pattern checks of a `String` value.
 pub(super) fn string_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
     let pat = c.pattern.as_ref().map(|p| {
         let re = pattern_static(p);
-        quote!(runtime::check_pattern(out, #path, #re, #value);)
+        quote!(::honig::__private::check_pattern(out, #path, #re, #value);)
     });
     if c.min_length.is_none() && c.max_length.is_none() {
         return quote!(#pat);
@@ -95,7 +95,7 @@ pub(super) fn string_checks(c: &Constraints, value: &TokenStream, path: &TokenSt
     };
     quote! {
         let n = #r.chars().count();
-        runtime::check_len(out, #path, n, #min, #max, "characters");
+        ::honig::__private::check_len(out, #path, n, #min, #max, "characters");
         #pat
     }
 }
@@ -116,7 +116,7 @@ pub(super) fn subschema_checks(
         let not = ty(n);
         quote! {
             if json.matches::<#not>() {
-                runtime::violation(out, #path, "matches `not`");
+                ::honig::__private::violation(out, #path, "matches `not`");
             }
         }
     });
@@ -127,7 +127,7 @@ pub(super) fn subschema_checks(
             if json.get(#wire).is_some()
                 && let Err(e) = json.decode_ref::<#dependent>()
             {
-                runtime::violation(out, #path, format!("{}{e}", #present));
+                ::honig::__private::violation(out, #path, format!("{}{e}", #present));
             }
         }
     });
@@ -139,7 +139,7 @@ pub(super) fn subschema_checks(
         let t = ty(n);
         quote! {
             if let Err(e) = json.decode_ref::<#t>() {
-                runtime::violation(out, #path, e.to_string());
+                ::honig::__private::violation(out, #path, e.to_string());
             }
         }
     });
@@ -178,8 +178,8 @@ pub(super) fn subschema_checks(
 fn own_buffer(value: &TokenStream) -> Option<TokenStream> {
     (value.to_string() != "& value").then(|| {
         quote! {
-            let json = runtime::to_value(#value).unwrap_or_default();
-            let json = &runtime::Content::of(&json);
+            let json = ::honig::__private::to_value(#value).unwrap_or_default();
+            let json = &::honig::__private::Content::of(&json);
         }
     })
 }
@@ -218,7 +218,7 @@ fn contains_bounds(min: u64, max: Option<u64>, path: &TokenStream) -> TokenStrea
         let min = Literal::u64_unsuffixed(min);
         quote! {
             if hits < #min {
-                runtime::violation(out, #path, format!("must contain at least {} matching item(s), found {hits}", #min));
+                ::honig::__private::violation(out, #path, format!("must contain at least {} matching item(s), found {hits}", #min));
             }
         }
     });
@@ -226,7 +226,7 @@ fn contains_bounds(min: u64, max: Option<u64>, path: &TokenStream) -> TokenStrea
         let max = Literal::u64_unsuffixed(max);
         quote! {
             if hits > #max {
-                runtime::violation(out, #path, format!("contains {hits} matching items, more than allowed"));
+                ::honig::__private::violation(out, #path, format!("contains {hits} matching items, more than allowed"));
             }
         }
     });
@@ -243,8 +243,9 @@ fn pattern_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &Tok
     let patterns = c.pattern_properties.iter().map(|(pattern, n)| {
         let schema = ty(*n);
         let re = pattern_static(pattern);
-        let matches = quote!(runtime::pattern_matches(#re, name));
-        let refuse = quote!(runtime::violation(out, &runtime::InstanceLocation::Key(#path, name), e.to_string()););
+        let matches = quote!(::honig::__private::pattern_matches(#re, name));
+        let refuse =
+            quote!(::honig::__private::violation(out, &::honig::InstanceLocation::Key(#path, name), e.to_string()););
         // Without `additionalProperties` nothing else happens on a match: one `if` tests both conditions.
         if closed {
             quote! {
@@ -267,7 +268,7 @@ fn pattern_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &Tok
             let other = match extra {
                 None => quote! {
                     if !matched #undeclared {
-                        runtime::violation(out, &runtime::InstanceLocation::Key(#path, name), "no value is allowed here");
+                        ::honig::__private::violation(out, &::honig::InstanceLocation::Key(#path, name), "no value is allowed here");
                     }
                 },
                 Some(n) => {
@@ -277,7 +278,7 @@ fn pattern_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &Tok
                             #undeclared
                             && let Err(e) = item.decode_ref::<#t>()
                         {
-                            runtime::violation(out, &runtime::InstanceLocation::Key(#path, name), e.to_string());
+                            ::honig::__private::violation(out, &::honig::InstanceLocation::Key(#path, name), e.to_string());
                         }
                     }
                 }
@@ -315,7 +316,7 @@ fn unevaluated_checks(
     let (binding, check) = match leftover {
         Leftover::Refused => (
             quote!(name),
-            quote!(runtime::violation(out, &runtime::InstanceLocation::Key(#path, name), "is not allowed (unevaluatedProperties)");),
+            quote!(::honig::__private::violation(out, &::honig::InstanceLocation::Key(#path, name), "is not allowed (unevaluatedProperties)");),
         ),
         Leftover::Schema(n) => {
             let t = ty(n);
@@ -323,7 +324,7 @@ fn unevaluated_checks(
                 quote!((name, item)),
                 quote! {
                     if let Err(e) = item.decode_ref::<#t>() {
-                        runtime::violation(out, &runtime::InstanceLocation::Key(#path, name), e.to_string());
+                        ::honig::__private::violation(out, &::honig::InstanceLocation::Key(#path, name), e.to_string());
                     }
                 },
             )
@@ -362,13 +363,13 @@ fn unevaluated_item_checks(
     let evaluated = evaluated_item_expr(ev, ty, &mut flags);
     let check = match leftover {
         Leftover::Refused => {
-            quote!(runtime::violation(out, &runtime::InstanceLocation::Index(#path, i), "is not allowed (unevaluatedItems)");)
+            quote!(::honig::__private::violation(out, &::honig::InstanceLocation::Index(#path, i), "is not allowed (unevaluatedItems)");)
         }
         Leftover::Schema(n) => {
             let t = ty(n);
             quote! {
                 if let Err(e) = item.decode_ref::<#t>() {
-                    runtime::violation(out, &runtime::InstanceLocation::Index(#path, i), e.to_string());
+                    ::honig::__private::violation(out, &::honig::InstanceLocation::Index(#path, i), e.to_string());
                 }
             }
         }
@@ -450,7 +451,7 @@ fn evaluated_expr(
     }
     for p in &ev.patterns {
         let re = pattern_static(p);
-        parts.push(quote!(runtime::pattern_matches(#re, name)));
+        parts.push(quote!(::honig::__private::pattern_matches(#re, name)));
     }
     for (n, decodes, branch) in &ev.branches {
         let Some(inner) = evaluated_expr(branch, ty, flags) else { continue };
@@ -471,7 +472,7 @@ fn settled_checks(space: &Space<'_>, t: &Ty, c: &Constraints, path: &TokenStream
         return Some(TokenStream::new());
     }
     (c.never && !matches!(t, Ty::Option(_) | Ty::Indirect(_)))
-        .then(|| quote!(runtime::violation(out, #path, "no value is allowed here");))
+        .then(|| quote!(::honig::__private::violation(out, #path, "no value is allowed here");))
 }
 
 /// Checks of `value` (an expression of type `&T` for `t`) at `path`.
@@ -503,13 +504,13 @@ pub(super) fn checks(
         Ty::Option(x) => option_checks(space, x, c, value, path),
         Ty::Indirect(x) => checks(space, x, c, &quote!((#value).as_ref()), path),
         Ty::String => string_checks(c, value, path),
-        // A format without its library is a `runtime::Formatted` text: decoding checks the format, and its length and
+        // A format without its library is a `::honig::Formatted` text: decoding checks the format, and its length and
         // pattern are checked here.
         Ty::Format(f) if super::syntax::untyped(space.libs, *f) => string_checks(c, value, path),
         // A library type keeps no text: its length and pattern run on the text that it writes, its canonical spelling.
         Ty::Format(_) => {
             let checks = string_checks(c, &quote!(text.as_str()), path);
-            if checks.is_empty() { checks } else { quote!(let text = runtime::format_text(#value); #checks) }
+            if checks.is_empty() { checks } else { quote!(let text = ::honig::__private::format_text(#value); #checks) }
         }
         Ty::I8 | Ty::I16 | Ty::I32 | Ty::I64 | Ty::U8 | Ty::U16 | Ty::U32 | Ty::U64 => {
             integer_checks(t, c, value, path)
@@ -520,7 +521,7 @@ pub(super) fn checks(
             let len = (c.min_items.is_some() || c.max_items.is_some()).then(|| {
                 let (min, max) = (opt_u64(c.min_items), opt_u64(c.max_items));
                 let r = receiver(value);
-                quote!(runtime::check_len(out, #path, #r.len(), #min, #max, "items");)
+                quote!(::honig::__private::check_len(out, #path, #r.len(), #min, #max, "items");)
             });
             let items = item_checks(space, x, c, value, path);
             let contains = contains_checks(space, c, value, path);
@@ -585,12 +586,12 @@ fn binary_checks(c: &Constraints, path: &TokenStream) -> TokenStream {
 
 /// Returns the checks of `c` on `json`, a `&serde_json::Value`, at the root.
 pub(super) fn json_checks(c: &Constraints, json: &TokenStream) -> TokenStream {
-    any_checks(c, json, &quote!(&runtime::InstanceLocation::Root), false)
+    any_checks(c, json, &quote!(&::honig::InstanceLocation::Root), false)
 }
 
 /// Returns `propertyNames` on the name in `name`, at the path of that name.
 fn name_check(names: &Constraints, path: &TokenStream) -> TokenStream {
-    string_checks(names, &quote!(name), &quote!(&runtime::InstanceLocation::Key(#path, name)))
+    string_checks(names, &quote!(name), &quote!(&::honig::InstanceLocation::Key(#path, name)))
 }
 
 /// Returns the keywords of one kind beside an implied shape (`required` beside `properties`, `minimum` beside
@@ -599,7 +600,7 @@ fn implied_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> T
     let by_kind = any_checks(c, &quote!(json), path, true);
     let names = c.property_names.as_deref().map(|n| {
         let names = name_checks(n, &quote!(object.iter().map(|(k, _)| &**k)), path);
-        quote!(if let runtime::Content::Map(object) = json { #names })
+        quote!(if let ::honig::__private::Content::Map(object) = json { #names })
     });
     if by_kind.is_empty() && names.is_none() {
         return TokenStream::new();
@@ -703,7 +704,7 @@ fn struct_count_checks(
     let count = if terms.is_empty() { quote!(0) } else { quote!(#(#terms)+*) };
     let (min, max) = (opt_u64(c.min_properties), opt_u64(c.max_properties));
     Some(quote! {
-        runtime::check_len(out, #path, #count, #min, #max, "properties");
+        ::honig::__private::check_len(out, #path, #count, #min, #max, "properties");
     })
 }
 
@@ -738,7 +739,7 @@ fn dependent_checks(
                 Some((missing, _)) => quote!(#missing || #has),
                 None => has,
             };
-            Some(quote!(runtime::check(out, #path, #ok, #message);))
+            Some(quote!(::honig::__private::check(out, #path, #ok, #message);))
         })
     });
     quote!(#(#checks)*)
@@ -746,10 +747,10 @@ fn dependent_checks(
 
 /// Returns `uniqueItems` and the checks of each item for a `Vec` or an array.
 fn item_checks(space: &Space<'_>, x: &Ty, c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
-    let unique = c.unique_items.then(|| quote!(runtime::check_unique(out, #path, #value);));
+    let unique = c.unique_items.then(|| quote!(::honig::__private::check_unique(out, #path, #value);));
     let ic = c.item_constraints();
     // The parent path is bound once for every item.
-    let item = checks(space, x, &ic, &quote!(v), &quote!(&runtime::InstanceLocation::Index(base, i)));
+    let item = checks(space, x, &ic, &quote!(v), &quote!(&::honig::InstanceLocation::Index(base, i)));
     let r = receiver(value);
     let each = (!item.is_empty()).then(|| quote!({ let base = #path; for (i, v) in #r.iter().enumerate() { #item } }));
     quote!(#unique #each)
@@ -818,12 +819,12 @@ pub(super) fn integer_checks(t: &Ty, c: &Constraints, value: &TokenStream, path:
         // No value can be valid: the range and `multipleOf` add nothing.
         return quote!({
             let got = #val;
-            runtime::violation(out, #path, format!(#msg));
+            ::honig::__private::violation(out, #path, format!(#msg));
         });
     }
     let range = bounds.iter().any(Option::is_some).then(|| {
         let b = bounds_expr(bounds);
-        quote!(runtime::check_range(out, #path, #val, #b);)
+        quote!(::honig::__private::check_range(out, #path, #val, #b);)
     });
     let multiple = c.multiple_of.as_ref().and_then(|m| {
         let msg = lit(&format!("is not a multiple of {m}"));
@@ -831,10 +832,10 @@ pub(super) fn integer_checks(t: &Ty, c: &Constraints, value: &TokenStream, path:
             // Every integer is a multiple of `1` and of `0.5`.
             1 => None,
             // Only `0` is a multiple of a modulus past every value of the type.
-            m if m > hi.max(-lo) => Some(quote!(runtime::check(out, #path, #val == 0, #msg);)),
+            m if m > hi.max(-lo) => Some(quote!(::honig::__private::check(out, #path, #val == 0, #msg);)),
             m => {
                 let m = Literal::i128_unsuffixed(m);
-                Some(quote!(runtime::check(out, #path, i128::from(#val) % #m == 0, #msg);))
+                Some(quote!(::honig::__private::check(out, #path, i128::from(#val) % #m == 0, #msg);))
             }
         }
     });
@@ -952,17 +953,17 @@ pub(super) fn float_checks(c: &Constraints, value: &TokenStream, path: &TokenStr
     let bounds = [&c.minimum, &c.maximum, &c.exclusive_minimum, &c.exclusive_maximum];
     let range = bounds.iter().any(|b| b.is_some()).then(|| {
         let b = bounds_expr(bounds.map(bound));
-        quote!(runtime::check_range(out, #path, #val, #b);)
+        quote!(::honig::__private::check_range(out, #path, #val, #b);)
     });
     // Exact, through the decimal text of the value and of `multipleOf`: `0.07` is a multiple of `0.01`.
     let multiple = positive(c.multiple_of.as_ref()).map(|m| {
         let m = lit(&m.to_string());
-        quote!(runtime::check_multiple(out, #path, #val, #m);)
+        quote!(::honig::__private::check_multiple(out, #path, #val, #m);)
     });
     quote!(#range #multiple)
 }
 
-/// Returns `runtime::Bounds` with the bounds given as `[minimum, maximum, exclusiveMinimum, exclusiveMaximum]`.
+/// Returns `::honig::__private::Bounds` with the bounds given as `[minimum, maximum, exclusiveMinimum, exclusiveMaximum]`.
 fn bounds_expr(given: [Option<TokenStream>; 4]) -> TokenStream {
     let all = given.iter().all(Option::is_some);
     let set = ["min", "max", "exclusive_min", "exclusive_max"]
@@ -970,8 +971,8 @@ fn bounds_expr(given: [Option<TokenStream>; 4]) -> TokenStream {
         .zip(given)
         .filter_map(|(name, b)| b.map(|b| (ident(name), b)))
         .map(|(name, b)| quote!(#name: Some(#b),));
-    let rest = (!all).then(|| quote!(..runtime::Bounds::NONE));
-    quote!(runtime::Bounds { #(#set)* #rest })
+    let rest = (!all).then(|| quote!(..::honig::__private::Bounds::NONE));
+    quote!(::honig::__private::Bounds { #(#set)* #rest })
 }
 
 /// Returns a `multipleOf` that is a positive number. JSON Schema allows no other.
@@ -986,23 +987,23 @@ pub(super) fn decimal_checks(c: &Constraints, value: &TokenStream, path: &TokenS
     let bounds = [&c.minimum, &c.maximum, &c.exclusive_minimum, &c.exclusive_maximum];
     let range = bounds.iter().any(|b| b.is_some()).then(|| {
         let b = bounds_expr(bounds.map(|b| b.as_ref().map(|n| lit(&n.to_string()).into_token_stream())));
-        quote!(runtime::check_decimal_range(out, #path, #r.as_str(), #b);)
+        quote!(::honig::__private::check_decimal_range(out, #path, #r.as_str(), #b);)
     });
     let multiple = positive(c.multiple_of.as_ref()).map(|m| {
         let m = lit(&m.to_string());
-        quote!(runtime::check_multiple_text(out, #path, #r.as_str(), #m);)
+        quote!(::honig::__private::check_multiple_text(out, #path, #r.as_str(), #m);)
     });
     // `format: decimal128`: the digits that IEEE 754 decimal128 represents.
-    let limits = c.decimal128.then(|| quote!(runtime::check_decimal128(out, #path, #r.as_str());));
+    let limits = c.decimal128.then(|| quote!(::honig::__private::check_decimal128(out, #path, #r.as_str());));
     quote!(#range #multiple #limits)
 }
 
-/// Checks of a `serde_json::Value`, or of a `runtime::Content` buffer with `content` (`value` is a `&` of one): each
-/// keyword on values of its kind only, as JSON Schema applies `minimum` to numbers and `minLength` to strings.
+/// Checks of a `serde_json::Value`, or of a honig `Content` buffer with `content` (`value` is a `&` of one): each keyword
+/// on values of its kind only, as JSON Schema applies `minimum` to numbers and `minLength` to strings.
 fn any_checks(c: &Constraints, value: &TokenStream, path: &TokenStream, content: bool) -> TokenStream {
     let format = c.format.as_deref().map(|f| {
         let f = lit(f);
-        quote!(runtime::check_format(out, #path, text, #f);)
+        quote!(::honig::__private::check_format(out, #path, text, #f);)
     });
     let text = string_checks(c, &if content { quote!(text) } else { quote!(text.as_str()) }, path);
     let text = quote!(#text #format);
@@ -1010,15 +1011,12 @@ fn any_checks(c: &Constraints, value: &TokenStream, path: &TokenStream, content:
     let count = |min: Option<u64>, max: Option<u64>, unit: &str| {
         (min.is_some() || max.is_some()).then(|| {
             let (min, max) = (opt_u64(min), opt_u64(max));
-            quote!(runtime::check_len(out, #path, n.len(), #min, #max, #unit);)
+            quote!(::honig::__private::check_len(out, #path, n.len(), #min, #max, #unit);)
         })
     };
     let unique = c.unique_items.then(|| {
-        if content {
-            quote!(runtime::check_unique_content(out, #path, n);)
-        } else {
-            quote!(runtime::check_unique(out, #path, n);)
-        }
+        let check = if content { quote!(check_unique_content) } else { quote!(check_unique) };
+        quote!(::honig::__private::#check(out, #path, n);)
     });
     let items = count(c.min_items, c.max_items, "items");
     let items = (items.is_some() || unique.is_some()).then(|| quote!(#items #unique));
@@ -1028,12 +1026,13 @@ fn any_checks(c: &Constraints, value: &TokenStream, path: &TokenStream, content:
     let properties = count(c.min_properties, c.max_properties, "properties");
     let properties = (properties.is_some() || !required.is_empty()).then(|| quote!(#properties #required));
     // Each kind as (its pattern, its checks): a kind without checks passes.
+    let ct = quote!(::honig::__private::Content);
     let kinds = if content {
-        let number = quote!(runtime::Content::U64(_) | runtime::Content::I64(_) | runtime::Content::F64(_));
+        let number = quote!(#ct::U64(_) | #ct::I64(_) | #ct::F64(_));
         [
             (
-                quote!(runtime::Content::Str(text)),
-                quote!(runtime::Content::Str(_)),
+                quote!(#ct::Str(text)),
+                quote!(#ct::Str(_)),
                 (!text.is_empty()).then(|| quote!(let text: &str = text; #text)),
             ),
             (
@@ -1041,8 +1040,8 @@ fn any_checks(c: &Constraints, value: &TokenStream, path: &TokenStream, content:
                 number,
                 (!number_checks.is_empty()).then(|| quote!(let text = n.number_text(); #number_checks)),
             ),
-            (quote!(runtime::Content::Seq(n)), quote!(runtime::Content::Seq(_)), items),
-            (quote!(runtime::Content::Map(n)), quote!(runtime::Content::Map(_)), properties),
+            (quote!(#ct::Seq(n)), quote!(#ct::Seq(_)), items),
+            (quote!(#ct::Map(n)), quote!(#ct::Map(_)), properties),
         ]
     } else {
         [
@@ -1069,7 +1068,7 @@ fn any_checks(c: &Constraints, value: &TokenStream, path: &TokenStream, content:
             let arms = checked.iter().map(|(pattern, checks)| quote!(#pattern => { #checks }));
             let passed = kinds.iter().filter(|(_, _, checks)| checks.is_none()).map(|(_, unbound, _)| unbound);
             let others = if content {
-                quote!(runtime::Content::Null | runtime::Content::Bool(_) | runtime::Content::Raw(_))
+                quote!(#ct::Null | #ct::Bool(_) | #ct::Raw(_))
             } else {
                 quote!(serde_json::Value::Null | serde_json::Value::Bool(_))
             };
@@ -1092,7 +1091,7 @@ fn required_checks(c: &Constraints, has: &TokenStream, path: &TokenStream) -> To
         return TokenStream::new();
     }
     let names = c.required.iter().map(|n| lit(n));
-    quote!(runtime::check_required(out, #path, #has, &[#(#names),*]);)
+    quote!(::honig::__private::check_required(out, #path, #has, &[#(#names),*]);)
 }
 
 /// Returns the checks of `c`'s tuple on the list in `json`: each leading item decodes as the type of its schema, then
@@ -1103,7 +1102,7 @@ fn tuple_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &Token
         let t = ty(n);
         quote! {
             if let Err(e) = item.decode_ref::<#t>() {
-                runtime::violation(out, &runtime::InstanceLocation::Index(#path, #at), e.to_string());
+                ::honig::__private::violation(out, &::honig::InstanceLocation::Index(#path, #at), e.to_string());
             }
         }
     };
@@ -1114,7 +1113,7 @@ fn tuple_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &Token
             if let Some(item) = #item
                 && let Err(e) = item.decode_ref::<#t>()
             {
-                runtime::violation(out, &runtime::InstanceLocation::Index(#path, #i), e.to_string());
+                ::honig::__private::violation(out, &::honig::InstanceLocation::Index(#path, #i), e.to_string());
             }
         }
     });
@@ -1123,7 +1122,7 @@ fn tuple_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &Token
         Rest::Any => None,
         Rest::Refused => Some(quote! {
             if items.len() > #len {
-                runtime::violation(out, &runtime::InstanceLocation::Index(#path, #len), "no value is allowed here");
+                ::honig::__private::violation(out, &::honig::InstanceLocation::Index(#path, #len), "no value is allowed here");
             }
         }),
         Rest::Schema(n) => {
@@ -1144,7 +1143,7 @@ fn map_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> Token
     let r = receiver(value);
     let len = (c.min_properties.is_some() || c.max_properties.is_some()).then(|| {
         let (min, max) = (opt_u64(c.min_properties), opt_u64(c.max_properties));
-        quote!(runtime::check_len(out, #path, #r.len(), #min, #max, "properties");)
+        quote!(::honig::__private::check_len(out, #path, #r.len(), #min, #max, "properties");)
     });
     let names = c.property_names.as_deref().map(|n| name_checks(n, &quote!(#r.keys()), path));
     let required = required_checks(c, &quote!(|name| #r.contains_key(name)), path);
@@ -1161,7 +1160,7 @@ fn object_dependent_checks(
     let checks = dependents.iter().map(|(name, needs)| {
         let needs = needs.iter().map(|need| {
             let (message, need) = (lit(&format!("`{need}` is required when `{name}` is present")), lit(need));
-            quote!(runtime::check(out, #path, #object.contains_key(#need), #message);)
+            quote!(::honig::__private::check(out, #path, #object.contains_key(#need), #message);)
         });
         let name = lit(name);
         quote!(if #object.contains_key(#name) { #(#needs)* })
@@ -1175,8 +1174,8 @@ fn value_checks(c: &Constraints, path: &TokenStream) -> TokenStream {
         let values = values.iter().map(super::syntax::json_tokens);
         quote! {
             static VALUES: std::sync::OnceLock<Vec<serde_json::Value>> = std::sync::OnceLock::new();
-            if !VALUES.get_or_init(|| vec![#(#values),*]).iter().any(|v| runtime::content_equal(json, v)) {
-                runtime::violation(out, #path, "is not one of the allowed values");
+            if !VALUES.get_or_init(|| vec![#(#values),*]).iter().any(|v| ::honig::__private::content_equal(json, v)) {
+                ::honig::__private::violation(out, #path, "is not one of the allowed values");
             }
         }
     });
@@ -1184,8 +1183,8 @@ fn value_checks(c: &Constraints, path: &TokenStream) -> TokenStream {
         let (message, v) = (lit(&format!("must be {v}")), super::syntax::json_tokens(v));
         quote! {
             static VALUE: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-            if !runtime::content_equal(json, VALUE.get_or_init(|| #v)) {
-                runtime::violation(out, #path, #message);
+            if !::honig::__private::content_equal(json, VALUE.get_or_init(|| #v)) {
+                ::honig::__private::violation(out, #path, #message);
             }
         }
     });
@@ -1201,7 +1200,7 @@ fn condition_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &T
             let (b, name) = (ty(b), lit(&format!("`{name}`: ")));
             (
                 quote!(let Err(e) = json.decode_ref::<#b>()),
-                quote!(runtime::violation(out, #path, format!("{}{e}", #name));),
+                quote!(::honig::__private::violation(out, #path, format!("{}{e}", #name));),
             )
         };
         let cond = ty(cond);
@@ -1230,8 +1229,8 @@ fn names_schema_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path:
     quote! {
         if let Some(object) = json.as_object() {
             for (name, _) in object {
-                if !runtime::Content::Str(name.into()).matches::<#t>() {
-                    runtime::violation(out, &runtime::InstanceLocation::Key(#path, name), "is not an allowed property name");
+                if !::honig::__private::Content::Str(name.into()).matches::<#t>() {
+                    ::honig::__private::violation(out, &::honig::InstanceLocation::Key(#path, name), "is not an allowed property name");
                 }
             }
         }
@@ -1258,7 +1257,7 @@ fn branch_count_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path:
                 .filter(|hit| *hit)
                 .count();
             if hits != 1 {
-                runtime::violation(out, #path, format!("matches {hits} of `oneOf`, not exactly one"));
+                ::honig::__private::violation(out, #path, format!("matches {hits} of `oneOf`, not exactly one"));
             }
         }
     });
@@ -1269,7 +1268,7 @@ fn branch_count_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path:
             let t = ty(*n);
             Some(quote! {
                 if !json.matches::<#t>() {
-                    runtime::violation(out, #path, "matches none of `anyOf`");
+                    ::honig::__private::violation(out, #path, "matches none of `anyOf`");
                 }
             })
         }
@@ -1277,7 +1276,7 @@ fn branch_count_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path:
             let branches = branches.iter().map(|&n| ty(n));
             Some(quote! {
                 if !(#(json.matches::<#branches>())||*) {
-                    runtime::violation(out, #path, "matches none of `anyOf`");
+                    ::honig::__private::violation(out, #path, "matches none of `anyOf`");
                 }
             })
         }

@@ -181,7 +181,7 @@ fn formats_page() -> String {
     let all = FormatLibs { uuid: true, url: true, ipnet: true, jiff: true, ..Default::default() };
     let ty = |libs: &FormatLibs, f| {
         let path = crate::emit::rust::syntax::format_ty(libs, f).to_string();
-        format!("`{}`", path.replace(' ', "").replace("runtime::", "api::"))
+        format!("`{}`", path.replace(' ', "").replace("::honig::", "api::"))
     };
     let mut page =
         "| Format | Without its feature | With `uuid`, `url`, `ipnet` and `jiff` |\n|---|---|---|\n".to_owned();

@@ -51,9 +51,9 @@ pub(crate) fn path_param<'a>(op: &'a Operation, name: &str) -> Option<&'a Param>
 pub(crate) fn value_expr(p: &Param) -> TokenStream {
     let n = snake_ident(&p.name);
     if p.location == Location::QueryString {
-        quote!(runtime::to_value(&p.#n)?)
+        quote!(::honig::__private::to_value(&p.#n)?)
     } else if p.content == Some(MediaKind::Json) {
-        quote!(runtime::json_param(&p.#n)?)
+        quote!(::honig::__private::json_param(&p.#n)?)
     } else {
         // Encoders accept `Serialize` directly: scalars skip `serde_json::Value`.
         quote!(p.#n)

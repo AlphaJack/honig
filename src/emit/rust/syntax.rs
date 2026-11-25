@@ -86,10 +86,10 @@ fn ty_with(space: &Space<'_>, t: &Ty, named: &dyn Fn(TypeId) -> TokenStream) -> 
         Ty::U64 => quote!(u64),
         Ty::F32 => quote!(f32),
         Ty::F64 => quote!(f64),
-        Ty::Decimal => quote!(runtime::Decimal),
+        Ty::Decimal => quote!(::honig::Decimal),
         Ty::String => quote!(String),
         Ty::Bytes => quote!(Vec<u8>),
-        Ty::Binary => quote!(runtime::Binary),
+        Ty::Binary => quote!(::honig::Binary),
         Ty::Format(f) => format_ty(space.libs, *f),
         Ty::Any => quote!(serde_json::Value),
         Ty::Unit => quote!(()),
@@ -126,7 +126,7 @@ pub(crate) fn format_ty(libs: &FormatLibs, f: Format) -> TokenStream {
     library_ty(libs, f).unwrap_or_else(|| text_ty(f))
 }
 
-/// honig's checked text types of the formats: `runtime::UuidStr` and the rest.
+/// honig's checked text types of the formats: `::honig::UuidStr` and the rest.
 pub(crate) const FORMAT_STRS: [&str; 23] = [
     "DateStr",
     "DateTimeLocalStr",
@@ -153,7 +153,7 @@ pub(crate) const FORMAT_STRS: [&str; 23] = [
     "UuidStr",
 ];
 
-/// Returns honig type of the text of a format that the crate has no library type for: `runtime::UuidStr` and so
+/// Returns honig type of the text of a format that the crate has no library type for: `::honig::UuidStr` and so
 /// on. Only text of the format is one.
 fn text_ty(f: Format) -> TokenStream {
     let name = match f {
@@ -189,10 +189,10 @@ fn text_ty(f: Format) -> TokenStream {
         | Format::IdnHostname => return quote!(String),
     };
     let name = ident(name);
-    quote!(runtime::#name)
+    quote!(::honig::#name)
 }
 
-/// Returns a format that the target crate has no library for. It is a `runtime::Formatted` text, which checks it.
+/// Returns a format that the target crate has no library for. It is a `::honig::Formatted` text, which checks it.
 pub(crate) fn untyped(libs: &FormatLibs, f: Format) -> bool {
     library_ty(libs, f).is_none()
 }
@@ -206,25 +206,25 @@ fn library_ty(libs: &FormatLibs, f: Format) -> Option<TokenStream> {
     match (f, libs.uuid, libs.jiff) {
         (Format::Char, ..) => Some(quote!(char)),
         // The type features of honig re-export their crates.
-        (Format::Uri, ..) if libs.url => Some(quote!(runtime::url::Url)),
-        (Format::Ipv4Cidr, ..) if libs.ipnet => Some(quote!(runtime::ipnet::Ipv4Net)),
-        (Format::Ipv6Cidr, ..) if libs.ipnet => Some(quote!(runtime::ipnet::Ipv6Net)),
-        (Format::DateTimeLocal, _, true) => Some(quote!(runtime::jiff::civil::DateTime)),
+        (Format::Uri, ..) if libs.url => Some(quote!(::honig::url::Url)),
+        (Format::Ipv4Cidr, ..) if libs.ipnet => Some(quote!(::honig::ipnet::Ipv4Net)),
+        (Format::Ipv6Cidr, ..) if libs.ipnet => Some(quote!(::honig::ipnet::Ipv6Net)),
+        (Format::DateTimeLocal, _, true) => Some(quote!(::honig::jiff::civil::DateTime)),
         // The standard library's addresses (de)serialize as their text form.
         (Format::Ipv4, ..) => Some(quote!(std::net::Ipv4Addr)),
         (Format::Ipv6, ..) => Some(quote!(std::net::Ipv6Addr)),
-        (Format::Base64Url, ..) => Some(quote!(runtime::Base64Url)),
+        (Format::Base64Url, ..) => Some(quote!(::honig::Base64Url)),
         // Types that only a valid value can be. The `idn` feature of honig has them. The description turns it on.
-        (Format::Email, ..) => Some(quote!(runtime::EmailStr)),
-        (Format::IdnEmail, ..) => Some(quote!(runtime::IdnEmailStr)),
-        (Format::Hostname, ..) => Some(quote!(runtime::HostnameStr)),
-        (Format::IdnHostname, ..) => Some(quote!(runtime::IdnHostnameStr)),
+        (Format::Email, ..) => Some(quote!(::honig::EmailStr)),
+        (Format::IdnEmail, ..) => Some(quote!(::honig::IdnEmailStr)),
+        (Format::Hostname, ..) => Some(quote!(::honig::HostnameStr)),
+        (Format::IdnHostname, ..) => Some(quote!(::honig::IdnHostnameStr)),
         // `jiff` has no time with an offset. honig's stores plain numbers, with or without `jiff`.
-        (Format::Time, ..) => Some(quote!(runtime::FullTime)),
-        (Format::TimeLocal, _, true) => Some(quote!(runtime::jiff::civil::Time)),
-        (Format::Uuid, true, _) => Some(quote!(runtime::uuid::Uuid)),
-        (Format::DateTime, _, true) => Some(quote!(runtime::jiff::Timestamp)),
-        (Format::Date, _, true) => Some(quote!(runtime::jiff::civil::Date)),
+        (Format::Time, ..) => Some(quote!(::honig::FullTime)),
+        (Format::TimeLocal, _, true) => Some(quote!(::honig::jiff::civil::Time)),
+        (Format::Uuid, true, _) => Some(quote!(::honig::uuid::Uuid)),
+        (Format::DateTime, _, true) => Some(quote!(::honig::jiff::Timestamp)),
+        (Format::Date, _, true) => Some(quote!(::honig::jiff::civil::Date)),
         // Without its library a format is its text. Nothing is lost and nothing is added to the crate.
         (Format::Uuid, false, _)
         | (
@@ -248,7 +248,7 @@ fn library_ty(libs: &FormatLibs, f: Format) -> Option<TokenStream> {
     }
 }
 
-/// Returns the marker in `runtime::formats::format` of a format whose library type accepts more than the format allows.
+/// Returns the marker in `::honig::__private::formats::format` of a format whose library type accepts more than the format allows.
 /// `jiff` accepts `2024-06-19 08:30Z` as a `date-time` and `uuid` accepts `{...}`. `None` for text, the standard
 /// library's addresses and honig's own types: those accept only valid values. A type that the table sets parses
 /// text that honig checked first.
@@ -261,11 +261,11 @@ fn validated_format(libs: &FormatLibs, f: Format) -> Option<Ident> {
     f.marker().filter(|_| checked).map(ident)
 }
 
-/// Returns how `t` stores the text of its checked formats: a `runtime::formats::Holds` that decodes it with each text
+/// Returns how `t` stores the text of its checked formats: a `::honig::__private::formats::Holds` that decodes it with each text
 /// checked before its library parses it. `None` when `t` contains none. Aliases are followed. A named type checks its
 /// own.
 pub(crate) fn holds(space: &Space<'_>, t: &Ty) -> Option<TokenStream> {
-    let c = quote!(runtime::formats);
+    let c = quote!(::honig::__private::formats);
     match space.types.unalias(t) {
         Ty::Format(f) => validated_format(space.libs, *f).map(|m| quote!(#c::Text<#c::format::#m>)),
         Ty::Vec(x) => holds(space, x).map(|h| quote!(#c::Many<#h>)),
@@ -311,7 +311,7 @@ pub(crate) fn holds(space: &Space<'_>, t: &Ty) -> Option<TokenStream> {
     }
 }
 
-/// Does `t` mention a named type (needs `types`) or `runtime::Binary` (needs `runtime`)?
+/// Does `t` mention a named type (needs `types`) or a type of honig such as `::honig::Binary`?
 pub(crate) fn mentions(t: &Ty) -> (bool, bool) {
     let runtime = matches!(
         t,
@@ -357,12 +357,18 @@ pub(crate) fn unparse(mut file: syn::File) -> String {
     out
 }
 
-/// Returns a call of a honig macro whose body is items, `runtime::object! { .. }`, with the body printed as those
+/// Is `path` that of a honig macro, `::honig::<name>`?
+fn honig_macro(path: &syn::Path) -> bool {
+    path.leading_colon.is_some()
+        && path.segments.len() == 2
+        && path.segments.first().is_some_and(|s| s.ident == "honig")
+}
+
+/// Returns a call of a honig macro whose body is items, `::honig::object! { .. }`, with the body printed as those
 /// items. `None` for any other macro or a body that does not parse as items.
 fn items_macro_text(m: &syn::ItemMacro) -> Option<String> {
     let path = &m.mac.path;
-    let runtime = path.segments.len() == 2 && path.segments.first().is_some_and(|s| s.ident == "runtime");
-    if !runtime || !matches!(m.mac.delimiter, syn::MacroDelimiter::Brace(_)) {
+    if !honig_macro(path) || !matches!(m.mac.delimiter, syn::MacroDelimiter::Brace(_)) {
         return None;
     }
     let items: syn::File = syn::parse2(m.mac.tokens.clone()).ok()?;
@@ -371,7 +377,7 @@ fn items_macro_text(m: &syn::ItemMacro) -> Option<String> {
         .lines()
         .map(|l| if l.is_empty() { "\n".to_owned() } else { format!("    {l}\n") })
         .collect();
-    Some(format!("runtime::{name}! {{\n{body}}}\n"))
+    Some(format!("::honig::{name}! {{\n{body}}}\n"))
 }
 
 /// Every `pub` becomes `pub(crate)`.
@@ -469,8 +475,7 @@ impl syn::visit_mut::VisitMut for SelfInOwnFields {
 
     fn visit_item_macro_mut(&mut self, m: &mut syn::ItemMacro) {
         let path = &m.mac.path;
-        if path.segments.len() == 2
-            && path.segments.first().is_some_and(|s| s.ident == "runtime")
+        if honig_macro(path)
             && path.segments.last().is_some_and(|s| s.ident == "object")
             && let Ok(mut s) = syn::parse2::<syn::ItemStruct>(m.mac.tokens.clone())
         {

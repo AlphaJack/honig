@@ -19,7 +19,7 @@ fn form_fields_follow_their_encoding_style() {
             if let Ok(mut s) = seen.lock() {
                 *s = String::from_utf8_lossy(req.body().bytes()).into_owned();
             }
-            api::runtime::new_response(204)
+            honig::__private::new_response(204)
         }
     }));
     let body = types::SubmitFormBody {
@@ -29,7 +29,7 @@ fn form_fields_follow_their_encoding_style() {
         priority: types::SubmitFormBodyPriority::N2,
         blob: Some(api::Binary::from(vec![0xde, 0xad])),
     };
-    api::block_on(client.submit_form(ops::submit_form::Params { body })).unwrap_or_else(|e| panic!("{e}"));
+    honig::block_on(client.submit_form(ops::submit_form::Params { body })).unwrap_or_else(|e| panic!("{e}"));
     let wire = seen.lock().map(|s| s.clone()).unwrap_or_default();
     assert!(wire.contains("tags=a|b") || wire.contains("tags=a%7Cb"), "pipeDelimited: {wire}");
     assert!(wire.contains("filter%5Ba%5D=x") || wire.contains("filter[a]=x"), "deepObject: {wire}");
@@ -58,10 +58,10 @@ fn integer_enum_values_are_checked() {
 /// Of several path servers the caller picks one: a reorder in the description changes no request.
 #[test]
 fn path_servers_expand_their_variables() {
-    let path = |s: ops::put_blob::Server| api::runtime::operation_path(&[s.url()], "/blobs/1".to_owned());
+    let path = |s: ops::put_blob::Server| honig::__private::operation_path(&[s.url()], "/blobs/1".to_owned());
     assert_eq!(path(ops::put_blob::Server::Regional), "https://eu.blobs.example.com/blobs/1");
     assert_eq!(path(ops::put_blob::Server::Archive), "https://archive.blobs.example.com/blobs/1");
-    assert_eq!(api::runtime::split_target("https://eu.blobs.example.com/blobs/1?x=1"), ("/blobs/1", "x=1"));
+    assert_eq!(honig::__private::split_target("https://eu.blobs.example.com/blobs/1?x=1"), ("/blobs/1", "x=1"));
 }
 
 /// The servers of the API with their variables at a chosen value or their default.
@@ -75,7 +75,7 @@ fn api_servers_expand_their_variables() {
 
 /// The `createProduct` request a server received: the callback URLs use its body and its query.
 fn received() -> api::Request {
-    let mut req = api::runtime::new_request(
+    let mut req = honig::__private::new_request(
         "POST",
         "/products".to_owned(),
         vec!["url=https%3A%2F%2Fhooks.example.com%2Fshared".to_owned()],
@@ -132,8 +132,8 @@ fn a_pattern_newtype_reads_back_the_text_it_was_built_from() {
 
 #[test]
 fn each_scheme_hands_the_operation_its_typed_credential() {
-    use api::runtime::{KeyIn, Scheme};
     use api::server::{Credential, credentials};
+    use honig::__private::{KeyIn, Scheme};
     /// A scheme, the header that satisfies it and the credential that the operation sees.
     type Case = (Scheme, Option<(&'static str, &'static str)>, Credential<'static>);
     let cases: [Case; 7] = [
@@ -150,15 +150,15 @@ fn each_scheme_hands_the_operation_its_typed_credential() {
         (Scheme::Bearer("oauth"), Some(("Authorization", "Bearer at")), Credential::Oauth("at")),
     ];
     for (scheme, header, want) in cases {
-        let mut req = api::runtime::new_request("GET", "/products".to_owned(), vec![]).unwrap();
+        let mut req = honig::__private::new_request("GET", "/products".to_owned(), vec![]).unwrap();
         if let Some((name, value)) = header {
             req.headers_mut().append(
                 honig::http::HeaderName::try_from(name).unwrap(),
                 honig::http::HeaderValue::try_from(value.to_owned()).unwrap(),
             );
         }
-        let requirements: &[&[api::runtime::Requirement]] = &[&[(scheme, &[])]];
-        let satisfied = api::runtime::check_auth(req.headers(), &[], requirements)
+        let requirements: &[&[honig::__private::Requirement]] = &[&[(scheme, &[])]];
+        let satisfied = honig::__private::check_auth(req.headers(), &[], requirements)
             .unwrap_or_else(|| panic!("{scheme:?} satisfied"));
         let event = api::RequestEvent::new(Some(api::Operation::ListProducts), "GET");
         let ctx = api::Context::new(&req, api::Operation::ListProducts, satisfied, &event);
@@ -217,8 +217,8 @@ impl api::Api for Products {
         &self,
         _: &str,
         _: &api::Request,
-    ) -> Answer<Option<api::Granted<(), api::server::OauthScope>>> {
-        Ok(Some(api::Granted {
+    ) -> Answer<Option<honig::Granted<(), api::server::OauthScope>>> {
+        Ok(Some(honig::Granted {
             value: (),
             scopes: vec![api::server::OauthScope::Read, api::server::OauthScope::Write],
         }))
@@ -290,7 +290,7 @@ impl api::Api for Products {
     ) -> Answer<ops::get_product::Response> {
         self.keep(&p);
         let product = lamp_numbered(p.product_id)
-            .map_err(|e| api::ApiError::new(api::http::StatusCode::BAD_REQUEST, e.to_string()))?;
+            .map_err(|e| api::ApiError::new(honig::http::StatusCode::BAD_REQUEST, e.to_string()))?;
         Ok(ops::get_product::Response::Ok(product))
     }
 
@@ -377,7 +377,7 @@ fn the_server_decodes_the_form_the_client_encodes() {
         blob: Some(api::Binary::from(vec![0xde, 0xad])),
     };
     let sent = ops::submit_form::Params { body };
-    let got = api::block_on(served(&products).submit_form(sent.clone()));
+    let got = honig::block_on(served(&products).submit_form(sent.clone()));
     assert_eq!(got.ok(), Some(ops::submit_form::Response::NoContent));
     assert_eq!(products.last(), Some(sent));
 }
@@ -388,42 +388,42 @@ fn each_method_reaches_its_operation() {
     let products = std::sync::Arc::new(Products::default());
     let client = served(&products);
     assert_eq!(
-        api::block_on(client.get_product(ops::get_product::Params { product_id: 9 })).ok(),
+        honig::block_on(client.get_product(ops::get_product::Params { product_id: 9 })).ok(),
         Some(ops::get_product::Response::Ok(lamp_numbered(9).unwrap_or_else(|e| panic!("{e}"))))
     );
     assert_eq!(products.last(), Some(ops::get_product::Params { product_id: 9 }));
     assert_eq!(
-        api::block_on(client.put_product(ops::put_product::Params { product_id: 9 })).ok(),
+        honig::block_on(client.put_product(ops::put_product::Params { product_id: 9 })).ok(),
         Some(ops::put_product::Response::Ok)
     );
     assert_eq!(products.last(), Some(ops::put_product::Params { product_id: 9 }));
     assert_eq!(
-        api::block_on(client.delete_product(ops::delete_product::Params { product_id: 9 })).ok(),
+        honig::block_on(client.delete_product(ops::delete_product::Params { product_id: 9 })).ok(),
         Some(ops::delete_product::Response::NoContent)
     );
     assert_eq!(products.last(), Some(ops::delete_product::Params { product_id: 9 }));
     assert_eq!(
-        api::block_on(client.options_product(ops::options_product::Params { product_id: 9 })).ok(),
+        honig::block_on(client.options_product(ops::options_product::Params { product_id: 9 })).ok(),
         Some(ops::options_product::Response::Ok)
     );
     assert_eq!(products.last(), Some(ops::options_product::Params { product_id: 9 }));
     assert_eq!(
-        api::block_on(client.head_product(ops::head_product::Params { product_id: 9 })).ok(),
+        honig::block_on(client.head_product(ops::head_product::Params { product_id: 9 })).ok(),
         Some(ops::head_product::Response::Ok)
     );
     assert_eq!(products.last(), Some(ops::head_product::Params { product_id: 9 }));
     assert_eq!(
-        api::block_on(client.patch_product(ops::patch_product::Params { product_id: 9 })).ok(),
+        honig::block_on(client.patch_product(ops::patch_product::Params { product_id: 9 })).ok(),
         Some(ops::patch_product::Response::Ok)
     );
     assert_eq!(products.last(), Some(ops::patch_product::Params { product_id: 9 }));
     assert_eq!(
-        api::block_on(client.trace_product(ops::trace_product::Params { product_id: 9 })).ok(),
+        honig::block_on(client.trace_product(ops::trace_product::Params { product_id: 9 })).ok(),
         Some(ops::trace_product::Response::Ok)
     );
     assert_eq!(products.last(), Some(ops::trace_product::Params { product_id: 9 }));
     let copy = ops::copy_products::Params { x_trace: Some("01234567-89ab-4def-8123-456789abcdef".parse().unwrap()) };
-    assert_eq!(api::block_on(client.copy_products(copy.clone())).ok(), Some(ops::copy_products::Response::NoContent));
+    assert_eq!(honig::block_on(client.copy_products(copy.clone())).ok(), Some(ops::copy_products::Response::NoContent));
     assert_eq!(products.last(), Some(copy));
 }
 
@@ -441,7 +441,7 @@ fn the_event_names_an_additional_method() {
         .service(api::Server::new(Products::default()).into_service());
     let client = Client::new(service).with_oauth("t");
     let copy = ops::copy_products::Params { x_trace: None };
-    assert_eq!(api::block_on(client.copy_products(copy)).ok(), Some(ops::copy_products::Response::NoContent));
+    assert_eq!(honig::block_on(client.copy_products(copy)).ok(), Some(ops::copy_products::Response::NoContent));
     let events = events.lock().unwrap();
     assert_eq!(events.len(), 1);
     assert_eq!(events[0]["method"], "COPY");
@@ -467,7 +467,7 @@ fn list_products_answers_in_the_media_type_asked_for() {
             media,
             ..ops::list_products::Params::new()
         };
-        let got = api::block_on(client.list_products(sent.clone()));
+        let got = honig::block_on(client.list_products(sent.clone()));
         let want = ops::list_products::Response::Ok { body, x_next: Some("next".to_owned()), x_total: Some(1) };
         assert_eq!(got.ok(), Some(want), "{media:?}");
         assert_eq!(products.last(), Some(sent), "{media:?}");
@@ -490,7 +490,7 @@ fn create_product_reads_each_body_media_type() {
         ops::create_product::Body::Mixed(vec![part]),
     ] {
         let sent = ops::create_product::Params::new(body);
-        let got = api::block_on(client.create_product(sent.clone()));
+        let got = honig::block_on(client.create_product(sent.clone()));
         assert_eq!(got.ok(), Some(ops::create_product::Response::Created), "{sent:?}");
         assert_eq!(products.last(), Some(sent));
     }
@@ -506,14 +506,14 @@ fn query_and_event_stream_operations_round_trip() {
         ..ops::search_products::Params::new()
     };
     assert_eq!(
-        api::block_on(client.search_products(sent.clone())).ok(),
+        honig::block_on(client.search_products(sent.clone())).ok(),
         Some(ops::search_products::Response::Ok(vec![lamp()]))
     );
     assert_eq!(products.last(), Some(sent));
     let q = types::SearchQ { term: Some("lamp".to_owned()), page: Some(2), filters: None };
     let sent = ops::search::Params { q: Some(q) };
     let want = ops::search::Response::Ok(vec![types::SearchOkItem::new(types::SearchOkItemData(lamp()))].into());
-    assert_eq!(api::block_on(client.search(sent.clone())).ok(), Some(want));
+    assert_eq!(honig::block_on(client.search(sent.clone())).ok(), Some(want));
     assert_eq!(products.last(), Some(sent));
 }
 
@@ -523,7 +523,7 @@ fn a_blob_goes_to_its_own_server_and_back() {
     let products = std::sync::Arc::new(Products::default());
     let client = served(&products);
     let sent = ops::put_blob::Params::new("1".to_owned(), api::Blob::from(vec![1, 2, 3]));
-    let got = api::block_on(client.put_blob(ops::put_blob::Server::Regional, sent));
+    let got = honig::block_on(client.put_blob(ops::put_blob::Server::Regional, sent));
     let want = ops::put_blob::Response::Ok {
         body: vec![1, 2, 3].into(),
         x_size: Some(3),
@@ -569,7 +569,7 @@ proptest::proptest! {
 /// every nested checked type on the way.
 #[test]
 fn an_error_inside_a_checked_value_keeps_its_pointer() {
-    let pointer = |body: &[u8]| match api::runtime::json_decode::<types::ProductRequest>(Some(200), body) {
+    let pointer = |body: &[u8]| match honig::__private::json_decode::<types::ProductRequest>(Some(200), body) {
         Err(api::ClientError::Decode { pointer, .. }) => pointer,
         other => panic!("{other:?}"),
     };

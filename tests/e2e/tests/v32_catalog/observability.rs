@@ -76,7 +76,7 @@ fn a_request_continues_the_callers_trace() {
     .with_api_key("secret");
     let checkout = tracing::info_span!("checkout");
     let caller = trace_id(&checkout);
-    api::block_on(client.get_product(ops::get_product::Params::new(7)).instrument(checkout)).unwrap();
+    honig::block_on(client.get_product(ops::get_product::Params::new(7)).instrument(checkout)).unwrap();
     assert_eq!(*seen.lock().unwrap(), Some(caller));
 }
 
@@ -101,7 +101,7 @@ fn an_undeclared_path_under_axum_logs_an_event_through_the_fallback() {
     use tower::ServiceExt as _;
     let lines = Arc::new(Mutex::new(vec![]));
     let req = axum::http::Request::get("/nowhere").body(axum::body::Body::empty()).unwrap();
-    let resp = api::block_on(with_fallback(Arc::clone(&lines)).oneshot(req)).unwrap();
+    let resp = honig::block_on(with_fallback(Arc::clone(&lines)).oneshot(req)).unwrap();
     assert_eq!(resp.status(), 404);
     let lines = lines.lock().unwrap();
     let event: serde_json::Value = serde_json::from_str(&lines[0]).unwrap();
@@ -119,7 +119,7 @@ async fn the_event_holds_the_reason_of_a_refusal() {
     let server = api::Server::new(Catalog::default())
         .operation_layer(tower::filter::AsyncFilterLayer::new(|_: api::Request| {
             std::future::ready(Err::<api::Request, _>(api::ApiError::new(
-                api::http::StatusCode::UNAUTHORIZED,
+                honig::http::StatusCode::UNAUTHORIZED,
                 "expired session",
             )))
         }))

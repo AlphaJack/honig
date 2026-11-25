@@ -44,12 +44,12 @@ fn a_webhook_reaches_its_receiver_and_its_answer_comes_back() {
     let receiver = Arc::new(Receiver::default());
     let client = sender(&receiver, "newProduct");
     let lamp = types::Product { id: 1, name: "Lamp".to_owned() };
-    let got = api::block_on(
+    let got = honig::block_on(
         client.new_product("https://hooks.example/products", ops::new_product::Params::new(lamp.clone())),
     );
     assert_eq!(got.ok(), Some(ops::new_product::Response::Ok));
     let stop = types::Product { id: 2, name: "stop".to_owned() };
-    let got = api::block_on(
+    let got = honig::block_on(
         client.new_product("https://hooks.example/products", ops::new_product::Params::new(stop.clone())),
     );
     assert_eq!(got.ok(), Some(ops::new_product::Response::Gone), "410 is a declared answer, not an error");
@@ -62,7 +62,7 @@ fn a_callback_reaches_its_receiver() {
     let client = sender(&receiver, "onEvent");
     let event: types::Event = serde_json::from_value(serde_json::json!({"kind": "created"})).unwrap();
     let got =
-        api::block_on(client.subscribe_on_event_post(
+        honig::block_on(client.subscribe_on_event_post(
             "https://app.example/cb",
             ops::subscribe_on_event_post::Params::new(event.clone()),
         ));
@@ -76,13 +76,13 @@ fn a_callback_reaches_its_receiver() {
 fn a_webhook_server_reads_every_request_as_its_own_webhook() {
     let receiver = Arc::new(Receiver::default());
     let client = sender(&receiver, "onEvent");
-    let got = api::block_on(client.new_product(
+    let got = honig::block_on(client.new_product(
         "https://hooks.example/products",
         ops::new_product::Params::new(types::Product { id: 1, name: "Lamp".to_owned() }),
     ));
     assert_matches!(
         got,
-        Err(api::ClientError::UnexpectedStatus { status: api::http::StatusCode::BAD_REQUEST, .. }),
+        Err(api::ClientError::UnexpectedStatus { status: honig::http::StatusCode::BAD_REQUEST, .. }),
         "{got:?}"
     );
     assert!(receiver.products.lock().unwrap().is_empty() && receiver.events.lock().unwrap().is_empty());

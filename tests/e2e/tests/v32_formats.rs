@@ -192,7 +192,7 @@ fn every_format_round_trips_through_client_and_server() {
         above: Some(above),
         ..ops::get_event::Params::new(ID.parse().expect("a uuid"))
     };
-    let got = api::block_on(client.get_event(sent.clone()));
+    let got = honig::block_on(client.get_event(sent.clone()));
     assert_eq!(got.ok(), Some(ops::get_event::Response::Ok(full_event())));
     assert_eq!(events.0.lock().expect("lock").take(), Some(sent));
 }

@@ -29,11 +29,11 @@ fn types_rs(test: &str, jiff: bool) -> String {
 fn time_is_a_full_time_with_any_date_library() {
     for (test, jiff) in [("time-jiff", true), ("time-none", false)] {
         let t = types_rs(test, jiff);
-        assert!(t.contains("pub opens: runtime::FullTime"), "{test}: {t}");
+        assert!(t.contains("pub opens: ::honig::FullTime"), "{test}: {t}");
     }
 }
 
-/// A `format: decimal` number keeps its digits (`runtime::Decimal` decoded through the raw value of `serde_json`).
+/// A `format: decimal` number keeps its digits (`::honig::Decimal` decoded through the raw value of `serde_json`).
 /// There is nothing to warn about.
 #[test]
 fn a_decimal_number_keeps_its_digits() {
@@ -49,13 +49,13 @@ fn a_decimal_number_keeps_its_digits() {
     let (_, diags) = common::build("decimal-number", &doc, &[]);
     assert!(diags.is_empty(), "{diags:#?}");
     let t = types_rs_of("decimal-number-types", &doc);
-    assert!(t.contains("#[optional]\n        pub amount: runtime::Decimal"), "{t}");
+    assert!(t.contains("#[optional]\n        pub amount: ::honig::Decimal"), "{t}");
     // `decimal128` keeps its digits too, as a checked type bound to the limits of IEEE 754 decimal128.
     assert!(
-        t.contains("#[optional]\n        pub total: PriceTotal") && t.contains("runtime::check_decimal128("),
+        t.contains("#[optional]\n        pub total: PriceTotal") && t.contains("::honig::__private::check_decimal128("),
         "{t}"
     );
-    assert!(t.contains("#[optional]\n        pub label: runtime::DecimalStr"), "{t}");
+    assert!(t.contains("#[optional]\n        pub label: ::honig::DecimalStr"), "{t}");
 }
 
 fn types_rs_of(test: &str, doc: &serde_json::Value) -> String {
@@ -76,8 +76,8 @@ fn a_string_decimal_is_checked_text() {
     );
     let t = common::file(&common::generate("string-decimal", &doc, &crate::emit::Options::default()), "types.rs")
         .to_owned();
-    assert!(t.contains("pub amount: runtime::DecimalStr"), "{t}");
-    assert!(t.contains("pub wide: runtime::Decimal128Str"), "{t}");
+    assert!(t.contains("pub amount: ::honig::DecimalStr"), "{t}");
+    assert!(t.contains("pub wide: ::honig::Decimal128Str"), "{t}");
 }
 
 /// `date-time-local` and `time-local` (RFC 3339 without an offset) get the date library's civil types.
@@ -103,10 +103,10 @@ fn local_date_time_formats_use_the_date_library() {
     };
     let jiff = with(true, "local-jiff");
     assert!(
-        jiff.contains("pub starts: runtime::jiff::civil::DateTime")
-            && jiff.contains("pub ends: runtime::jiff::civil::Time")
+        jiff.contains("pub starts: ::honig::jiff::civil::DateTime")
+            && jiff.contains("pub ends: ::honig::jiff::civil::Time")
     );
-    assert!(with(false, "local-none").contains("pub starts: runtime::DateTimeLocalStr"));
+    assert!(with(false, "local-none").contains("pub starts: ::honig::DateTimeLocalStr"));
 }
 
 /// A `pattern` beside a format with a type of its own runs on the text that the value writes: the type keeps no text.
@@ -130,7 +130,10 @@ fn a_pattern_beside_a_typed_format_is_checked_on_its_text() {
     let path = common::write("pattern-format", &doc, &[]);
     let made = crate::generate::generate(&path, &opts).expect("a valid description generates");
     let types = common::file(&made.files, "types.rs").split_whitespace().collect::<String>();
-    assert!(types.contains("lettext=runtime::format_text(&value);runtime::check_pattern("), "{types}");
+    assert!(
+        types.contains("lettext=::honig::__private::format_text(&value);::honig::__private::check_pattern("),
+        "{types}"
+    );
     assert!(!made.diagnostics.iter().any(|d| d.pointer.ends_with("/pattern")), "{:#?}", made.diagnostics);
 }
 
@@ -155,7 +158,7 @@ fn a_named_type_holds_its_format_with_the_text_checked() {
         crate::emit::Options { rust: crate::emit::rust::Options { libs, ..Default::default() }, ..Default::default() };
     let t = common::file(&common::generate("named-format", &doc, &opts), "types.rs").to_owned();
     assert!(t.contains("pub placed: crate::Stamp"), "{t}");
-    assert!(t.contains("pub day: runtime::jiff::civil::Date"), "the other date formats keep the library: {t}");
+    assert!(t.contains("pub day: ::honig::jiff::civil::Date"), "the other date formats keep the library: {t}");
     assert!(t.contains("pub contact: Option<crate::Mail>"), "{t}");
     assert!(t.contains("format::DateTime") && t.contains("format::Email"), "each text is checked: {t}");
 }
