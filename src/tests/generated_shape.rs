@@ -2802,16 +2802,25 @@ fn a_tag_pinned_deep_in_all_of_is_seen_up_to_the_depth_limit() {
 }
 
 /// A union's variants take their names from their branches: a `$dynamicRef` from its target, a lone array branch is
-/// `Array`, and a branch that any value passes is the `Other` that the union has already.
+/// `Array` and several are named by their items, a short `enum` by its values, and branches that share a prefix by the
+/// rest. A branch that any value passes is the `Other` that the union has already.
 #[test]
 fn union_variants_take_the_names_of_their_branches() {
+    let product = |p: &str| json!({"type": "object", "required": [p], "properties": {p: {"type": "string"}}});
     let doc = common::spec(
         "3.2.0",
         &json!({}),
         &json!({"schemas": {
             "Product": {"$dynamicAnchor": "product", "type": "object", "properties": {"sku": {"type": "string"}}},
+            "ProductBook": product("isbn"),
+            "ProductGadget": product("serial"),
             "Line": {"oneOf": [{"$dynamicRef": "#/components/schemas/Product"}, {"type": "integer"}]},
             "Skus": {"oneOf": [{"type": "array", "items": {"type": "string"}}, {"type": "integer"}]},
+            "Shelf": {"oneOf": [{"type": "array", "items": {"type": "string"}, "minItems": 1},
+                {"type": "array", "items": {"$ref": "#/components/schemas/ProductBook"}, "minItems": 1}]},
+            "Size": {"oneOf": [{"type": "string", "enum": ["s", "m", "l"]}, {"type": "integer"}]},
+            "Grade": {"oneOf": [{"type": "string", "enum": ["a", "b", "c", "d"]}, {"type": "integer"}]},
+            "Item": {"oneOf": [{"$ref": "#/components/schemas/ProductBook"}, {"$ref": "#/components/schemas/ProductGadget"}]},
             "Note": {"oneOf": [{"type": "string"}, {"$comment": "any value"}]},
         }}),
     );
@@ -2820,7 +2829,58 @@ fn union_variants_take_the_names_of_their_branches() {
     assert!(types.contains("pub enum LineVariants {\n    Product(Product),"), "{types}");
     assert!(types.contains("pub enum Skus {\n    Array(Vec<String>),"), "{types}");
     assert!(
+        types.contains("    StringArray(ShelfStringArray),\n    ProductBookArray(ShelfProductBookArray),"),
+        "{types}"
+    );
+    assert!(types.contains("pub enum Size {\n    SOrMOrL(SizeSOrMOrL),"), "{types}");
+    assert!(types.contains("pub enum Grade {\n    Variant2(GradeVariant2),"), "more than three values: {types}");
+    assert!(types.contains("pub enum Item {\n    Book(ProductBook),\n    Gadget(ProductGadget),"), "{types}");
+    assert!(
         types.contains("pub enum NoteVariants {\n    String(String),\n    Other(serde_json::Value),\n}"),
         "{types}"
     );
+}
+
+/// A union whose branches pin one property is tagged by it only when each pins a value of its own. Two that pin the
+/// same value are told apart by their shapes.
+#[test]
+fn a_tag_that_two_branches_share_tells_nothing_apart() {
+    let pinned = |tag: &str, p: &str| json!({"type": "object", "required": ["kind", p], "properties": {"kind": {"const": tag}, p: {"type": "string"}}});
+    let doc = common::spec(
+        "3.2.0",
+        &json!({}),
+        &json!({"schemas": {"Item": {"oneOf": [pinned("book", "isbn"), pinned("book", "serial")]}}}),
+    );
+    let types =
+        common::file(&common::generate("shared-tag", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(types.contains("impl<'de> serde::Deserialize<'de> for Item {"), "{types}");
+}
+
+/// `required` beside a union applies to each branch: a property that a branch declares is required there.
+#[test]
+fn a_requirement_beside_a_union_reaches_each_branch() {
+    let branch = |p: &str| json!({"type": "object", "properties": {"isbn": {"type": "string"}, p: {"type": "string"}}});
+    let doc = common::spec(
+        "3.2.0",
+        &json!({}),
+        &json!({"schemas": {"Item": {"type": "object", "required": ["isbn"], "oneOf": [branch("title"), branch("serial")]}}}),
+    );
+    let types = common::file(&common::generate("required-beside", &doc, &crate::emit::Options::default()), "types.rs")
+        .to_owned();
+    assert!(types.contains("pub const fn new(isbn: String) -> Self {"), "{types}");
+}
+
+/// A read-only property is absent from requests, so its `default` is not filled in: the field stays optional.
+#[test]
+fn a_read_only_default_is_not_filled_in() {
+    let doc = common::spec(
+        "3.2.0",
+        &json!({}),
+        &json!({"schemas": {"Stock": {"type": "object",
+            "properties": {"count": {"type": "integer", "readOnly": true, "default": 3}}}}}),
+    );
+    let types =
+        common::file(&common::generate("read-only-default", &doc, &crate::emit::Options::default()), "types.rs")
+            .to_owned();
+    assert!(types.contains("        #[optional]\n        pub count: i64,"), "{types}");
 }
