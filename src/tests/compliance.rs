@@ -406,6 +406,48 @@ fn every_limit_beside_a_type_of_yours_is_checked() {
     }
 }
 
+/// What `unevaluatedProperties` sees is followed `MAX_SCHEMA_DEPTH` deep through every keyword that it evaluates
+/// (`allOf`, `anyOf`, `if`, `then`, `else`, `dependentSchemas`, `$ref`). Deeper, a warning says the schema is not checked.
+#[test]
+fn unevaluated_properties_past_the_depth_limit_warn_through_every_keyword() {
+    let wrap = |keyword: &str, x: Value| match keyword {
+        "if" => json!({"if": x}),
+        "then" => json!({"if": true, "then": x}),
+        "else" => json!({"if": true, "else": x}),
+        "dependentSchemas" => json!({"dependentSchemas": {"kind": x}}),
+        other => json!({other: [x]}),
+    };
+    let inner = json!({"properties": {"deep": {"type": "string"}}});
+    let mut cases: Vec<(&str, Value)> = ["allOf", "anyOf", "if", "then", "else", "dependentSchemas"]
+        .into_iter()
+        .map(|keyword| {
+            let nested = (0..9).fold(inner.clone(), |x, _| wrap(keyword, x));
+            let s = json!({"type": "object", "allOf": [nested], "unevaluatedProperties": false});
+            (keyword, json!({"schemas": {"S": s}}))
+        })
+        .collect();
+    let mut chain = serde_json::Map::new();
+    for i in 0..9 {
+        chain.insert(format!("R{i}"), json!({"$ref": format!("#/components/schemas/R{}", i + 1)}));
+    }
+    chain.insert("R9".into(), inner);
+    chain.insert(
+        "S".into(),
+        json!({"type": "object", "$ref": "#/components/schemas/R0", "unevaluatedProperties": false}),
+    );
+    cases.push(("$ref", json!({"schemas": chain})));
+    for (keyword, schemas) in cases {
+        let made = crate::generate::generate(
+            &common::write("deep-unevaluated", &doc(&json!({}), &schemas), &[]),
+            &Options::default(),
+        );
+        let made = made.expect("a valid description generates");
+        let warned =
+            made.diagnostics.iter().any(|d| d.message.contains("does not check this schema: unevaluatedProperties"));
+        assert!(warned, "{keyword}: {:#?}", made.diagnostics);
+    }
+}
+
 /// A link expression `$response.body#/idd` that reaches no property of the response body is always absent: a warning
 /// at the link. A pointer to a declared property needs none.
 #[test]
