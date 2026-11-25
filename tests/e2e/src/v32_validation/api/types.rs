@@ -453,8 +453,6 @@ runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
     pub struct Degenerate {
         #[optional]
-        pub never: DegenerateNever,
-        #[optional]
         pub huge: DegenerateHuge,
         #[optional]
         pub fives: DegenerateFives,
@@ -468,7 +466,6 @@ impl Degenerate {
     #[must_use]
     pub const fn new() -> Self {
         Self {
-            never: None,
             huge: None,
             fives: None,
             zero: None,
@@ -483,7 +480,6 @@ impl runtime::XmlShape for Degenerate {
             namespace: "",
             prefix: "",
             fields: &[
-                runtime::XmlField::new("never"),
                 runtime::XmlField::new("huge"),
                 runtime::XmlField::new("fives"),
                 runtime::XmlField::new("zero"),
@@ -675,40 +671,6 @@ impl WideByte {
     }
 }
 runtime::checked_num_impls!(WideByte, u8);
-#[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
-#[serde(transparent)]
-pub struct NoByte(pub(super) i8);
-impl TryFrom<i8> for NoByte {
-    type Error = runtime::BuildError;
-    fn try_from(value: i8) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                let got = value;
-                runtime::violation(
-                    out,
-                    &runtime::InstanceLocation::Root,
-                    format!(
-                        "`minimum: 1000` leaves no value of this integer type, not even {got}"
-                    ),
-                );
-            }
-        }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
-    }
-}
-impl NoByte {
-    /// Returns the value, or `None` when it breaks a limit. In a constant, `.expect(..)` on it makes a
-    /// literal outside the limits a build error.
-    #[must_use]
-    pub const fn new(_: i8) -> Option<Self> {
-        None
-    }
-}
-runtime::checked_num_impls!(NoByte, i8);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Tree {
     Variant2(TreeVariant2),
@@ -1878,40 +1840,6 @@ impl TryFrom<runtime::Decimal> for ExactCents {
     }
 }
 runtime::checked_decimal_impls!(ExactCents);
-#[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
-#[serde(transparent)]
-pub struct DegenerateNever(pub(super) u8);
-impl TryFrom<u8> for DegenerateNever {
-    type Error = runtime::BuildError;
-    fn try_from(value: u8) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                let got = value;
-                runtime::violation(
-                    out,
-                    &runtime::InstanceLocation::Root,
-                    format!(
-                        "`maximum: -1` leaves no value of this integer type, not even {got}"
-                    ),
-                );
-            }
-        }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
-    }
-}
-impl DegenerateNever {
-    /// Returns the value, or `None` when it breaks a limit. In a constant, `.expect(..)` on it makes a
-    /// literal outside the limits a build error.
-    #[must_use]
-    pub const fn new(_: u8) -> Option<Self> {
-        None
-    }
-}
-runtime::checked_num_impls!(DegenerateNever, u8);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct DegenerateHuge(pub(super) i64);
@@ -4588,8 +4516,7 @@ pub mod builders {
         fixed {}
     }
     runtime::typestate_builder! {
-        Degenerate => super::Degenerate; required {} optional { never(never) :
-        types::DegenerateNever = "never" => some, None, huge(huge) :
+        Degenerate => super::Degenerate; required {} optional { huge(huge) :
         types::DegenerateHuge = "huge" => some, None, fives(fives) :
         types::DegenerateFives = "fives" => some, None, zero(zero) :
         types::DegenerateZero = "zero" => some, None, half(half) : types::DegenerateHalf
