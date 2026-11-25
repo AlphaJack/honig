@@ -26,5 +26,8 @@ pub(crate) fn sleep(delay: std::time::Duration) -> impl Future<Output = ()> {
     gloo_timers::future::sleep(delay)
 }
 
-#[cfg(feature = "gloo-net")]
-pub use crate::client::adapters::gloo::GlooTransport;
+/// The transports of the browser: `GlooTransport` sends through `fetch`.
+pub mod browser {
+    #[cfg(feature = "gloo-net")]
+    pub use crate::client::adapters::gloo::GlooTransport;
+}
