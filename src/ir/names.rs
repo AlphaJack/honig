@@ -48,7 +48,7 @@ impl Name {
         Self(self.0.iter().chain(&more.0).cloned().collect())
     }
 
-    /// This name with `n` after its last word: the `n`th of a kind (`Pet2`).
+    /// This name with `n` after its last word: the `n`th of a kind (`Item2`).
     #[must_use]
     pub(crate) fn numbered(&self, n: usize) -> Self {
         let mut words = self.0.clone();
@@ -234,8 +234,8 @@ mod tests {
             Name::without_common_prefix(&names.iter().collect::<Vec<_>>())
                 .map(|n| n.iter().map(Name::key).collect::<Vec<_>>())
         };
-        assert_eq!(cut(&["petCat", "petDog"]), Some(vec!["Cat".to_owned(), "Dog".to_owned()]));
-        assert_eq!(cut(&["pet_1", "pet_2"]), None);
+        assert_eq!(cut(&["itemBook", "itemGadget"]), Some(vec!["Book".to_owned(), "Gadget".to_owned()]));
+        assert_eq!(cut(&["item_1", "item_2"]), None);
     }
 
     #[test]

@@ -892,22 +892,23 @@ mod tests {
     fn derives_and_overlays_are_read_in_order() {
         let configs = modules_of(
             "[package.metadata.honig.api]\ndescriptions = [\"a.yaml\"]\noverlays = [\"one.yaml\", \"fix/two.yaml\"]\n\
-             derives = { \"*\" = [\"Hash\"], Pet = [\"sqlx::FromRow\", \"Eq\"] }\n",
+             derives = { \"*\" = [\"Hash\"], Product = [\"sqlx::FromRow\", \"Eq\"] }\n",
         )
         .unwrap();
         let c = &configs[0];
         let derive = |k: &str, v: &[&str]| (k.to_owned(), v.iter().map(|s| (*s).to_owned()).collect::<Vec<_>>());
-        assert_eq!(c.derives, [derive("*", &["Hash"]), derive("Pet", &["sqlx::FromRow", "Eq"])]);
+        assert_eq!(c.derives, [derive("*", &["Hash"]), derive("Product", &["sqlx::FromRow", "Eq"])]);
         assert_eq!(c.overlay_paths(), [c.root.join("one.yaml"), c.root.join("fix").join("two.yaml")]);
     }
 
     #[test]
     fn a_derive_must_be_a_path() {
         for bad in ["\"\"", "\"not a path\"", "\"a::\"", "\"Hash\", 1"] {
-            let tables =
-                format!("[package.metadata.honig.api]\ndescriptions = [\"a.yaml\"]\nderives = {{ Pet = [{bad}] }}\n");
+            let tables = format!(
+                "[package.metadata.honig.api]\ndescriptions = [\"a.yaml\"]\nderives = {{ Product = [{bad}] }}\n"
+            );
             let err = modules_of(&tables).unwrap_err().to_string();
-            assert!(err.contains("derives") && err.contains("Pet"), "{bad}: {err}");
+            assert!(err.contains("derives") && err.contains("Product"), "{bad}: {err}");
         }
     }
 
