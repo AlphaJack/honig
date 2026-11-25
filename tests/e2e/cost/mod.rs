@@ -749,6 +749,11 @@ unsafe impl GlobalAlloc for Counting {
 #[global_allocator]
 static GLOBAL: Counting = Counting;
 
+/// The mutexes that honig makes for one request that a generated server answers: the slot of the request body
+/// and the `RequestEvent`. The baselines make none.
+#[allow(dead_code, reason = "the time bench does not count allocations")]
+pub const SERVER_LOCKS: u64 = 2;
+
 /// The allocations of a `std::sync::Mutex` on its first lock. Where std builds it on a pthread mutex (Apple targets)
 /// it boxes one: 1. Where it builds it on a futex (Linux, the CI) none: 0. honig makes a few per request.
 #[allow(dead_code, reason = "the time bench does not count allocations")]
