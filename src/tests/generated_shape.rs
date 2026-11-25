@@ -73,7 +73,7 @@ fn operations(test: &str) -> String {
 fn only_operations_with_their_own_servers_get_servers() {
     let ops = operations("shape-servers");
     let a = op_module(&ops, "a");
-    assert!(a.contains("pub const SERVERS: &[runtime::ServerUrl]") && a.contains("\"https://a.example.com\""), "{ops}");
+    assert!(a.contains("pub const SERVERS: &[::honig::ServerUrl]") && a.contains("\"https://a.example.com\""), "{ops}");
     assert!(!op_module(&ops, "b").contains("SERVERS"), "{ops}");
 }
 
@@ -87,7 +87,7 @@ fn a_handler_returns_its_operations_result() {
     );
     let files = common::generate("op-result", &doc, &crate::emit::Options::default());
     let ops = common::file(&files, "operations.rs");
-    assert!(ops.contains("pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;"), "{ops}");
+    assert!(ops.contains("pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;"), "{ops}");
     let server = common::file(&files, "server.rs");
     assert!(server.contains("Output = ops::a::Result>"), "{server}");
 }
@@ -101,9 +101,9 @@ fn format_strs_sit_beside_the_types() {
         common::file(&common::generate("format-strs", &doc, &crate::emit::Options::default()), "types.rs").to_owned()
     };
     let id = json!({"type": "object", "properties": {"id": {"type": "string", "format": "uuid"}}});
-    assert!(types(json!({"Item": id})).contains("pub use runtime::UuidStr;"));
+    assert!(types(json!({"Item": id})).contains("pub use ::honig::UuidStr;"));
     let own = types(json!({"Item": id, "UuidStr": {"type": "integer"}}));
-    assert!(!own.contains("pub use runtime::UuidStr"), "{own}");
+    assert!(!own.contains("pub use ::honig::UuidStr"), "{own}");
 }
 
 /// A `oneOf` branch that only lists `required` is counted by its names: no type of its own decodes the value.
@@ -129,8 +129,8 @@ fn twin_types_share_runtime_macros() {
     let types =
         common::file(&common::generate("twin-macros", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
     assert!(!types.contains("macro_rules!"), "{types}");
-    assert!(types.contains(r#"runtime::str_enum_impls!(Sort { A => "a", B => "b" });"#), "{types}");
-    assert!(types.contains("runtime::union_serialize!(B {"), "{types}");
+    assert!(types.contains(r#"::honig::str_enum_impls!(Sort { A => "a", B => "b" });"#), "{types}");
+    assert!(types.contains("::honig::union_serialize!(B {"), "{types}");
 }
 
 /// A struct with a required field has no `Default`: `Error { code, ..Default::default() }` would still compile after the
@@ -210,7 +210,7 @@ fn a_bounded_integer_has_a_const_constructor() {
     let types =
         common::file(&common::generate("const-literal", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
     let has = |name: &str| {
-        let (before, _) = types.split_once(&format!("runtime::checked_num_impls!({name},")).expect("the type");
+        let (before, _) = types.split_once(&format!("::honig::checked_num_impls!({name},")).expect("the type");
         before.rsplit_once("impl ").is_some_and(|(_, last)| {
             last.starts_with(&format!("{name} {{")) && last.contains("const fn new(value: i64) -> Option<Self>")
         })
@@ -260,7 +260,7 @@ fn an_oauth_helper_takes_the_scopes_of_its_scheme() {
 fn params_always_have_new_and_default_only_without_arguments() {
     let ops = operations("shape-default");
     let module = |op: &str| op_module(&ops, op);
-    let has_default = |op: &str| module(op).contains("runtime::default_from_new!(Params)");
+    let has_default = |op: &str| module(op).contains("::honig::default_from_new!(Params)");
     for op in ["a", "b", "c", "d", "e", "f"] {
         assert!(module(op).contains("fn new("), "{op} has new: {ops}");
         assert!(!module(op).contains("Default)]\n    pub struct Params"), "{op} derives no Default: {ops}");
@@ -532,7 +532,7 @@ fn another_http_scheme_keeps_its_spelling() {
     );
     let files = common::generate("shape-http-token", &doc, &crate::emit::Options::default());
     let ops = common::file(&files, "operations.rs");
-    assert!(ops.contains(r#"runtime::Scheme::Http("shop_token", "Token")"#), "{ops}");
+    assert!(ops.contains(r#"::honig::__private::Scheme::Http("shop_token", "Token")"#), "{ops}");
 }
 
 /// A required header of an error response is one that the server's own refusals cannot carry: a warning says so.
@@ -655,9 +655,9 @@ fn a_request_decodes_without_a_status() {
     );
     let files = common::generate("shape-request-status", &doc, &crate::emit::Options::default());
     let server = common::file(&files, "server.rs");
-    assert!(server.contains("runtime::json_decode(None, &body)"), "{server}");
+    assert!(server.contains("::honig::__private::json_decode(None, &body)"), "{server}");
     let client = common::file(&files, "client.rs");
-    assert!(client.contains("runtime::json_decode(Some(status), &body)"), "{client}");
+    assert!(client.contains("::honig::__private::json_decode(Some(status), &body)"), "{client}");
 }
 
 /// A crate that denies `clippy::allow_attributes` accepts the generated code: every `#[allow]` is an inner `#![allow]`,
@@ -723,7 +723,7 @@ fn a_text_error_body_is_filled() {
         .expect("generates");
     let server = common::file(&g.files, "server.rs");
     let compact: String = server.split_whitespace().collect();
-    assert!(compact.contains(r#"runtime::ProblemSchema{media:"text/plain",fields:&[],open:false,}"#), "{server}");
+    assert!(compact.contains(r#"::honig::ProblemSchema{media:"text/plain",fields:&[],open:false,}"#), "{server}");
     assert!(!g.diagnostics.iter().any(|d| d.message.contains("cannot fill")), "{:?}", g.diagnostics);
 }
 
@@ -821,7 +821,7 @@ fn structs_have_new_with_their_required_properties() {
     let flat = types.split_whitespace().collect::<String>();
     // Document order and not `required` order.
     assert!(flat.contains("pubconstfnnew(id:i64,name:String)->Self"), "{types}");
-    assert!(flat.contains("tag:None,note:runtime::Nullable::Absent,"), "{types}");
+    assert!(flat.contains("tag:None,note:::honig::Nullable::Absent,"), "{types}");
     assert!(flat.contains("additional_properties:std::collections::BTreeMap::new()"), "{types}");
     // A spec default is filled by its function: `const` for a number literal.
     assert!(flat.contains("pubconstfnnew()->Self{Self{size:Self::default_size()}}"), "{types}");
@@ -1062,10 +1062,12 @@ fn an_xml_field_names_only_what_differs() {
         .split_whitespace()
         .collect::<String>();
     assert!(
-        types.contains(r#"runtime::XmlField{attribute:true,required:true,..runtime::XmlField::new("id")}"#),
+        types.contains(
+            r#"::honig::__private::XmlField{attribute:true,required:true,..::honig::__private::XmlField::new("id")}"#
+        ),
         "{types}"
     );
-    assert!(types.contains(r#",runtime::XmlField::new("title"),"#), "{types}");
+    assert!(types.contains(r#",::honig::__private::XmlField::new("title"),"#), "{types}");
 }
 
 /// A server operation states only what differs from `Op::new`: an operation without security, body or ranges is the
@@ -1074,7 +1076,7 @@ fn an_xml_field_names_only_what_differs() {
 fn a_server_operation_names_only_what_differs() {
     let files = wide_binary("op-defaults", false);
     let server = common::file(&files, "server.rs").split_whitespace().collect::<String>();
-    assert!(server.contains("staticWIDE_OP:runtime::Op=runtime::Op{security:"), "{server}");
+    assert!(server.contains("staticWIDE_OP:::honig::__private::Op=::honig::__private::Op{security:"), "{server}");
     assert!(!server.contains("takes_body:false") && !server.contains("ranges:false"), "{server}");
 }
 
@@ -1156,7 +1158,7 @@ fn a_time_with_its_offset_is_a_full_time_with_any_date_library() {
     );
     let files = common::generate("shape-full-time", &doc, &crate::emit::Options::default());
     let types = common::file(&files, "types.rs");
-    assert!(types.contains("pub start: runtime::FullTime"), "{types}");
+    assert!(types.contains("pub start: ::honig::FullTime"), "{types}");
 }
 
 /// `dependentRequired` over properties that the struct declares is a check of its fields: no schema is checked whole.
@@ -1254,9 +1256,11 @@ fn a_range_check_names_its_bounds() {
     let types = common::file(&common::generate("named-bounds", &doc, &crate::emit::Options::default()), "types.rs")
         .split_whitespace()
         .collect::<String>();
-    assert!(types.contains("runtime::Bounds{max:Some(100),..runtime::Bounds::NONE}"), "{types}");
+    assert!(types.contains("::honig::__private::Bounds{max:Some(100),..::honig::__private::Bounds::NONE}"), "{types}");
     assert!(
-        types.contains("runtime::Bounds{min:Some(0.5),max:Some(2.0),exclusive_min:Some(0.0),exclusive_max:Some(3.0),}"),
+        types.contains(
+            "::honig::__private::Bounds{min:Some(0.5),max:Some(2.0),exclusive_min:Some(0.0),exclusive_max:Some(3.0),}"
+        ),
         "{types}"
     );
 }
@@ -1365,7 +1369,7 @@ fn required_unique_and_format_without_a_type_check_their_kind() {
     let types =
         common::file(&common::generate("typeless-required", &doc, &crate::emit::Options::default()), "types.rs")
             .to_owned();
-    assert!(types.contains("runtime::check_unique") && !types.contains("check_schema"), "{types}");
+    assert!(types.contains("::honig::__private::check_unique") && !types.contains("check_schema"), "{types}");
 }
 
 /// `patternProperties` beside declared properties is a map per pattern, of the type of its schema: each undeclared
@@ -1385,7 +1389,10 @@ fn pattern_properties_beside_properties_are_typed_maps() {
     let types = tags(x.clone(), n.clone());
     assert!(types.contains("pub pattern_1: std::collections::BTreeMap<String, TagsPattern1>,"), "{types}");
     assert!(types.contains("pub pattern_2: std::collections::BTreeMap<String, String>,"), "{types}");
-    assert!(types.contains("runtime::Closed") && !types.contains("runtime::pattern_matches("), "{types}");
+    assert!(
+        types.contains("::honig::__private::Closed") && !types.contains("::honig::__private::pattern_matches("),
+        "{types}"
+    );
     assert_eq!(types, tags(n, x));
 }
 
@@ -1415,7 +1422,7 @@ fn a_tuple_checks_each_item_against_its_schema() {
     let holder = json!({"type": "object", "properties": {"pair": pair}});
     let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Holder": holder}}));
     let types = common::file(&common::generate("tuple", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
-    assert!(types.contains("runtime::InstanceLocation::Index") && !types.contains("check_schema"), "{types}");
+    assert!(types.contains("::honig::InstanceLocation::Index") && !types.contains("check_schema"), "{types}");
 }
 
 /// `required` of an object without `properties` is a map that must have those names.
@@ -1425,7 +1432,7 @@ fn a_map_checks_the_names_it_requires() {
     let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Holder": holder}}));
     let types =
         common::file(&common::generate("map-required", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
-    assert!(types.contains("runtime::check_required") && types.contains("\"foo\""), "{types}");
+    assert!(types.contains("::honig::__private::check_required") && types.contains("\"foo\""), "{types}");
 }
 
 /// Keywords beside a `oneOf` apply to whichever branch matches: the value also decodes as their type. No schema is
@@ -1463,7 +1470,10 @@ fn values_that_no_scalar_type_holds_are_unit_types() {
     let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Sized": mixed}}));
     let types = common::file(&common::generate("untyped-values", &doc, &crate::emit::Options::default()), "types.rs")
         .to_owned();
-    assert!(types.contains("runtime::const_impls!(") && !types.contains("runtime::content_equal"), "{types}");
+    assert!(
+        types.contains("::honig::const_impls!(") && !types.contains("::honig::__private::content_equal"),
+        "{types}"
+    );
 }
 
 /// `unevaluatedProperties` refuses the names that the schema, what it applies in place and the branches that the value
@@ -1679,7 +1689,8 @@ fn false_and_implied_shapes_are_checked_by_types() {
         .to_owned();
     assert!(types.contains("no value is allowed here") && !types.contains("check_schema"), "{types}");
     // The names of the object that `named` accepts match its one pattern.
-    assert!(types.contains("runtime::check_pattern(") && types.contains(r#"runtime::Pattern::new("^a")"#), "{types}");
+    let flat: String = types.split_whitespace().collect();
+    assert!(flat.contains("::honig::__private::check_pattern(") && flat.contains(r#"Pattern::new("^a",)"#), "{types}");
     // Each item of `list` and each value of `map` decodes as its schema: two item checks besides those of `pair`, and
     // one key check besides the pattern of `named`, whose names its pattern alone judges.
     assert_eq!(types.matches("InstanceLocation::Index").count(), 4, "{types}");
@@ -1868,8 +1879,8 @@ fn subschema_checks_read_one_buffer() {
     );
     let types =
         common::file(&common::generate("one-buffer", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
-    assert_eq!(types.matches("runtime::checked_json!(").count(), 1, "{types}");
-    assert!(!types.contains("runtime::to_value(") && !types.contains(".clone())"), "{types}");
+    assert_eq!(types.matches("::honig::checked_json!(").count(), 1, "{types}");
+    assert!(!types.contains("::honig::__private::to_value(") && !types.contains(".clone())"), "{types}");
 }
 
 /// `contains` on a typed list counts the items of the buffer of the list: no item is written out as JSON again.
@@ -1881,7 +1892,7 @@ fn typed_contains_reads_the_buffer() {
     let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Holder": holder}}));
     let types = common::file(&common::generate("typed-contains", &doc, &crate::emit::Options::default()), "types.rs")
         .to_owned();
-    assert!(types.contains("item.matches::<") && !types.contains("runtime::to_value(item)"), "{types}");
+    assert!(types.contains("item.matches::<") && !types.contains("::honig::__private::to_value(item)"), "{types}");
 }
 
 /// A closed `prefixItems` tuple is a Rust tuple, which enforces its items by their types: a field of it, or of a list
@@ -1977,7 +1988,8 @@ fn a_response_arm_checks_its_media_in_one_call() {
     let files = wide_binary("shape-media-of", true);
     let client = common::file(&files, "client.rs").split_whitespace().collect::<String>();
     assert!(
-        client.contains(r#"runtime::check_media_of(&head,&body,&["application/json","application/xml"],)?;"#),
+        client
+            .contains(r#"::honig::__private::check_media_of(&head,&body,&["application/json","application/xml"],)?;"#),
         "{client}"
     );
     assert!(!client.contains("Some(&body)"), "{client}");
@@ -1997,8 +2009,8 @@ fn any_media_type_is_tried_last() {
     );
     let files = common::generate("shape-any-media-last", &doc, &crate::emit::Options::default());
     let client = common::file(&files, "client.rs");
-    assert!(client.contains(r#"runtime::media_matches(ct, "image/*")"#), "{client}");
-    assert!(!client.contains(r#"runtime::media_matches(ct, "*/*")"#), "{client}");
+    assert!(client.contains(r#"::honig::__private::media_matches(ct, "image/*")"#), "{client}");
+    assert!(!client.contains(r#"::honig::__private::media_matches(ct, "*/*")"#), "{client}");
     assert!(client.contains("Any("), "{client}");
 }
 
@@ -2120,7 +2132,7 @@ fn extra_derives_go_where_the_settings_say() {
         let types = common::file(&common::generate("shape-derives", &doc, &opts), "types.rs").to_owned();
         let of = |n: &str| {
             types
-                .split("runtime::object!")
+                .split("::honig::object!")
                 .find(|b| b.contains(&format!("pub struct {n} {{")))
                 .unwrap_or_default()
                 .to_owned()
@@ -2259,7 +2271,7 @@ fn implied_keywords_read_the_decoded_text() {
     let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"S": s}}));
     let types =
         common::file(&common::generate("implied-text", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
-    assert!(types.contains(", once);") && types.contains("runtime::Content::Str(text)"), "{types}");
+    assert!(types.contains(", once);") && types.contains("::honig::__private::Content::Str(text)"), "{types}");
     assert!(!types.contains("to_value(&value).unwrap_or_default()"), "{types}");
 }
 
@@ -2272,7 +2284,7 @@ fn a_checked_type_reads_json_text_once() {
     let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Item": item, "Holder": holder}}));
     let types =
         common::file(&common::generate("read-once", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
-    assert!(types.contains("runtime::checked_deserialize!(") && types.contains(", once);"), "{types}");
+    assert!(types.contains("::honig::checked_deserialize!(") && types.contains(", once);"), "{types}");
 }
 
 /// The impls that every enum and checked newtype shares come from honig: a module calls them and contains no
@@ -2293,13 +2305,13 @@ fn shared_impls_are_runtime_macros_and_not_copies() {
     let types = common::file(&files, "types.rs");
     assert!(!types.contains("macro_rules!"), "{types}");
     for call in [
-        r#"runtime::str_enum_impls!(Kind { A => "a", B => "b" })"#,
-        "runtime::int_enum_impls!(Level)",
-        "runtime::checked_str_impls!(Code)",
+        r#"::honig::str_enum_impls!(Kind { A => "a", B => "b" })"#,
+        "::honig::int_enum_impls!(Level)",
+        "::honig::checked_str_impls!(Code)",
     ] {
         assert!(types.contains(call), "{call} in {types}");
     }
-    assert!(types.contains("runtime::checked_num_impls!(Count, i64)"), "{types}");
+    assert!(types.contains("::honig::checked_num_impls!(Count, i64)"), "{types}");
 }
 
 /// An inferred tag is a property that every branch requires: a branch that leaves it out also accepts a value without
@@ -2316,7 +2328,7 @@ fn an_inferred_tag_is_a_required_property() {
         let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Pick": pick}}));
         let types = common::file(&common::generate("inferred-tag", &doc, &crate::emit::Options::default()), "types.rs")
             .to_owned();
-        types.contains("runtime::tagged_deserialize!(Pick")
+        types.contains("::honig::tagged_deserialize!(Pick")
     };
     assert!(tagged(true), "a required `kind` tags the union");
     assert!(!tagged(false), "a `kind` that may be absent does not");
@@ -2341,9 +2353,9 @@ fn twins_delegate_and_shared_impls_are_runtime_macros() {
     );
     let types = common::file(&common::generate("twins", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
     assert!(!types.contains("macro_rules!"), "{types}");
-    assert!(types.contains("runtime::checked_twin!(Other, Code, String)"), "{types}");
-    assert!(types.contains("runtime::tagged_deserialize!(PickVariants)"), "{types}");
-    assert!(types.contains("runtime::json_text_impls!(Text)"), "{types}");
+    assert!(types.contains("::honig::checked_twin!(Other, Code, String)"), "{types}");
+    assert!(types.contains("::honig::tagged_deserialize!(PickVariants)"), "{types}");
+    assert!(types.contains("::honig::json_text_impls!(Text)"), "{types}");
 }
 
 /// Two constants and two operations with the same responses share their impls through runtime macros: no file
@@ -2362,13 +2374,13 @@ fn constants_and_responses_share_runtime_macros() {
     let files = common::generate("shared-consts", &doc, &crate::emit::Options::default());
     let (types, ops) = (common::file(&files, "types.rs"), common::file(&files, "operations.rs"));
     assert!(!types.contains("macro_rules!") && !ops.contains("macro_rules!"), "{types}{ops}");
-    for call in ["runtime::const_impls!(A, VALUE)", "runtime::const_impls!(C)"] {
+    for call in ["::honig::const_impls!(A, VALUE)", "::honig::const_impls!(C)"] {
         assert!(types.contains(call), "{call} in {types}");
     }
-    assert!(ops.contains("runtime::response_error!(Response") && ops.contains("runtime::default_from_new!(Params)"));
+    assert!(ops.contains("::honig::response_error!(Response") && ops.contains("::honig::default_from_new!(Params)"));
 }
 
-/// An object type is one `runtime::object!` that prints as a struct: a marker picks the kind of a field, and no serde
+/// An object type is one `::honig::object!` that prints as a struct: a marker picks the kind of a field, and no serde
 /// attribute that its kind implies is written out.
 #[test]
 fn an_object_is_one_runtime_macro_with_a_field_per_line() {
@@ -2383,8 +2395,8 @@ fn an_object_is_one_runtime_macro_with_a_field_per_line() {
     );
     let files = common::generate("object-macro", &doc, &crate::emit::Options::default());
     let types = common::file(&files, "types.rs");
-    assert!(types.contains("runtime::object! {"), "{types}");
-    assert!(!types.contains("remote = \"Self\"") && !types.contains("runtime::not_null"), "{types}");
+    assert!(types.contains("::honig::object! {"), "{types}");
+    assert!(!types.contains("remote = \"Self\"") && !types.contains("::honig::__private::not_null"), "{types}");
     let fields = "        pub name: String,\n        #[optional]\n        pub count: i64,\n        #[nullable]\n        pub owner: String,\n";
     assert!(types.contains(fields), "one field per line: {types}");
 }
@@ -2431,17 +2443,22 @@ fn a_reorder_of_colliding_names_changes_nothing() {
     // (`field(setter) : Type = "wire"`) print wrapped and refer to the same fields as the struct.
     let pairs = |text: &str| {
         let mut out = Vec::new();
-        let (mut field, mut renamed) = ("", None::<&str>);
+        let (mut field, mut renamed, mut wrapped) = ("", None::<&str>, false);
         for l in text.lines().map(str::trim) {
             if let Some(r) = renamed.take() {
                 out.push(format!("{r} {l}"));
             }
-            if let Some((name, _)) = l.split_once(": runtime::") {
+            if let Some((name, _)) = l.split_once(": ::honig::") {
                 field = name;
             }
-            if let Some(name) = l.strip_prefix("if let Some(h) = runtime::encode_header(&") {
+            if let Some(name) = l.strip_prefix("if let Some(h) = ::honig::__private::encode_header(&") {
                 field = name;
             }
+            // A long call prints its arguments one per line: the field is the first.
+            if wrapped {
+                field = l.trim_start_matches('&').trim_end_matches(',');
+            }
+            wrapped = l.ends_with("encode_header(");
             if l.contains("rename =") {
                 renamed = Some(l);
             } else if (l.contains("=>") || l.contains("encode_query(")) && l.contains('"') && !l.contains(" : ") {
@@ -2567,4 +2584,38 @@ fn a_reorder_of_union_branches_keeps_their_names() {
     let first = items(false);
     assert!(first.iter().flatten().any(|l| l.contains("Variant4")), "{first:#?}");
     assert_eq!(first, items(true));
+}
+
+/// A generated module calls honig by its path: it has no `runtime.rs` and no `runtime::`. Its root re-exports the items
+/// of honig that the generated signatures refer to, and none that they do not.
+#[test]
+fn a_module_calls_honig_by_its_path() {
+    let ok = json!({"description": "ok", "content": {"application/json": {"schema": {"type": "string"}}}});
+    let paths = json!({"/a": {"get": {"operationId": "a", "responses": {"200": ok}}}});
+    let files =
+        common::generate("honig-path", &common::spec("3.2.0", &paths, &json!({})), &crate::emit::Options::default());
+    assert!(files.iter().all(|(name, text)| name != "runtime.rs" && !text.contains("runtime::")), "{files:#?}");
+    let root: String = common::file(&files, "mod.rs").split_whitespace().collect();
+    let listed = root.split_once("pubuse::honig::{").and_then(|(_, rest)| rest.split_once('}')).map(|(l, _)| l);
+    let listed: Vec<&str> = listed.unwrap_or_default().split(',').filter(|n| !n.is_empty()).collect();
+    assert!(listed.contains(&"ApiError") && !listed.contains(&"block_on"), "{root}");
+    for name in listed {
+        let used = files.iter().any(|(f, text)| f != "mod.rs" && text.contains(&format!("::honig::{name}")));
+        assert!(used, "`{name}` is re-exported but no generated file refers to it");
+    }
+}
+
+/// A module generated by an earlier version has a `runtime.rs`. Generating again removes it: no file refers to it.
+#[test]
+fn generating_removes_the_runtime_file_of_an_earlier_run() {
+    let dir = std::env::temp_dir().join(format!("honig-old-runtime-{}", std::process::id())).join("api");
+    let old = dir.join("runtime.rs");
+    crate::disk::write(&old, "// @generated by honig\npub use honig::*;\n").unwrap();
+    let files = common::generate(
+        "old-runtime",
+        &common::spec("3.2.0", &json!({}), &json!({})),
+        &crate::emit::Options::default(),
+    );
+    crate::disk::write_module(&dir, &dir.join("mod.rs"), &files).unwrap();
+    assert!(!crate::disk::is_file(&old) && crate::disk::is_file(&dir.join("mod.rs")));
 }

@@ -10,9 +10,9 @@ use std::sync::{Arc, Mutex};
 
 use e2e::v32_security::api::{
     self, operations as ops,
-    runtime::Operation as _,
     server::{OauthScope, OidcScope},
 };
+use honig::Operation as _;
 use proptest::prelude::*;
 
 /// What a handler saw of who is calling.
@@ -109,7 +109,7 @@ fn verdict(scheme: &str, creds: &Creds) -> Verdict {
 }
 
 /// The reference model: what the server answers `creds` on an operation with these requirements.
-fn expected(requirements: &[&[api::runtime::Requirement]], creds: &Creds) -> Outcome {
+fn expected(requirements: &[&[honig::__private::Requirement]], creds: &Creds) -> Outcome {
     if requirements.is_empty() {
         return Outcome::Ran(Seen::Public);
     }
@@ -170,10 +170,14 @@ impl Server {
         }
     }
 
-    fn scopes<S>(scheme: &str, request: &api::Request, from: fn(&str) -> Option<S>) -> Option<api::Granted<String, S>> {
+    fn scopes<S>(
+        scheme: &str,
+        request: &api::Request,
+        from: fn(&str) -> Option<S>,
+    ) -> Option<honig::Granted<String, S>> {
         match verdict(scheme, &creds_of(request)) {
             Verdict::Valid { value, scopes } => {
-                Some(api::Granted { value, scopes: scopes.into_iter().filter_map(from).collect() })
+                Some(honig::Granted { value, scopes: scopes.into_iter().filter_map(from).collect() })
             }
             Verdict::Absent | Verdict::Refused => None,
         }
@@ -193,10 +197,14 @@ impl api::Api for Server {
     async fn verify_bearer(&self, _: &str, request: &api::Request) -> Answer<Option<String>> {
         Ok(Self::check("bearer", request))
     }
-    async fn verify_oauth(&self, _: &str, request: &api::Request) -> Answer<Option<api::Granted<String, OauthScope>>> {
+    async fn verify_oauth(
+        &self,
+        _: &str,
+        request: &api::Request,
+    ) -> Answer<Option<honig::Granted<String, OauthScope>>> {
         Ok(Self::scopes("oauth", request, OauthScope::from_name))
     }
-    async fn verify_oidc(&self, _: &str, request: &api::Request) -> Answer<Option<api::Granted<String, OidcScope>>> {
+    async fn verify_oidc(&self, _: &str, request: &api::Request) -> Answer<Option<honig::Granted<String, OidcScope>>> {
         Ok(Self::scopes("oidc", request, OidcScope::from_name))
     }
     async fn verify_key(&self, _: &str, request: &api::Request) -> Answer<Option<String>> {
@@ -269,7 +277,7 @@ impl api::Api for Server {
         let subject = |value: &str| value.split_once(':').map(|(_, who)| who.to_owned());
         if subject(key) != subject(session) {
             return Err(api::ApiError::new(
-                api::http::StatusCode::UNAUTHORIZED,
+                honig::http::StatusCode::UNAUTHORIZED,
                 "the key and the session are of two callers",
             ));
         }
@@ -313,7 +321,7 @@ fn creds_of(request: &api::Request) -> Creds {
         Some(a) => match a.split_once(' ') {
             Some(("Bearer", t)) => Auth::Bearer(t),
             Some(("Basic", b)) => {
-                let bytes = api::runtime::unbase64(b).unwrap_or_default();
+                let bytes = honig::__private::unbase64(b).unwrap_or_default();
                 Auth::Basic(leak(&String::from_utf8(bytes).unwrap_or_default()))
             }
             _ => Auth::None,
@@ -347,14 +355,14 @@ const OPS: [(api::Operation, &str, &str); 9] = [
 /// Sends `creds` to the operation at `path` and returns what the server did.
 fn send(method: &'static str, path: &str, creds: &Creds) -> Outcome {
     let target = creds.query_key.map_or_else(|| path.to_owned(), |k| format!("{path}?key={k}"));
-    let mut req = api::runtime::new_request(method, target, vec![]).unwrap();
+    let mut req = honig::__private::new_request(method, target, vec![]).unwrap();
     let mut set = |name: &'static str, value: String| {
         req.headers_mut().append(name, honig::http::HeaderValue::try_from(value).unwrap());
     };
     match creds.auth {
         Auth::None => {}
         Auth::Bearer(t) => set("authorization", format!("Bearer {t}")),
-        Auth::Basic(login) => set("authorization", format!("Basic {}", api::runtime::base64(login.as_bytes()))),
+        Auth::Basic(login) => set("authorization", format!("Basic {}", honig::__private::base64(login.as_bytes()))),
     }
     if let Some(k) = creds.key {
         set("x-key", k.to_owned());
@@ -366,7 +374,7 @@ fn send(method: &'static str, path: &str, creds: &Creds) -> Outcome {
         set("x-client-verify", c.to_owned());
     }
     let server = Arc::new(Server::default());
-    let resp = api::block_on(api::Server::new(Arc::clone(&server)).into_service().handle(req));
+    let resp = honig::block_on(api::Server::new(Arc::clone(&server)).into_service().handle(req));
     let seen = server.seen.lock().unwrap().clone();
     match (resp.status().as_u16(), seen) {
         (204, Some(seen)) => Outcome::Ran(seen),
@@ -460,10 +468,10 @@ proptest! {
 /// the caller: an anonymous request reaches the handler as `Anonymous`.
 #[test]
 fn an_extension_of_a_scheme_type_is_not_the_caller() {
-    let mut req = api::runtime::new_request("GET", "/optional".to_owned(), vec![]).unwrap();
+    let mut req = honig::__private::new_request("GET", "/optional".to_owned(), vec![]).unwrap();
     req.extensions_mut().insert("request-id-123".to_owned());
     let server = Arc::new(Server::default());
-    let resp = api::block_on(api::Server::new(Arc::clone(&server)).into_service().handle(req));
+    let resp = honig::block_on(api::Server::new(Arc::clone(&server)).into_service().handle(req));
     assert_eq!(resp.status().as_u16(), 204);
     assert_eq!(server.seen.lock().unwrap().clone(), Some(Seen::Anonymous));
 }
@@ -473,7 +481,7 @@ fn an_extension_of_a_scheme_type_is_not_the_caller() {
 #[test]
 fn a_handler_gets_only_the_credentials_that_passed() {
     let read = |creds: Creds| {
-        let mut req = api::runtime::new_request("GET", "/read".to_owned(), vec![]).unwrap();
+        let mut req = honig::__private::new_request("GET", "/read".to_owned(), vec![]).unwrap();
         if let Auth::Bearer(t) = creds.auth {
             req.headers_mut()
                 .append("authorization", honig::http::HeaderValue::try_from(format!("Bearer {t}")).unwrap());
@@ -482,7 +490,7 @@ fn a_handler_gets_only_the_credentials_that_passed() {
             req.headers_mut().append("x-key", honig::http::HeaderValue::try_from(k).unwrap());
         }
         let server = Arc::new(Server::default());
-        let resp = api::block_on(api::Server::new(Arc::clone(&server)).into_service().handle(req));
+        let resp = honig::block_on(api::Server::new(Arc::clone(&server)).into_service().handle(req));
         let presented = server.presented.lock().unwrap().clone();
         (resp.status().as_u16(), presented)
     };
@@ -497,13 +505,13 @@ type Filter = std::future::Ready<Result<api::Request, api::ApiError>>;
 
 /// Anonymous callers of `/optional` get at most `limit` requests. A caller whose token passed is never limited: the
 /// layer runs after the server checked the credentials, so the alternative that passed is in the extensions. A real limiter keys the
-/// anonymous count by the client's address (`api::peer`) and a time window.
+/// anonymous count by the client's address (`honig::peer`) and a time window.
 fn limit_anonymous(limit: u32) -> tower::filter::AsyncFilterLayer<impl Fn(api::Request) -> Filter + Clone> {
     let used = Arc::new(std::sync::atomic::AtomicU32::new(0));
     tower::filter::AsyncFilterLayer::new(move |req: api::Request| {
         let signed_in = req.extensions().get::<api::Passed<api::server::SchemeValue<Server>>>().is_some();
         let over = !signed_in && used.fetch_add(1, std::sync::atomic::Ordering::Relaxed) >= limit;
-        let refusal = api::ApiError::new(api::http::StatusCode::TOO_MANY_REQUESTS, "sign in for more requests");
+        let refusal = api::ApiError::new(honig::http::StatusCode::TOO_MANY_REQUESTS, "sign in for more requests");
         std::future::ready(if over { Err(refusal) } else { Ok(req) })
     })
 }
@@ -513,12 +521,12 @@ fn limit_anonymous(limit: u32) -> tower::filter::AsyncFilterLayer<impl Fn(api::R
 fn anonymous_callers_are_limited_and_signed_in_ones_are_not() {
     let service = api::Server::new(Server::default()).operation_layer(limit_anonymous(2)).into_service();
     let get = |token: Option<&str>| {
-        let mut req = api::runtime::new_request("GET", "/optional".to_owned(), vec![]).unwrap();
+        let mut req = honig::__private::new_request("GET", "/optional".to_owned(), vec![]).unwrap();
         if let Some(t) = token {
             req.headers_mut()
                 .append("authorization", honig::http::HeaderValue::try_from(format!("Bearer {t}")).unwrap());
         }
-        api::block_on(service.handle(req)).status().as_u16()
+        honig::block_on(service.handle(req)).status().as_u16()
     };
     assert_eq!([get(None), get(None), get(None)], [204, 204, 429], "the third anonymous request is over the limit");
     assert_eq!([get(Some("b-ann")), get(Some("b-ann"))], [204, 204], "a signed-in caller is not counted");

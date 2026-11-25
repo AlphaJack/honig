@@ -3,11 +3,11 @@
     unused_imports,
     reason = "which of them the examples need depends on the description"
 )]
-use super::{runtime, types};
+use super::types;
 fn xml<T>(bad: &mut Vec<String>, at: &str, data: &str, text: &str)
 where
-    T: serde::de::DeserializeOwned + serde::Serialize + runtime::XmlShape + PartialEq
-        + std::fmt::Debug,
+    T: serde::de::DeserializeOwned + serde::Serialize + ::honig::__private::XmlShape
+        + PartialEq + std::fmt::Debug,
 {
     let want: T = match serde_json::from_str(data) {
         Ok(v) => v,
@@ -16,12 +16,12 @@ where
             return;
         }
     };
-    let decoded = runtime::xml_decode::<T>(None, text.as_bytes());
+    let decoded = ::honig::__private::xml_decode::<T>(None, text.as_bytes());
     if decoded.as_ref().ok() != Some(&want) {
         bad.push(format!("{at}: the XML decodes to {decoded:?}, not {want:?}"));
     }
-    let back = runtime::xml_encode(&want)
-        .and_then(|b| runtime::xml_decode::<T>(None, &b));
+    let back = ::honig::__private::xml_encode(&want)
+        .and_then(|b| ::honig::__private::xml_decode::<T>(None, &b));
     if back.as_ref().ok() != Some(&want) {
         bad.push(format!("{at}: encoded and decoded, it is {back:?}"));
     }

@@ -66,7 +66,7 @@ fn the_server_reads_a_part_sent_as_a_listed_type() {
         part_types: api::PartTypes::from([("icon", "image/jpeg")]),
         ..ops::put_icon::Params::new(body.clone())
     };
-    api::block_on(served(&store).put_icon(sent)).unwrap();
+    honig::block_on(served(&store).put_icon(sent)).unwrap();
     let got = store.icon.lock().unwrap().take().expect("handler ran");
     assert_eq!(got.body, body);
 }
@@ -76,7 +76,7 @@ fn the_server_reads_a_part_sent_as_a_listed_type() {
 fn a_base64_part_arrives_decoded() {
     let scan = types::UploadScanBody { label: Some("page 1".to_owned()), scan: api::Binary::from(vec![0, 1, 2, 0xFF]) };
     let store = Arc::new(Store::default());
-    api::block_on(served(&store).upload_scan(ops::upload_scan::Params::new(scan.clone()))).unwrap();
+    honig::block_on(served(&store).upload_scan(ops::upload_scan::Params::new(scan.clone()))).unwrap();
     assert_eq!(store.scan.lock().unwrap().take().map(|p| p.body), Some(scan));
 }
 
@@ -87,9 +87,9 @@ fn a_schemaless_form_reaches_the_handler_as_a_map() {
     let fields: std::collections::BTreeMap<String, serde_json::Value> =
         [("env".to_owned(), serde_json::json!("prod")), ("note".to_owned(), serde_json::json!("a b"))].into();
     let sent = ops::deploy::Params { body: Some(fields) };
-    api::block_on(served(&store).deploy(sent.clone())).unwrap();
+    honig::block_on(served(&store).deploy(sent.clone())).unwrap();
     assert_eq!(store.deploy.lock().unwrap().take(), Some(sent));
-    api::block_on(served(&store).deploy(ops::deploy::Params::new())).unwrap();
+    honig::block_on(served(&store).deploy(ops::deploy::Params::new())).unwrap();
     assert_eq!(store.deploy.lock().unwrap().take(), Some(ops::deploy::Params::new()));
 }
 
@@ -101,11 +101,12 @@ fn a_part_goes_out_as_the_listed_type_the_caller_picks() {
     let keep = sent.clone();
     let client = Client::new(support::loopback(move |req: api::Request| {
         *keep.lock().unwrap() = req.body().bytes().to_vec();
-        async { api::runtime::new_response(204) }
+        async { honig::__private::new_response(204) }
     }));
     let body = types::PutIconBody { name: None, icon: api::Binary::from(vec![0xFF, 0xD8, 0xFF]) };
-    let send =
-        |p: ops::put_icon::Params| api::block_on(client.put_icon(p)).map(|_| part_head(&sent.lock().unwrap(), "icon"));
+    let send = |p: ops::put_icon::Params| {
+        honig::block_on(client.put_icon(p)).map(|_| part_head(&sent.lock().unwrap(), "icon"))
+    };
     let first = send(ops::put_icon::Params::new(body.clone())).unwrap();
     assert!(first.contains("Content-Type: image/png"), "{first}");
     let jpeg = ops::put_icon::Params {
@@ -151,9 +152,9 @@ fn part_headers_travel_in_their_part() {
     let keep = sent.clone();
     let client = Client::new(support::loopback(move |req: api::Request| {
         *keep.lock().unwrap() = req.body().bytes().to_vec();
-        async { api::runtime::new_response(201) }
+        async { honig::__private::new_response(201) }
     }));
-    api::block_on(client.upload(params())).unwrap();
+    honig::block_on(client.upload(params())).unwrap();
     let body = sent.lock().unwrap().clone();
     let image = part_head(&body, "image");
     assert!(image.contains("X-Checksum: sha1-abcd"), "{image}");
@@ -170,7 +171,7 @@ fn server_decodes_part_headers() {
         let server = server.clone();
         async move { api::Server::new(std::sync::Arc::clone(&server)).into_service().handle(req).await }
     }));
-    api::block_on(client.upload(params())).unwrap();
+    honig::block_on(client.upload(params())).unwrap();
     let got = store.upload.lock().unwrap().take().expect("handler ran");
     assert_eq!(got.image_x_checksum, "sha1-abcd");
     assert_eq!(got.meta_x_revision, Some(7));
@@ -180,12 +181,12 @@ fn server_decodes_part_headers() {
 fn missing_required_part_header_is_rejected() {
     // The body as the client encodes it without any part header.
     let (ct, body) =
-        api::runtime::multipart_encode(&params().body, &[("image", "image/png"), ("meta", "application/json")])
+        honig::__private::multipart_encode(&params().body, &[("image", "image/png"), ("meta", "application/json")])
             .unwrap();
-    let mut req = api::runtime::new_request("POST", "/photos".to_owned(), vec![]).unwrap();
+    let mut req = honig::__private::new_request("POST", "/photos".to_owned(), vec![]).unwrap();
     req.headers_mut().insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::try_from(ct).unwrap());
     *req.body_mut() = honig::Body::from(body);
-    let resp = api::block_on(api::Server::new(Store::default()).into_service().handle(req));
+    let resp = honig::block_on(api::Server::new(Store::default()).into_service().handle(req));
     assert_eq!(resp.status().as_u16(), 400, "{}", String::from_utf8_lossy(resp.body().bytes()));
 }
 
@@ -195,9 +196,9 @@ fn a_multipart_part_nests_its_own_parts() {
     let keep = sent.clone();
     let client = Client::new(support::loopback(move |req: api::Request| {
         *keep.lock().unwrap() = req.body().bytes().to_vec();
-        async { api::runtime::new_response(201) }
+        async { honig::__private::new_response(201) }
     }));
-    api::block_on(client.upload(params())).unwrap();
+    honig::block_on(client.upload(params())).unwrap();
     let body = String::from_utf8_lossy(&sent.lock().unwrap()).into_owned();
     // `bundle` is one `multipart/mixed` part whose own parts follow the nested `encoding`.
     let bundle = part_head(body.as_bytes(), "bundle");
@@ -217,7 +218,7 @@ fn nested_parts_decode_back() {
         let server = server.clone();
         async move { api::Server::new(std::sync::Arc::clone(&server)).into_service().handle(req).await }
     }));
-    api::block_on(client.upload(params())).unwrap();
+    honig::block_on(client.upload(params())).unwrap();
     let got = store.upload.lock().unwrap().take().expect("handler ran");
     assert_eq!(got.body.bundle, params().body.bundle);
     assert_eq!(got.body.pages, params().body.pages);
@@ -230,10 +231,10 @@ fn a_base64_field_travels_transfer_encoded() {
     let keep = sent.clone();
     let client = Client::new(support::loopback(move |req: api::Request| {
         *keep.lock().unwrap() = req.body().bytes().to_vec();
-        async { api::runtime::new_response(204) }
+        async { honig::__private::new_response(204) }
     }));
     let body = types::UploadScanBody { label: None, scan: api::Binary::from(b"hello".to_vec()) };
-    api::block_on(client.upload_scan(ops::upload_scan::Params::new(body))).unwrap();
+    honig::block_on(client.upload_scan(ops::upload_scan::Params::new(body))).unwrap();
     let text = String::from_utf8_lossy(&sent.lock().unwrap()).into_owned();
     let scan = part_head(text.as_bytes(), "scan");
     assert!(scan.contains("Content-Transfer-Encoding: base64"), "{scan}");

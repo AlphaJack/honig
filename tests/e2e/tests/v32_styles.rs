@@ -83,7 +83,7 @@ macro_rules! row {
         fn $name() {
             let params = ops::$op::Params { color: $value };
             let want = format!("{:?}", params.color);
-            let resp = api::block_on(client().$op(params));
+            let resp = honig::block_on(client().$op(params));
             assert!(resp.is_ok(), "client call: {resp:?}");
             let (target, header, cookie) = WIRE.with(|w| w.borrow_mut().take()).expect("sent");
             let sent = match $at {
@@ -96,8 +96,8 @@ macro_rules! row {
 
             // The text of the spec sent as it is.
             let mut req = match $at {
-                At::Target => api::runtime::new_request("GET", $expect.to_owned(), vec![]).unwrap(),
-                At::Header | At::Cookie => api::runtime::new_request("GET", $path.to_owned(), vec![]).unwrap(),
+                At::Target => honig::__private::new_request("GET", $expect.to_owned(), vec![]).unwrap(),
+                At::Header | At::Cookie => honig::__private::new_request("GET", $path.to_owned(), vec![]).unwrap(),
             };
             match $at {
                 At::Header => {
@@ -108,7 +108,7 @@ macro_rules! row {
                 }
                 At::Target => {}
             }
-            let status = api::block_on(api::Server::new(Server).into_service().handle(req)).status().as_u16();
+            let status = honig::block_on(api::Server::new(Server).into_service().handle(req)).status().as_u16();
             assert_eq!(status, 204, "server rejected the spec's serialization `{}`", $expect);
             assert_eq!(SEEN.with(|s| s.borrow_mut().take()).as_deref(), Some(want.as_str()), "server decoded the spec's");
         }
@@ -152,8 +152,8 @@ row!(cookie_true_object, cookie_to, obj(), At::Cookie, "/cookie-t-o", "R=100; G=
 #[test]
 fn a_value_that_does_not_decode_in_its_style_is_refused() {
     for target in ["/form-f-o?color=R,100,G", "/simple-f-o/R,100,G", "/label-t-o/.R=100.G", "/matrix-f-s/;color=%FF"] {
-        let req = api::runtime::new_request("GET", target.to_owned(), vec![]).unwrap();
-        let status = api::block_on(api::Server::new(Server).into_service().handle(req)).status().as_u16();
+        let req = honig::__private::new_request("GET", target.to_owned(), vec![]).unwrap();
+        let status = honig::block_on(api::Server::new(Server).into_service().handle(req)).status().as_u16();
         assert_eq!(status, 400, "{target}");
     }
 }
@@ -162,8 +162,8 @@ fn a_value_that_does_not_decode_in_its_style_is_refused() {
 #[test]
 fn a_query_that_is_not_utf8_is_refused() {
     for target in ["/form-t-a?color=%FF", "/simple-f-a/blue?x=%C3"] {
-        let req = api::runtime::new_request("GET", target.to_owned(), vec![]).unwrap();
-        let status = api::block_on(api::Server::new(Server).into_service().handle(req)).status().as_u16();
+        let req = honig::__private::new_request("GET", target.to_owned(), vec![]).unwrap();
+        let status = honig::block_on(api::Server::new(Server).into_service().handle(req)).status().as_u16();
         assert_eq!(status, 400, "{target}");
     }
 }

@@ -3,7 +3,7 @@
     unused_imports,
     reason = "which of them the examples need depends on the description"
 )]
-use super::{runtime, types};
+use super::types;
 fn value<T: serde::de::DeserializeOwned>(bad: &mut Vec<String>, at: &str, text: &str) {
     if let Err(e) = serde_json::from_str::<T>(text) {
         bad.push(format!("{at}: {e}"));
@@ -14,7 +14,9 @@ fn param<T: serde::de::DeserializeOwned>(
     at: &'static str,
     text: &str,
 ) {
-    if let Err(e) = runtime::from_param::<T>(serde_json::from_str(text).ok(), at) {
+    if let Err(e) = ::honig::__private::from_param::<
+        T,
+    >(serde_json::from_str(text).ok(), at) {
         bad.push(e.to_string());
     }
 }

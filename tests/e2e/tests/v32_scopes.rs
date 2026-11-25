@@ -22,7 +22,7 @@ impl api::Api for Server {
         &self,
         token: &str,
         _: &api::Request,
-    ) -> Result<Option<api::Granted<(), PatScope>>, api::ApiError> {
+    ) -> Result<Option<honig::Granted<(), PatScope>>, api::ApiError> {
         if token == "bad" {
             return Ok(None);
         }
@@ -34,7 +34,7 @@ impl api::Api for Server {
                 _ => None,
             })
             .collect();
-        Ok(Some(api::Granted { value: (), scopes }))
+        Ok(Some(honig::Granted { value: (), scopes }))
     }
     // ANCHOR_END: scopes
 
@@ -62,11 +62,11 @@ impl api::Api for Server {
 }
 
 fn answer(api: impl api::Api, method: &'static str, path: &str, token: Option<&str>) -> api::Response {
-    let mut req = api::runtime::new_request(method, path.to_owned(), vec![]).unwrap();
+    let mut req = honig::__private::new_request(method, path.to_owned(), vec![]).unwrap();
     if let Some(t) = token {
         req.headers_mut().append("authorization", honig::http::HeaderValue::try_from(format!("Bearer {t}")).unwrap());
     }
-    api::block_on(api::Server::new(api).into_service().handle(req))
+    honig::block_on(api::Server::new(api).into_service().handle(req))
 }
 
 fn send(method: &'static str, path: &str, token: Option<&str>) -> u16 {
@@ -129,9 +129,9 @@ impl api::Api for Named {
         &self,
         token: &str,
         _: &api::Request,
-    ) -> Result<Option<api::Granted<String, PatScope>>, api::ApiError> {
+    ) -> Result<Option<honig::Granted<String, PatScope>>, api::ApiError> {
         let scopes = vec![PatScope::IssuesRead, PatScope::IssuesWrite];
-        Ok((token != "anon").then(|| api::Granted { value: token.to_owned(), scopes }))
+        Ok((token != "anon").then(|| honig::Granted { value: token.to_owned(), scopes }))
     }
 
     fn list_issues(
@@ -173,8 +173,12 @@ struct Revoked;
 
 impl api::Api for Revoked {
     type Pat = ();
-    async fn verify_pat(&self, _: &str, _: &api::Request) -> Result<Option<api::Granted<(), PatScope>>, api::ApiError> {
-        Ok(Some(api::Granted { value: (), scopes: vec![PatScope::IssuesRead, PatScope::IssuesWrite] }))
+    async fn verify_pat(
+        &self,
+        _: &str,
+        _: &api::Request,
+    ) -> Result<Option<honig::Granted<(), PatScope>>, api::ApiError> {
+        Ok(Some(honig::Granted { value: (), scopes: vec![PatScope::IssuesRead, PatScope::IssuesWrite] }))
     }
 
     fn list_issues(
@@ -182,7 +186,7 @@ impl api::Api for Revoked {
         _: ops::list_issues::Params,
         _: &api::Context<'_, ops::list_issues::Security<Self>>,
     ) -> impl Future<Output = Result<ops::list_issues::Response, api::ApiError>> + Send {
-        std::future::ready(Err(api::ApiError::new(api::http::StatusCode::UNAUTHORIZED, "the token was revoked")))
+        std::future::ready(Err(api::ApiError::new(honig::http::StatusCode::UNAUTHORIZED, "the token was revoked")))
     }
     fn create_issue(
         &self,
@@ -228,9 +232,9 @@ fn with_request_id(rejection: api::Rejection) -> api::Response {
 #[test]
 fn a_problem_carries_the_request_id_as_instance() {
     let service = api::Server::new(Server).error_response(with_request_id).into_service();
-    let mut req = api::runtime::new_request("GET", "/issues".to_owned(), vec![]).unwrap();
+    let mut req = honig::__private::new_request("GET", "/issues".to_owned(), vec![]).unwrap();
     req.headers_mut().append("x-request-id", honig::http::HeaderValue::from_static("7f3a"));
-    let resp = api::block_on(service.handle(req));
+    let resp = honig::block_on(service.handle(req));
     assert_eq!(resp.status().as_u16(), 401);
     let body: serde_json::Value = serde_json::from_slice(resp.body().bytes()).unwrap();
     assert_eq!(body["instance"], "urn:request:7f3a");

@@ -7,8 +7,7 @@ use quote::{format_ident, quote};
 
 use super::shared::{Boxing, VariantShape};
 use super::shared::{
-    blob, body_ty, boxed, boxing, content_ty, eq_derive, param_init, server_url, spec_default, status_code,
-    variant_shape,
+    body_ty, boxed, boxing, content_ty, eq_derive, param_init, server_url, spec_default, status_code, variant_shape,
 };
 use crate::emit::rust::names::{off_prelude, pascal, snake};
 use crate::emit::rust::space::Space;
@@ -58,7 +57,7 @@ fn types_import(needed: bool) -> Option<TokenStream> {
 fn responses_mod(space: &Space<'_>, ops: &[Operation]) -> Option<TokenStream> {
     let mut seen = BTreeSet::new();
     let mut items = vec![];
-    let (mut uses_types, mut uses_runtime) = (false, false);
+    let mut uses_types = false;
     let mut shapes: Vec<(String, String)> = vec![];
     for op in ops {
         let bx = boxing(space, op);
@@ -79,18 +78,14 @@ fn responses_mod(space: &Space<'_>, ops: &[Operation]) -> Option<TokenStream> {
             }
             shapes.push((key, shared.clone()));
             uses_types |= r.contents.iter().any(|c| mentions(&c.ty).0);
-            // A sequential or binary body is a honig type.
-            uses_runtime |= r.contents.iter().any(|c| mentions(&c.ty).1 || c.streams() || blob(c));
             items.push(content_enum(space, &shared, &r.contents, &bx.resp_enums[i]));
         }
     }
     let types_import = types_import(uses_types);
-    let runtime_import = runtime_import(uses_runtime);
     (!items.is_empty()).then(|| {
         quote! {
             pub mod responses {
                 #types_import
-                #runtime_import
                 #(#items)*
             }
         }
@@ -151,15 +146,6 @@ pub(crate) fn tags_mod(api: &Api) -> Option<TokenStream> {
     })
 }
 
-/// Returns `use super::super::runtime;` for a module of an operation that refers to honig.
-fn runtime_import(uses: bool) -> Option<TokenStream> {
-    uses.then(|| {
-        quote!(
-            use super::super::runtime;
-        )
-    })
-}
-
 /// Returns `pub mod <operation>` with constants, `Params`, `Response` and body enums.
 pub(crate) fn operation_mod(
     api: &Api,
@@ -178,9 +164,6 @@ pub(crate) fn operation_mod(
     }
     response_enum(&mut items, space, op, &bx);
     items.extend(serves.then(|| super::server::security_enum(api, op)).flatten());
-    // `Params`, the bodies and the responses refer to honig when they need one of its types or helpers. The links
-    // and callbacks below import it for themselves.
-    let uses_runtime = quote!(#(#items)*).to_string().contains("runtime ::");
     items.extend(links_mod(api, space, op));
     items.extend(callbacks_mod(api, op));
     // Imports follow from the types used and not from a scan of the text.
@@ -194,14 +177,12 @@ pub(crate) fn operation_mod(
         );
     let (uses_types, _) = all_tys.map(mentions).fold((false, false), |a, b| (a.0 || b.0, a.1 || b.1));
     let types_import = types_import(uses_types);
-    let runtime_import = runtime_import(uses_runtime);
     let doc = doc_opt(op.doc.as_deref());
     let name = snake_ident(&op.name);
     quote! {
         #doc
         pub mod #name {
             #types_import
-            #runtime_import
             #(#items)*
         }
     }
@@ -241,7 +222,7 @@ pub(crate) enum LinkInput {
     Constant,
     Request,
     Body,
-    /// `runtime::Exchange`: `$url`, `$method`, `$statusCode`, headers and bodies.
+    /// `::honig::Exchange`: `$url`, `$method`, `$statusCode`, headers and bodies.
     Exchange,
 }
 
@@ -279,7 +260,7 @@ pub(crate) fn template_source(op: &Operation, text: &str, body: bool) -> (TokenS
         })
         .collect();
     let literals = literals.iter().map(|l| lit(l));
-    (quote!(runtime::template(&[#(#literals),*], vec![#(#values),*])), inputs)
+    (quote!(::honig::__private::template(&[#(#literals),*], vec![#(#values),*])), inputs)
 }
 
 /// Splits a runtime expression template into literals and the expressions
@@ -303,7 +284,7 @@ pub(crate) fn split_template(text: &str) -> (Vec<String>, Vec<String>) {
 
 /// Returns one runtime expression. `$request.{path,query,header,cookie}.x` comes from the
 /// `Params` of the operation. `$response.body` comes from `body` (when in scope).
-/// Everything else comes from the `runtime::Exchange`.
+/// Everything else comes from the `::honig::Exchange`.
 pub(crate) fn expression_source(op: &Operation, text: &str, body: bool) -> (TokenStream, LinkInput) {
     if body && let Some(rest) = text.strip_prefix("$response.body") {
         let ptr = lit(rest.strip_prefix('#').unwrap_or(""));
@@ -331,23 +312,19 @@ pub(crate) struct LinkFields<'a> {
     pub(crate) inputs: BTreeSet<LinkInput>,
     pub(crate) tys: Vec<&'a Ty>,
     pub(crate) uses_types: bool,
-    pub(crate) uses_runtime: bool,
 }
 
 impl<'a> LinkFields<'a> {
     /// Adds `pub <field>: Option<<inner>>` evaluated from `expr`.
     fn add(&mut self, space: &Space<'_>, op: &Operation, field: &str, inner: &'a Ty, expr: &serde_json::Value) {
         self.tys.push(inner);
-        let (named, binary) = mentions(inner);
-        self.uses_types |= named;
-        self.uses_runtime |= binary;
+        self.uses_types |= mentions(inner).0;
         let (f, t) = (ident(field), ty(space, inner, true));
         self.fields.push(quote!(pub #f: Option<#t>,));
         // A string that contains a number or bool (`'0'`) also fills a typed parameter.
         let (src, inputs) = link_source(op, expr);
         self.inputs.extend(inputs);
-        self.uses_runtime = true;
-        self.inits.push(quote!(#f: (#src).and_then(runtime::link_value),));
+        self.inits.push(quote!(#f: (#src).and_then(::honig::__private::link_value),));
     }
 }
 
@@ -386,10 +363,10 @@ pub(crate) fn link_struct<'a>(
         quote! {
             #[must_use]
             pub fn new(request: &super::Params, body: &serde_json::Value) -> Self {
-                Self::from_exchange(request, body, &runtime::Exchange::default())
+                Self::from_exchange(request, body, &::honig::Exchange::default())
             }
             #[must_use]
-            pub fn from_exchange(#request: &super::Params, #body: &serde_json::Value, exchange: &runtime::Exchange<'_>) -> Self {
+            pub fn from_exchange(#request: &super::Params, #body: &serde_json::Value, exchange: &::honig::Exchange<'_>) -> Self {
                 Self { #(#inits)* }
             }
         }
@@ -418,7 +395,7 @@ pub(crate) fn link_struct<'a>(
 pub(crate) fn links_mod(api: &Api, space: &Space<'_>, op: &Operation) -> Option<TokenStream> {
     let mut taken = BTreeSet::new();
     let mut structs = vec![];
-    let (mut uses_types, mut uses_runtime) = (false, false);
+    let mut uses_types = false;
     for r in &op.responses {
         for l in &r.links {
             let Some(target) = link_target(api, &l.target) else { continue };
@@ -426,7 +403,6 @@ pub(crate) fn links_mod(api: &Api, space: &Space<'_>, op: &Operation) -> Option<
             let mut f = LinkFields::default();
             structs.push(link_struct(space, op, l, target, &name, &mut f));
             uses_types |= f.uses_types;
-            uses_runtime |= f.uses_runtime;
         }
     }
     let types_import = uses_types.then(|| {
@@ -434,16 +410,10 @@ pub(crate) fn links_mod(api: &Api, space: &Space<'_>, op: &Operation) -> Option<
             use super::super::super::types;
         )
     });
-    let runtime_import = uses_runtime.then(|| {
-        quote!(
-            use super::super::super::runtime;
-        )
-    });
     (!structs.is_empty()).then(|| {
         quote! {
             pub mod links {
                 #types_import
-                #runtime_import
                 #(#structs)*
             }
         }
@@ -468,15 +438,14 @@ pub(crate) fn callbacks_mod(api: &Api, op: &Operation) -> Option<TokenStream> {
         let exchange = ident(if inputs.contains(&LinkInput::Exchange) { "exchange" } else { "_exchange" });
         fns.push(quote! {
             #[must_use]
-            pub fn #f(#request: &super::Params, #exchange: &runtime::Exchange<'_>) -> Option<String> {
-                #src.map(runtime::value_text)
+            pub fn #f(#request: &super::Params, #exchange: &::honig::Exchange<'_>) -> Option<String> {
+                #src.map(::honig::__private::value_text)
             }
         });
     }
     (!fns.is_empty()).then(|| {
         quote! {
             pub mod callbacks {
-                use super::super::super::runtime;
                 #(#fns)*
             }
         }
@@ -515,7 +484,7 @@ pub(crate) fn params_new(space: &Space<'_>, op: &Operation) -> TokenStream {
         .then(|| quote!(#![allow(clippy::too_many_arguments, reason = "one argument per required parameter")]));
     // Every other field starts as `None`: nothing to evaluate at run time.
     let constness = op.params.iter().filter(|p| !is_arg(p)).all(|p| const_default(space, p)).then(|| quote!(const));
-    let default = (count == 0).then(|| quote!(runtime::default_from_new!(Params);));
+    let default = (count == 0).then(|| quote!(::honig::default_from_new!(Params);));
     quote! {
         impl Params {
             #[must_use]
@@ -557,7 +526,7 @@ fn params_new_is_safe(space: &Space<'_>, op: &Operation) -> bool {
     types.len() == count
 }
 
-/// Returns `builders::Params`: each parameter by name through `runtime::typestate_builder!`, with `Params::builder()`.
+/// Returns `builders::Params`: each parameter by name through `::honig::typestate_builder!`, with `Params::builder()`.
 /// An operation without parameters or body has none.
 pub(crate) fn params_builder(space: &Space<'_>, op: &Operation) -> Option<TokenStream> {
     if op.params.is_empty() && op.body.is_none() {
@@ -596,7 +565,7 @@ pub(crate) fn params_builder(space: &Space<'_>, op: &Operation) -> Option<TokenS
     }
     let mut fixed: Vec<TokenStream> = Vec::new();
     if crate::emit::rust::http::shared::chooses_part_types(op) {
-        fixed.push(quote!(part_types: runtime::PartTypes::new()));
+        fixed.push(quote!(part_types: ::honig::PartTypes::new()));
     }
     if crate::emit::rust::http::shared::chooses_media(op) {
         fixed.push(quote!(media: super::Media::ALL[0]));
@@ -606,8 +575,7 @@ pub(crate) fn params_builder(space: &Space<'_>, op: &Operation) -> Option<TokenS
     Some(quote! {
         pub mod builders {
             #types_import
-            use super::runtime;
-            runtime::typestate_builder! {
+            ::honig::typestate_builder! {
                 Params => super::Params;
                 required { #(#required),* }
                 optional { #(#optional),* }
@@ -642,7 +610,7 @@ pub(crate) fn params_struct(space: &Space<'_>, op: &Operation, conveniences: boo
     let servers = (!op.servers.is_empty()).then(|| {
         let urls = op.servers.iter().map(server_url);
         quote! {
-            pub const SERVERS: &[runtime::ServerUrl] = &[#(#urls),*];
+            pub const SERVERS: &[::honig::ServerUrl] = &[#(#urls),*];
         }
     });
     let server_enum = (op.servers.len() > 1).then(|| {
@@ -656,7 +624,7 @@ pub(crate) fn params_struct(space: &Space<'_>, op: &Operation, conveniences: boo
             pub enum Server { #(#docs #names,)* }
             impl Server {
                 #[must_use]
-                pub const fn url(self) -> runtime::ServerUrl {
+                pub const fn url(self) -> ::honig::ServerUrl {
                     match self { #(Self::#names => #urls,)* }
                 }
             }
@@ -763,7 +731,7 @@ pub(crate) fn response_enum(items: &mut Vec<TokenStream>, space: &Space<'_>, op:
     });
     items.push(quote! {
         /// What the handler of this operation returns: its `Response`, or an error that the server answers.
-        pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
+        pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     });
     for r in op.responses.iter().filter(|r| status_code(r).is_none()) {
         let (name, doc) = (
@@ -775,7 +743,7 @@ pub(crate) fn response_enum(items: &mut Vec<TokenStream>, space: &Space<'_>, op:
             let c = proc_macro2::Literal::u16_unsuffixed(c);
             quote!(#v = #c)
         });
-        items.push(quote!(runtime::status_enum!(#[doc = #doc] #name { #(#variants),* });));
+        items.push(quote!(::honig::status_enum!(#[doc = #doc] #name { #(#variants),* });));
     }
     items.push(response_error(op));
     items.extend(into_result(space, op, bx));
@@ -824,7 +792,7 @@ fn response_error(op: &Operation) -> TokenStream {
             }
         }
     });
-    quote!(runtime::response_error!(Response { #(#arms)* });)
+    quote!(::honig::response_error!(Response { #(#arms)* });)
 }
 
 /// A response of an operation and its index among the responses.

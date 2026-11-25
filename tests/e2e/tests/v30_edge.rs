@@ -80,28 +80,28 @@ impl api::Api for Seen {
         if let Ok(mut s) = self.0.lock() {
             *s = Some(p.limit.get());
         }
-        std::future::ready(Err(api::ApiError::new(api::http::StatusCode::IM_A_TEAPOT, "seen")))
+        std::future::ready(Err(api::ApiError::new(honig::http::StatusCode::IM_A_TEAPOT, "seen")))
     }
     fn create_order(
         &self,
         _: ops::create_order::Params,
         _: &api::Context<'_, ops::create_order::Security<Self>>,
     ) -> impl Future<Output = Result<ops::create_order::Response, api::ApiError>> + Send {
-        std::future::ready(Err(api::ApiError::new(api::http::StatusCode::IM_A_TEAPOT, "seen")))
+        std::future::ready(Err(api::ApiError::new(honig::http::StatusCode::IM_A_TEAPOT, "seen")))
     }
     fn get_order(
         &self,
         _: ops::get_order::Params,
         _: &api::Context<'_, ops::get_order::Security<Self>>,
     ) -> impl Future<Output = Result<ops::get_order::Response, api::ApiError>> + Send {
-        std::future::ready(Err(api::ApiError::new(api::http::StatusCode::NOT_IMPLEMENTED, "not used by this test")))
+        std::future::ready(Err(api::ApiError::new(honig::http::StatusCode::NOT_IMPLEMENTED, "not used by this test")))
     }
     fn upload_document(
         &self,
         _: ops::upload_document::Params,
         _: &api::Context<'_, ops::upload_document::Security<Self>>,
     ) -> impl Future<Output = Result<ops::upload_document::Response, api::ApiError>> + Send {
-        std::future::ready(Err(api::ApiError::new(api::http::StatusCode::NOT_IMPLEMENTED, "not used by this test")))
+        std::future::ready(Err(api::ApiError::new(honig::http::StatusCode::NOT_IMPLEMENTED, "not used by this test")))
     }
     fn cookie_form_fa(
         &self,
@@ -143,13 +143,13 @@ fn a_cookie_with_explode_false_joins_its_items_with_commas() {
     let (client, sent) = cookie_client();
     let colors = ["blue", "black", "brown"].map(String::from).to_vec();
     let want = format!("{colors:?}");
-    api::block_on(client.cookie_form_fa(ops::cookie_form_fa::Params { color: colors })).expect("204");
+    honig::block_on(client.cookie_form_fa(ops::cookie_form_fa::Params { color: colors })).expect("204");
     assert_eq!(sent.lock().unwrap().take().as_deref(), Some("color=blue,black,brown"));
     assert_eq!(COOKIE.with(|c| c.borrow_mut().take()), Some(want), "the server decodes what the client wrote");
 
     let rgb: types::CookieFormFoColor = serde_json::from_value(json!({"R": 100, "G": 200, "B": 150})).expect("R, G, B");
     let want = format!("{rgb:?}");
-    api::block_on(client.cookie_form_fo(ops::cookie_form_fo::Params { color: rgb })).expect("204");
+    honig::block_on(client.cookie_form_fo(ops::cookie_form_fo::Params { color: rgb })).expect("204");
     assert_eq!(sent.lock().unwrap().take().as_deref(), Some("color=R,100,G,200,B,150"));
     assert_eq!(COOKIE.with(|c| c.borrow_mut().take()), Some(want), "the server decodes what the client wrote");
 }
@@ -157,9 +157,9 @@ fn a_cookie_with_explode_false_joins_its_items_with_commas() {
 #[test]
 fn the_server_applies_parameter_defaults() {
     let seen = std::sync::Arc::new(Seen::default());
-    let mut req = api::runtime::new_request("GET", "/orders".to_owned(), vec![]).unwrap();
+    let mut req = honig::__private::new_request("GET", "/orders".to_owned(), vec![]).unwrap();
     req.headers_mut().append("authorization", honig::http::HeaderValue::try_from("Bearer t".to_owned()).unwrap());
-    api::block_on(api::Server::new(std::sync::Arc::clone(&seen)).into_service().handle(req));
+    honig::block_on(api::Server::new(std::sync::Arc::clone(&seen)).into_service().handle(req));
     assert_eq!(*seen.0.lock().unwrap(), Some(20));
 }
 
@@ -177,23 +177,23 @@ fn the_client_leaves_out_a_parameter_at_its_default() {
             limit: limit.try_into().expect("a valid limit"),
             ..ops::list_orders::Params::default()
         };
-        drop(api::block_on(client.list_orders(params)));
+        drop(honig::block_on(client.list_orders(params)));
     }
     // An enum default too.
     let params =
         ops::list_orders::Params { sort: types::ListOrdersSort::Oldest, ..ops::list_orders::Params::default() };
-    drop(api::block_on(client.list_orders(params)));
+    drop(honig::block_on(client.list_orders(params)));
     // `limit: 20` and `sort: newest` are the defaults: the same as leaving them out, which some servers require.
     assert_eq!(*sent.lock().unwrap(), ["/orders", "/orders?limit=5", "/orders?sort=oldest"]);
 }
 
 fn create_order(body: &serde_json::Value) -> u16 {
-    let mut req = api::runtime::new_request("POST", "/orders".to_owned(), vec![]).unwrap();
+    let mut req = honig::__private::new_request("POST", "/orders".to_owned(), vec![]).unwrap();
     req.headers_mut().append("authorization", honig::http::HeaderValue::try_from("Bearer t".to_owned()).unwrap());
     req.headers_mut()
         .insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::from_static("application/json"));
     *req.body_mut() = honig::Body::from(serde_json::to_vec(body).unwrap());
-    api::runtime::block_on(api::Server::new(Seen::default()).into_service().handle(req)).status().as_u16()
+    honig::block_on(api::Server::new(Seen::default()).into_service().handle(req)).status().as_u16()
 }
 
 #[test]
@@ -222,7 +222,7 @@ fn a_branch_that_takes_any_value_lets_any_value_through() {
 #[test]
 fn rejections_use_the_described_error_schema() {
     let seen = std::sync::Arc::new(Seen::default());
-    let mut req = api::runtime::new_request("POST", "/orders".to_owned(), vec![]).unwrap();
+    let mut req = honig::__private::new_request("POST", "/orders".to_owned(), vec![]).unwrap();
     req.headers_mut().append("authorization", honig::http::HeaderValue::try_from("Bearer t".to_owned()).unwrap());
     req.headers_mut()
         .insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::from_static("application/json"));
@@ -232,7 +232,7 @@ fn rejections_use_the_described_error_schema() {
         )
         .unwrap(),
     );
-    let r = api::block_on(api::Server::new(std::sync::Arc::clone(&seen)).into_service().handle(req));
+    let r = honig::block_on(api::Server::new(std::sync::Arc::clone(&seen)).into_service().handle(req));
     assert_eq!(
         (r.status().as_u16(), r.headers().get("content-type").map_or("", |v| v.to_str().unwrap_or(""))),
         (400, "application/problem+json")

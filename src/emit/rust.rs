@@ -48,10 +48,10 @@ pub(crate) fn warnings(api: &Api, opts: &super::Options) -> Vec<crate::diag::Dia
 /// Every file of a generated module and what it contains. The book lists them on its Generated module page, and its
 /// test checks the list against a generated module.
 #[cfg(test)]
-pub(crate) const FILES: [(&str, &str); 7] = [
+pub(crate) const FILES: [(&str, &str); 6] = [
     (
         "mod.rs",
-        "The root of the module, or `<output>.rs` with `mod_rs = false`. It declares the other files and re-exports the client, the server and honig.",
+        "The root of the module, or `<output>.rs` with `mod_rs = false`. It declares the other files and re-exports the client, the server and the items of honig that the generated signatures refer to.",
     ),
     ("types.rs", "The schemas of the description as Rust types: structs, enums and newtypes."),
     ("operations.rs", "One module per operation with its `Params`, its `Response` enum and their body types."),
@@ -60,7 +60,6 @@ pub(crate) const FILES: [(&str, &str); 7] = [
         "The `Client` with one method per operation, and the `WebhookClient` when the description has webhooks.",
     ),
     ("server.rs", "The `Api` trait with one method per operation, the router and the `Server` of this API."),
-    ("runtime.rs", "honig items that the generated code calls, re-exported from `honig`."),
     (
         "documented_examples.rs",
         "With `tests = true`: a test that decodes each example of the description into its type.",
@@ -186,8 +185,8 @@ pub(crate) fn trees(api: &Api, opts: &super::Options) -> Trees {
     let space = Space::new(types, &opts.rust.libs);
     let space = &space;
     let examples = opts.tests.then(|| http::tests(api, space)).flatten();
-    let mut trees = vec![("mod.rs", root(api, opts, examples.is_some()))];
-    trees.push(("types.rs", types::emit(api, space, opts)));
+    let root = root(api, opts, examples.is_some());
+    let mut trees = vec![("types.rs", types::emit(api, space, opts))];
     trees.push(("operations.rs", http::operations(api, space, opts)));
     if opts.client {
         trees.push(("client.rs", http::client(api, space, opts)));
@@ -198,10 +197,48 @@ pub(crate) fn trees(api: &Api, opts: &super::Options) -> Trees {
     if let Some(examples) = examples {
         trees.push(("documented_examples.rs", examples));
     }
+    let library = library_names(&trees, &root);
+    let reexport = (!library.is_empty()).then(|| quote!(pub use ::honig::{#(#library),*};));
+    trees.insert(0, ("mod.rs", quote!(#root #reexport)));
     Trees { files: trees }
 }
 
-/// Prints the files of `trees` as Rust source, with `runtime.rs` first. `binary`: for a binary crate.
+/// Returns the names of honig that `trees` refer to by `::honig::<name>` and that `root` does not declare: the library
+/// items that your code meets in the generated signatures. Macros and the hidden `__private` stay out.
+fn library_names(trees: &[(&str, TokenStream)], root: &TokenStream) -> Vec<proc_macro2::Ident> {
+    use proc_macro2::TokenTree;
+    use std::collections::BTreeSet;
+    /// Adds to `used` each name after `honig ::` and to `own` every identifier of `ts`.
+    fn walk(ts: TokenStream, used: &mut BTreeSet<String>, own: &mut BTreeSet<String>) {
+        let tokens: Vec<TokenTree> = ts.into_iter().collect();
+        for (i, t) in tokens.iter().enumerate() {
+            match t {
+                TokenTree::Group(g) => walk(g.stream(), used, own),
+                TokenTree::Ident(id) => {
+                    own.insert(id.to_string());
+                }
+                TokenTree::Punct(_) | TokenTree::Literal(_) => {}
+            }
+            if let Some(
+                [TokenTree::Ident(h), TokenTree::Punct(_), TokenTree::Punct(_), TokenTree::Ident(id), rest @ ..],
+            ) = tokens.get(i..)
+                && h == "honig"
+                && id != "__private"
+                && !matches!(rest.first(), Some(TokenTree::Punct(p)) if p.as_char() == '!')
+            {
+                used.insert(id.to_string());
+            }
+        }
+    }
+    let (mut used, mut declared) = (BTreeSet::new(), BTreeSet::new());
+    for (_, tokens) in trees {
+        walk(tokens.clone(), &mut used, &mut BTreeSet::new());
+    }
+    walk(root.clone(), &mut BTreeSet::new(), &mut declared);
+    used.difference(&declared).map(|n| syntax::ident(n)).collect()
+}
+
+/// Prints the files of `trees` as Rust source. `binary`: for a binary crate.
 ///
 /// # Errors
 /// Tokens that do not form a Rust file. That is a bug in the generator. The message points to it.
@@ -213,8 +250,6 @@ pub(crate) fn print(trees: Trees, binary: bool) -> Result<Vec<(String, String)>,
         let code = syntax::print(name, tokens, binary)?;
         files.push((name.to_owned(), format!("{header}{code}")));
     }
-    let runtime = runtime_reexport(binary)?;
-    files.insert(0, ("runtime.rs".to_owned(), format!("{header}{runtime}")));
     Ok(files)
 }
 
@@ -263,12 +298,11 @@ fn root(api: &Api, opts: &super::Options, tests: bool) -> TokenStream {
         quote! { #[rustfmt::skip] pub mod server; #[rustfmt::skip] pub use server::Api; #typed #extra }
     });
     let test_mod = tests.then(|| quote! { #[cfg(test)] #[rustfmt::skip] mod documented_examples; });
-    // The API of honig at the root of the module. Your code refers to `api::Context` as it refers to
-    // `api::types`. A binary may refer to none of it there (only through `runtime::`). rustc reports that as an unused
-    // import. `runtime` is what generated code calls: hidden, so that each item has one path in the docs of your crate.
-    let runtime_crate = syntax::ident("honig");
+    // The root re-exports the items of honig that the generated signatures refer to (`trees`), so your code refers to
+    // `api::ApiError` as it refers to `api::types`. A binary may refer to none of them there: rustc reports that as an
+    // unused import.
     let unused = opts.rust.binary.then(
-        || quote!(#![allow(unused_imports, reason = "a binary may refer to honig's items only through `runtime`, and the client or the server by its path")]),
+        || quote!(#![allow(unused_imports, reason = "a binary may refer to honig's items by their path in honig, and the client or the server by its path")]),
     );
     // The `#![allow]`s of `syntax::file_allow`, each with its reason, apply to every file of the module. Otherwise the
     // code passes strict clippy and rustdoc lint sets.
@@ -283,10 +317,6 @@ fn root(api: &Api, opts: &super::Options, tests: bool) -> TokenStream {
         #unused
         #[rustfmt::skip]
         pub mod operations;
-        #[doc(hidden)]
-        #[rustfmt::skip]
-        pub mod runtime;
-        pub use #runtime_crate::*;
         #[rustfmt::skip]
         pub mod types;
         #client
@@ -297,11 +327,4 @@ fn root(api: &Api, opts: &super::Options, tests: bool) -> TokenStream {
 
 fn one_line(s: &str) -> String {
     s.replace(['\n', '\r', '`'], " ")
-}
-
-/// Returns the generated `runtime.rs`: its docs and honig's items.
-fn runtime_reexport(binary: bool) -> Result<String, Error> {
-    let runtime = syntax::ident("honig");
-    let reexport = quote!(pub use #runtime::*; #[doc(hidden)] pub use #runtime::__private::*;);
-    syntax::print("runtime.rs", reexport, binary)
 }

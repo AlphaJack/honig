@@ -35,7 +35,7 @@ impl Catalog {
     fn products(&self) -> Result<MutexGuard<'_, Vec<types::Product>>, api::ApiError> {
         self.0
             .lock()
-            .map_err(|_| api::ApiError::new(api::http::StatusCode::INTERNAL_SERVER_ERROR, "catalog lock poisoned"))
+            .map_err(|_| api::ApiError::new(honig::http::StatusCode::INTERNAL_SERVER_ERROR, "catalog lock poisoned"))
     }
 }
 

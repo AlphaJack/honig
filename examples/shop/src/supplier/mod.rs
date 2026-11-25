@@ -19,13 +19,10 @@
 )]
 #[rustfmt::skip]
 pub mod operations;
-#[doc(hidden)]
-#[rustfmt::skip]
-pub mod runtime;
-pub use honig::*;
 #[rustfmt::skip]
 pub mod types;
 #[rustfmt::skip]
 pub mod client;
 #[rustfmt::skip]
 pub use client::Client;
+pub use ::honig::{ApiError, ClientError, Message, Nullable, ServerUrl, Transport, send};

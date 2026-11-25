@@ -23,8 +23,8 @@ async fn serve_with_hyper(listener: tokio::net::TcpListener) -> std::io::Result<
 // ANCHOR: ureq
 /// The blocking client. `block_on` returns once the response is received with no async runtime.
 fn list_products(base_url: &str) -> Result<ops::list_products::Response, api::ClientError> {
-    let client = api::Client::new(api::UreqTransport::new(base_url).expect("a base URL")).with_api_key("secret");
-    api::block_on(client.list_products(ops::list_products::Params::new()))
+    let client = api::Client::new(honig::UreqTransport::new(base_url).expect("a base URL")).with_api_key("secret");
+    honig::block_on(client.list_products(ops::list_products::Params::new()))
 }
 // ANCHOR_END: ureq
 
@@ -63,7 +63,7 @@ impl<M: reqwest_middleware::Middleware> reqwest_middleware::Middleware for Idemp
 /// A client that keeps an in-memory HTTP cache and revalidates with `If-None-Match`. It retries transient failures
 /// (a lost connection, 5xx, 429) of idempotent requests with exponential backoff. It is a `reqwest-middleware` stack
 /// sent through `ReqwestMiddlewareTransport`.
-fn retrying(base_url: &str) -> api::Client<api::ReqwestMiddlewareTransport> {
+fn retrying(base_url: &str) -> api::Client<honig::ReqwestMiddlewareTransport> {
     use http_cache_reqwest::{Cache, CacheMode, HttpCache, HttpCacheOptions, MokaManager};
     let policy = reqwest_retry::policies::ExponentialBackoff::builder().build_with_max_retries(3);
     let cache =
@@ -72,7 +72,7 @@ fn retrying(base_url: &str) -> api::Client<api::ReqwestMiddlewareTransport> {
         .with(Cache(cache))
         .with(IdempotentOnly(reqwest_retry::RetryTransientMiddleware::new_with_policy(policy)))
         .build();
-    api::Client::new(api::ReqwestMiddlewareTransport::with_client(stack, base_url).expect("a base URL"))
+    api::Client::new(honig::ReqwestMiddlewareTransport::with_client(stack, base_url).expect("a base URL"))
         .with_api_key("secret")
 }
 // ANCHOR_END: retry
@@ -84,7 +84,7 @@ async fn the_client_retries_until_the_server_answers() {
         .operation_layer(tower::filter::AsyncFilterLayer::new(move |req: api::Request| {
             let fail = failures.fetch_sub(1, std::sync::atomic::Ordering::Relaxed) > 0;
             std::future::ready(if fail {
-                Err(api::ApiError::new(api::http::StatusCode::SERVICE_UNAVAILABLE, "starting up"))
+                Err(api::ApiError::new(honig::http::StatusCode::SERVICE_UNAVAILABLE, "starting up"))
             } else {
                 Ok(req)
             })
@@ -105,7 +105,7 @@ async fn the_client_sends_a_failed_post_once() {
         .operation_layer(tower::filter::AsyncFilterLayer::new(move |_: api::Request| {
             seen.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             std::future::ready(Err::<api::Request, _>(api::ApiError::new(
-                api::http::StatusCode::SERVICE_UNAVAILABLE,
+                honig::http::StatusCode::SERVICE_UNAVAILABLE,
                 "starting up",
             )))
         }))
@@ -142,7 +142,7 @@ async fn the_in_memory_client_reaches_the_server() {
 fn with_request_id(transport: impl api::Transport) -> impl api::Transport {
     tower::ServiceBuilder::new()
         .map_request(|mut req: api::Request| {
-            req.headers_mut().insert("x-request-id", api::http::HeaderValue::from_static("req-1"));
+            req.headers_mut().insert("x-request-id", honig::http::HeaderValue::from_static("req-1"));
             req
         })
         .service(transport)

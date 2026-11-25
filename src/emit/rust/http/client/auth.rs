@@ -92,14 +92,14 @@ pub(crate) fn device_methods(api: &Api) -> Vec<TokenStream> {
         let (sp, sa) = scopes(api, s);
         Some(quote! {
             #dep
-            pub async fn #start(&self, client_id: &str, #sp) -> Result<runtime::DeviceCode, runtime::ClientError> {
-                runtime::device_authorization(&self.transport, #durl, client_id, #sa).await
+            pub async fn #start(&self, client_id: &str, #sp) -> Result<::honig::DeviceCode, ::honig::ClientError> {
+                ::honig::__private::device_authorization(&self.transport, #durl, client_id, #sa).await
             }
 
             #dep
-            pub async fn #poll(&mut self, client_id: &str, code: &runtime::DeviceCode) -> Result<runtime::DevicePoll, runtime::ClientError> {
-                let poll = runtime::device_token(&self.transport, #turl, client_id, &code.device_code).await?;
-                if let runtime::DevicePoll::Ready(token) = &poll {
+            pub async fn #poll(&mut self, client_id: &str, code: &::honig::DeviceCode) -> Result<::honig::DevicePoll, ::honig::ClientError> {
+                let poll = ::honig::__private::device_token(&self.transport, #turl, client_id, &code.device_code).await?;
+                if let ::honig::DevicePoll::Ready(token) = &poll {
                     self.credentials.insert(#name.to_owned(), token.access_token.clone());
                 }
                 Ok(poll)
@@ -125,8 +125,8 @@ pub(crate) fn oauth_methods(api: &Api) -> (Vec<TokenStream>, Vec<TokenStream>) {
             let (f, url) = (format_ident!("authorize_password_{snake}"), lit(url));
             out.push(quote! {
                 #dep
-                pub async fn #f(&mut self, username: &str, password: &str, client_id: &str, client_secret: Option<&str>, #sp) -> Result<runtime::Token, runtime::ClientError> {
-                    let token = runtime::password_grant(&self.transport, #url, username, password, client_id, client_secret, #sa).await?;
+                pub async fn #f(&mut self, username: &str, password: &str, client_id: &str, client_secret: Option<&str>, #sp) -> Result<::honig::Token, ::honig::ClientError> {
+                    let token = ::honig::__private::password_grant(&self.transport, #url, username, password, client_id, client_secret, #sa).await?;
                     #store
                     Ok(token)
                 }
@@ -138,14 +138,14 @@ pub(crate) fn oauth_methods(api: &Api) -> (Vec<TokenStream>, Vec<TokenStream>) {
             urls.push(quote! {
                 #dep
                 #[must_use]
-                pub fn #u(client_id: &str, redirect_uri: &str, #sp state: &str, pkce: &runtime::Pkce) -> String {
-                    runtime::authorization_url(#auth, client_id, redirect_uri, #sa, state, pkce)
+                pub fn #u(client_id: &str, redirect_uri: &str, #sp state: &str, pkce: &::honig::Pkce) -> String {
+                    ::honig::__private::authorization_url(#auth, client_id, redirect_uri, #sa, state, pkce)
                 }
             });
             out.push(quote! {
                 #dep
-                pub async fn #x(&mut self, code: &str, redirect_uri: &str, client_id: &str, client_secret: Option<&str>, pkce: &runtime::Pkce) -> Result<runtime::Token, runtime::ClientError> {
-                    let token = runtime::exchange_code(&self.transport, #token_url, code, redirect_uri, client_id, client_secret, pkce).await?;
+                pub async fn #x(&mut self, code: &str, redirect_uri: &str, client_id: &str, client_secret: Option<&str>, pkce: &::honig::Pkce) -> Result<::honig::Token, ::honig::ClientError> {
+                    let token = ::honig::__private::exchange_code(&self.transport, #token_url, code, redirect_uri, client_id, client_secret, pkce).await?;
                     #store
                     Ok(token)
                 }
@@ -157,7 +157,7 @@ pub(crate) fn oauth_methods(api: &Api) -> (Vec<TokenStream>, Vec<TokenStream>) {
                 #dep
                 #[must_use]
                 pub fn #f(client_id: &str, redirect_uri: &str, #sp state: &str) -> String {
-                    runtime::implicit_url(#auth, client_id, redirect_uri, #sa, state)
+                    ::honig::__private::implicit_url(#auth, client_id, redirect_uri, #sa, state)
                 }
             });
         }
@@ -169,8 +169,8 @@ pub(crate) fn oauth_methods(api: &Api) -> (Vec<TokenStream>, Vec<TokenStream>) {
             let (f, url) = (format_ident!("refresh_{snake}"), lit(url));
             out.push(quote! {
                 #dep
-                pub async fn #f(&mut self, refresh_token: &str, client_id: &str, client_secret: Option<&str>) -> Result<runtime::Token, runtime::ClientError> {
-                    let token = runtime::refresh_token(&self.transport, #url, refresh_token, client_id, client_secret).await?;
+                pub async fn #f(&mut self, refresh_token: &str, client_id: &str, client_secret: Option<&str>) -> Result<::honig::Token, ::honig::ClientError> {
+                    let token = ::honig::__private::refresh_token(&self.transport, #url, refresh_token, client_id, client_secret).await?;
                     #store
                     Ok(token)
                 }
@@ -180,8 +180,8 @@ pub(crate) fn oauth_methods(api: &Api) -> (Vec<TokenStream>, Vec<TokenStream>) {
             let (f, url) = (format_ident!("discover_{snake}"), lit(url));
             out.push(quote! {
                 #dep
-                pub async fn #f(&self) -> Result<runtime::AuthMetadata, runtime::ClientError> {
-                    runtime::discover(&self.transport, #url).await
+                pub async fn #f(&self) -> Result<::honig::AuthMetadata, ::honig::ClientError> {
+                    ::honig::__private::discover(&self.transport, #url).await
                 }
             });
         }
@@ -200,8 +200,8 @@ pub(crate) fn token_methods(api: &Api) -> Vec<TokenStream> {
         let (sp, sa) = scopes(api, s);
         Some(quote! {
             #dep
-            pub async fn #f(mut self, client_id: &str, client_secret: &str, #sp) -> Result<Self, runtime::ClientError> {
-                let token = runtime::client_credentials(&self.transport, #url, client_id, client_secret, #sa).await?;
+            pub async fn #f(mut self, client_id: &str, client_secret: &str, #sp) -> Result<Self, ::honig::ClientError> {
+                let token = ::honig::__private::client_credentials(&self.transport, #url, client_id, client_secret, #sa).await?;
                 self.credentials.insert(#name.to_owned(), token.access_token);
                 Ok(self)
             }

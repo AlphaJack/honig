@@ -36,7 +36,7 @@ async fn product_as_xml(
 async fn the_client_asks_for_the_media_type_it_picks() {
     let client = shop(|req| {
         assert_eq!(header(&req, "Accept"), Some("application/xml, application/json;q=0.9"));
-        std::future::ready(api::runtime::body_response(500, "text/plain", b"down".to_vec()))
+        std::future::ready(honig::__private::body_response(500, "text/plain", b"down".to_vec()))
     });
     assert_matches!(product_as_xml(&client).await, Err(api::ClientError::UnexpectedStatus { .. }));
 }
@@ -59,7 +59,7 @@ async fn product_if_changed(
 async fn a_304_says_the_held_copy_is_current() {
     let client = shop(|req| {
         assert_eq!(header(&req, "If-None-Match"), Some(r#""v1""#));
-        let mut not_modified = api::runtime::new_response(304);
+        let mut not_modified = honig::__private::new_response(304);
         not_modified.headers_mut().append("etag", honig::http::HeaderValue::try_from(r#""v1""#).unwrap());
         std::future::ready(not_modified)
     });
@@ -86,7 +86,7 @@ async fn sign_in(client: &mut api::Client<impl api::Transport>) -> Result<(), ap
 async fn the_device_flow_polls_until_the_token_is_ready() {
     let polls = AtomicU32::new(0);
     let json = |status, body: serde_json::Value| {
-        api::runtime::body_response(status, "application/json", body.to_string().into_bytes())
+        honig::__private::body_response(status, "application/json", body.to_string().into_bytes())
     };
     let mut client = shop(move |req| {
         std::future::ready(if req.uri().to_string().ends_with("/oauth/device") {
@@ -130,7 +130,7 @@ async fn the_feed_is_read_until_done() {
     let client = shop(|_| {
         let event = serde_json::json!({"event": "created", "product": {"id": 1, "name": "Desk lamp"}});
         let body = format!("data: {event}\n\ndata: [DONE]\n\n");
-        std::future::ready(api::runtime::body_response(200, "text/event-stream", body.into_bytes()))
+        std::future::ready(honig::__private::body_response(200, "text/event-stream", body.into_bytes()))
     });
     let events = product_events(&client).await.unwrap();
     assert_eq!(events.len(), 1);
@@ -146,7 +146,7 @@ fn created_callback(request: &api::Request) -> Option<String> {
 
 #[test]
 fn the_callback_goes_where_the_request_says() {
-    let mut request = api::runtime::new_request("POST", "/products".to_owned(), vec![]).unwrap();
+    let mut request = honig::__private::new_request("POST", "/products".to_owned(), vec![]).unwrap();
     request
         .headers_mut()
         .insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::from_static("application/json"));
@@ -166,7 +166,7 @@ fn feed(
 ) -> api::Items<types::ProductEvent> {
     let after = last_event_id.and_then(|id| events.iter().position(|(e, _)| e == id)).map_or(0, |i| i + 1);
     let events = events.iter().skip(after);
-    let records = std::iter::once(api::Sse::Retry(retry)).chain(events.map(|(id, item)| api::Sse::Event {
+    let records = std::iter::once(honig::Sse::Retry(retry)).chain(events.map(|(id, item)| honig::Sse::Event {
         id: Some(id.clone()),
         event: None,
         item: item.clone(),
@@ -213,11 +213,11 @@ async fn the_feed_resumes_after_the_last_event_read() {
             Some("e1") => &events[..2],
             Some(_) => &[],
         };
-        let mut resp = api::runtime::new_response(204);
+        let mut resp = honig::__private::new_response(204);
         if !new.is_empty() {
-            resp = api::runtime::new_response(200);
+            resp = honig::__private::new_response(200);
             let items = feed(new, last.as_deref(), Duration::ZERO);
-            api::runtime::set_items(&mut resp, "text/event-stream", items, api::Framing::Sse).unwrap();
+            honig::__private::set_items(&mut resp, "text/event-stream", items, api::Framing::Sse).unwrap();
         }
         std::future::ready(resp)
     });
@@ -230,12 +230,12 @@ async fn the_feed_resumes_after_the_last_event_read() {
 /// `into_result` gives the success and any other response as an `Err` that `?` converts into any error type.
 #[tokio::test]
 async fn into_result_gives_the_success_and_errs_with_the_rest() -> Result<(), Box<dyn std::error::Error>> {
-    let gone = shop(|_| std::future::ready(api::runtime::new_response(204)));
+    let gone = shop(|_| std::future::ready(honig::__private::new_response(204)));
     // ANCHOR: into-ok
     gone.delete_product(ops::delete_product::Params { product_id: 7 }).await?.into_result()?;
     // ANCHOR_END: into-ok
     let missing = shop(|_| {
-        let mut r = api::runtime::new_response(404);
+        let mut r = honig::__private::new_response(404);
         r.headers_mut().insert("content-type", honig::http::HeaderValue::from_static("application/json"));
         *r.body_mut() = honig::Body::from(b"{}".to_vec());
         std::future::ready(r)

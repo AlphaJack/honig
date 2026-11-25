@@ -19,10 +19,6 @@
 )]
 #[rustfmt::skip]
 pub mod operations;
-#[doc(hidden)]
-#[rustfmt::skip]
-pub mod runtime;
-pub use honig::*;
 #[rustfmt::skip]
 pub mod types;
 #[rustfmt::skip]
@@ -38,3 +34,9 @@ pub use server::{Operation, Context, Rejection, RequestEvent, Server};
 #[cfg(test)]
 #[rustfmt::skip]
 mod documented_examples;
+pub use ::honig::{
+    ApiError, Binary, Body, BuildError, ClientError, DateTimeStr, Framing,
+    InstanceLocation, ItemStream, Items, Message, Nullable, PartTypes, Passed,
+    ProblemSchema, Reason, Request, Response, ServerUrl, Streamed, Transport,
+    UriReferenceStr, UuidStr, Verified, Violation, send, send_streaming, url,
+};

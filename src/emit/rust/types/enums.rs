@@ -34,7 +34,7 @@ pub(super) fn str_enum(items: &mut Vec<TokenStream>, def: &TypeDef, values: &[En
         pub enum #n {
             #(#variants)*
         }
-        runtime::str_enum_impls!(#n { #(#names => #wires),* });
+        ::honig::str_enum_impls!(#n { #(#names => #wires),* });
     });
 }
 
@@ -145,7 +145,7 @@ pub(super) fn union(items: &mut Vec<TokenStream>, space: &Space<'_>, def: &TypeD
     });
 }
 
-/// Returns `impl Deserialize`. Tagged unions also implement `runtime::TaggedUnion`. So a
+/// Returns `impl Deserialize`. Tagged unions also implement `::honig::__private::TaggedUnion`. So a
 /// discriminator sent first streams straight into the variant.
 pub(super) fn union_deserialize_impl(
     space: &Space<'_>,
@@ -167,9 +167,9 @@ pub(super) fn union_deserialize_impl(
         UnionMode::Tagged { property, .. } if !exact => property,
         UnionMode::Tagged { .. } | UnionMode::ByKind | UnionMode::Untagged => {
             let buffer = if exact {
-                quote!(runtime::Content::exact(d)?)
+                quote!(::honig::__private::Content::exact(d)?)
             } else {
-                quote!(<runtime::Content<'de> as serde::Deserialize>::deserialize(d)?)
+                quote!(<::honig::__private::Content<'de> as serde::Deserialize>::deserialize(d)?)
             };
             return quote! {
                 impl<'de> serde::Deserialize<'de> for #n {
@@ -188,7 +188,7 @@ pub(super) fn union_deserialize_impl(
         let tags = v.tags.iter().map(|t| lit(t));
         let (name, t) = (pascal_ident(&v.name), ty(space, &v.ty, false));
         let read = match holds(space, &v.ty) {
-            Some(h) => quote!(runtime::formats::read::<_, #t, #h>(d)),
+            Some(h) => quote!(::honig::__private::formats::read::<_, #t, #h>(d)),
             None => quote!(<#t as serde::Deserialize>::deserialize(d)),
         };
         quote!(#(#tags)|* => #read.map(Self::#name),)
@@ -197,8 +197,8 @@ pub(super) fn union_deserialize_impl(
     let tag_arg = if all.is_empty() { quote!(_tag) } else { quote!(tag) };
     let d_arg = if all.is_empty() { quote!(_d) } else { quote!(d) };
     quote! {
-        runtime::tagged_deserialize!(#n);
-        impl<'de> runtime::TaggedUnion<'de> for #n {
+        ::honig::tagged_deserialize!(#n);
+        impl<'de> ::honig::__private::TaggedUnion<'de> for #n {
             const TAG: &'static str = #property;
             fn knows(tag: &str) -> bool {
                 #knows
@@ -209,7 +209,7 @@ pub(super) fn union_deserialize_impl(
                     _ => Err(serde::de::Error::custom("unknown discriminator")),
                 }
             }
-            fn from_content(v: runtime::Content<'de>) -> Result<Self, serde_json::Error> {
+            fn from_content(v: ::honig::__private::Content<'de>) -> Result<Self, serde_json::Error> {
                 #de
             }
         }
@@ -228,7 +228,7 @@ pub(super) fn declares_tag(space: &Space<'_>, t: &Ty, property: &str, tag: &str)
     matches!(&space.types.get(*id).kind, Kind::Struct(s) if s.fields.iter().any(|f| f.wire == property && f.required && holds(&f.ty)))
 }
 
-/// Returns `Serialize` of the union `n` through `runtime::union_serialize!`: each variant as its value, and a variant
+/// Returns `Serialize` of the union `n` through `::honig::union_serialize!`: each variant as its value, and a variant
 /// whose struct does not carry its tag with the tag put in.
 pub(super) fn union_serialize(space: &Space<'_>, n: &proc_macro2::Ident, u: &Union, other: bool) -> TokenStream {
     let (mut direct, mut tagged) = (vec![], vec![]);
@@ -250,7 +250,7 @@ pub(super) fn union_serialize(space: &Space<'_>, n: &proc_macro2::Ident, u: &Uni
         UnionMode::Tagged { property, .. } if !tagged.is_empty() => quote!(#property { #(#tagged),* }),
         UnionMode::Tagged { .. } | UnionMode::ByKind | UnionMode::Untagged => TokenStream::new(),
     };
-    quote!(runtime::union_serialize!(#n { #(#direct),* } #tagged);)
+    quote!(::honig::union_serialize!(#n { #(#direct),* } #tagged);)
 }
 
 /// Returns the buffered value `v` decoded into variant `name` of type `t`. A library type has its text checked first.
@@ -259,7 +259,7 @@ pub(super) fn conv(space: &Space<'_>, name: &str, t: &Ty) -> TokenStream {
     match holds(space, t) {
         Some(h) => {
             let t = ty(space, t, false);
-            quote!(v.decode_into(|c: runtime::formats::Validated<#t, #h>| Self::#name(c.into_inner())))
+            quote!(v.decode_into(|c: ::honig::__private::formats::Validated<#t, #h>| Self::#name(c.into_inner())))
         }
         None => quote!(v.decode_into(Self::#name)),
     }
@@ -270,7 +270,7 @@ pub(super) fn decode_ref(space: &Space<'_>, t: &Ty) -> TokenStream {
     let rust = ty(space, t, false);
     match holds(space, t) {
         Some(h) => {
-            quote!(v.decode_ref::<runtime::formats::Validated<#rust, #h>>().map(runtime::formats::Validated::into_inner))
+            quote!(v.decode_ref::<::honig::__private::formats::Validated<#rust, #h>>().map(::honig::__private::formats::Validated::into_inner))
         }
         None => quote!(v.decode_ref::<#rust>()),
     }
@@ -443,7 +443,7 @@ pub(super) fn counting(counts: bool) -> (TokenStream, TokenStream) {
     )
 }
 
-/// `runtime::fits(&v, ...)` for a struct branch: the fields that must be present and the kinds that each may have.
+/// `::honig::__private::fits(&v, ...)` for a struct branch: the fields that must be present and the kinds that each may have.
 /// It never refuses a value that the branch decodes: a kind that a type decodes from more than one JSON kind (a
 /// `Decimal`, an untyped value, an open union) is not checked, an integer may come as a number, and an optional or
 /// nullable field may be absent or `null`. `None` when there is nothing to check.
@@ -476,7 +476,7 @@ pub(super) fn fits(space: &Space<'_>, t: &Ty) -> Option<TokenStream> {
             })
         })
         .collect();
-    (!checks.is_empty()).then(|| quote!(runtime::fits(&v, &[#(#checks),*])))
+    (!checks.is_empty()).then(|| quote!(::honig::__private::fits(&v, &[#(#checks),*])))
 }
 
 /// Whether `t` decodes from more JSON kinds than [`TypeSpace::kind_of`](crate::ir::types::TypeSpace::kind_of) names: a
@@ -557,7 +557,7 @@ fn kind_arms<'u>(space: &Space<'_>, u: &'u Union) -> (Vec<KindArm<'u>>, Vec<rtki
     (arms, rest)
 }
 
-/// Returns `runtime::by_kind_deserialize!` of the union `n`: each JSON kind decodes as its variant. `None` where a
+/// Returns `::honig::by_kind_deserialize!` of the union `n`: each JSON kind decodes as its variant. `None` where a
 /// variant checks its text through a library format or the union is open: [`by_kind`] writes those.
 fn by_kind_macro(space: &Space<'_>, n: &proc_macro2::Ident, u: &Union) -> Option<TokenStream> {
     let (arms, rest) = kind_arms(space, u);
@@ -573,7 +573,7 @@ fn by_kind_macro(space: &Space<'_>, n: &proc_macro2::Ident, u: &Union) -> Option
         let fallback = if has_other(u) { quote!(Other) } else { quote!(none) };
         quote!(; #(#ks)|* => #fallback)
     });
-    Some(quote!(runtime::by_kind_deserialize!(#n { #(#arms),* } #rest);))
+    Some(quote!(::honig::by_kind_deserialize!(#n { #(#arms),* } #rest);))
 }
 
 /// Returns `match v.kind()`: every kind is named and there is no wildcard.
@@ -607,7 +607,7 @@ pub(super) fn by_kind(space: &Space<'_>, u: &Union) -> TokenStream {
     }
 }
 
-/// The JSON kinds of `runtime::Kind` as the emitter spells them.
+/// The JSON kinds of `::honig::__private::Kind` as the emitter spells them.
 pub(super) mod rtkind {
     use proc_macro2::TokenStream;
     use quote::quote;
@@ -627,7 +627,7 @@ pub(super) mod rtkind {
         pub(super) const ALL: [Self; 7] =
             [Self::Null, Self::Bool, Self::Integer, Self::Number, Self::String, Self::Array, Self::Object];
 
-        /// The variant name of `runtime::Kind`.
+        /// The variant name of `::honig::__private::Kind`.
         pub(super) fn name(self) -> proc_macro2::Ident {
             let path = self.path().to_string();
             quote::format_ident!("{}", path.rsplit(' ').next().unwrap_or_default())
@@ -635,13 +635,13 @@ pub(super) mod rtkind {
 
         pub(super) fn path(self) -> TokenStream {
             match self {
-                Self::Null => quote!(runtime::Kind::Null),
-                Self::Bool => quote!(runtime::Kind::Bool),
-                Self::Integer => quote!(runtime::Kind::Integer),
-                Self::Number => quote!(runtime::Kind::Number),
-                Self::String => quote!(runtime::Kind::String),
-                Self::Array => quote!(runtime::Kind::Array),
-                Self::Object => quote!(runtime::Kind::Object),
+                Self::Null => quote!(::honig::__private::Kind::Null),
+                Self::Bool => quote!(::honig::__private::Kind::Bool),
+                Self::Integer => quote!(::honig::__private::Kind::Integer),
+                Self::Number => quote!(::honig::__private::Kind::Number),
+                Self::String => quote!(::honig::__private::Kind::String),
+                Self::Array => quote!(::honig::__private::Kind::Array),
+                Self::Object => quote!(::honig::__private::Kind::Object),
             }
         }
     }

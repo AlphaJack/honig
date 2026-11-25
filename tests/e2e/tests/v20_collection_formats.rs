@@ -98,7 +98,7 @@ fn each_collection_format_round_trips() {
         flag: Some(true),
         page: Some(2),
     };
-    let got = api::block_on(served(&seen).list_items(sent.clone()));
+    let got = honig::block_on(served(&seen).list_items(sent.clone()));
     assert_eq!(got.ok(), Some(ops::list_items::Response::Ok(vec![])));
     assert_eq!(seen.items.lock().ok().and_then(|mut s| s.take()), Some(sent));
 }
@@ -109,7 +109,7 @@ fn form_data_parameters_arrive_as_a_multipart_body() {
     let seen = std::sync::Arc::new(Seen::default());
     let body = api::types::UploadBody { file: api::Binary::from(vec![0, 1, 0xFF]), note: Some("a note".to_owned()) };
     let sent = ops::upload::Params::new(body);
-    let got = api::block_on(served(&seen).upload(sent.clone()));
+    let got = honig::block_on(served(&seen).upload(sent.clone()));
     assert_eq!(got.ok(), Some(ops::upload::Response::NoContent));
     assert_eq!(seen.upload.lock().ok().and_then(|mut s| s.take()), Some(sent));
 }
@@ -117,7 +117,7 @@ fn form_data_parameters_arrive_as_a_multipart_body() {
 /// A 2.0 response `schema` becomes the typed body the client decodes.
 #[test]
 fn a_response_schema_is_the_typed_body() {
-    let got = api::block_on(served(&std::sync::Arc::new(Seen::default())).list_keys(ops::list_keys::Params::new()));
+    let got = honig::block_on(served(&std::sync::Arc::new(Seen::default())).list_keys(ops::list_keys::Params::new()));
     assert_eq!(got.ok(), Some(ops::list_keys::Response::Ok(keys())));
 }
 
@@ -134,9 +134,9 @@ fn an_optional_property_sent_as_null_is_absent() {
 #[test]
 fn allow_empty_value_reads_a_bare_flag() {
     let seen = std::sync::Arc::new(Seen::default());
-    let req =
-        api::runtime::new_request("GET", "/items/1".to_owned(), vec!["flag".to_owned(), "page=".to_owned()]).unwrap();
-    let r = api::block_on(api::Server::new(std::sync::Arc::clone(&seen)).into_service().handle(req));
+    let req = honig::__private::new_request("GET", "/items/1".to_owned(), vec!["flag".to_owned(), "page=".to_owned()])
+        .unwrap();
+    let r = honig::block_on(api::Server::new(std::sync::Arc::clone(&seen)).into_service().handle(req));
     assert_eq!(r.status().as_u16(), 200, "{}", String::from_utf8_lossy(r.body().bytes()));
     let p = seen.items.lock().ok().and_then(|mut s| s.take()).expect("the handler ran");
     assert_eq!((p.flag, p.page), (Some(true), None));
@@ -148,7 +148,7 @@ fn a_form_array_keeps_its_collection_format() {
     let body = api::types::TagBody { ids: Some(vec![1, 2]), pipes: Some(vec!["a".to_owned(), "b".to_owned()]) };
     let sent = ops::tag::Params { body: Some(body) };
     let seen = std::sync::Arc::new(Seen::default());
-    let got = api::block_on(served(&seen).tag(sent.clone()));
+    let got = honig::block_on(served(&seen).tag(sent.clone()));
     assert_eq!(got.ok(), Some(ops::tag::Response::NoContent));
     assert_eq!(seen.tag.lock().ok().and_then(|mut s| s.take()), Some(sent.clone()));
     let wire = std::sync::Arc::new(Mutex::new(String::new()));
@@ -157,9 +157,9 @@ fn a_form_array_keeps_its_collection_format() {
         if let Ok(mut w) = kept.lock() {
             *w = String::from_utf8_lossy(req.body().bytes()).into_owned();
         }
-        std::future::ready(Ok::<_, api::ApiError>(api::runtime::new_response(204)))
+        std::future::ready(Ok::<_, api::ApiError>(honig::__private::new_response(204)))
     });
-    api::block_on(api::Client::new(capture).tag(sent)).ok();
+    honig::block_on(api::Client::new(capture).tag(sent)).ok();
     assert_eq!(*wire.lock().unwrap(), "ids=1,2&pipes=a%7Cb");
 }
 
@@ -176,7 +176,7 @@ fn a_header_or_path_array_keeps_its_collection_format() {
         x_tsv: Some(two()),
     };
     let seen = std::sync::Arc::new(Seen::default());
-    let got = api::block_on(served(&seen).rows(sent.clone()));
+    let got = honig::block_on(served(&seen).rows(sent.clone()));
     assert_eq!(got.ok(), Some(ops::rows::Response::NoContent));
     assert_eq!(seen.rows.lock().ok().and_then(|mut s| s.take()), Some(sent.clone()));
     let wire = std::sync::Arc::new(Mutex::new(String::new()));
@@ -186,8 +186,8 @@ fn a_header_or_path_array_keeps_its_collection_format() {
         if let Ok(mut w) = kept.lock() {
             *w = format!("{} {:?} {:?} {:?}", req.uri().path(), header("x-ssv"), header("x-pipes"), header("x-tsv"));
         }
-        std::future::ready(Ok::<_, api::ApiError>(api::runtime::new_response(204)))
+        std::future::ready(Ok::<_, api::ApiError>(honig::__private::new_response(204)))
     });
-    api::block_on(api::Client::new(capture).rows(sent)).ok();
+    honig::block_on(api::Client::new(capture).rows(sent)).ok();
     assert_eq!(*wire.lock().unwrap(), r#"/rows/a%20b/a%7Cb/a%09b "a b" "a|b" "a\tb""#);
 }

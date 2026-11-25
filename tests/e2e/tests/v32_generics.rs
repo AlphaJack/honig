@@ -74,15 +74,15 @@ fn generic_bodies_round_trip() {
     let service = api::Server::new(Fixed).into_service();
     let client = api::Client::new(service);
     assert_eq!(
-        api::block_on(client.list_products(ops::list_products::Params::new())).ok(),
+        honig::block_on(client.list_products(ops::list_products::Params::new())).ok(),
         Some(ops::list_products::Response::Ok(page()))
     );
     assert_eq!(
-        api::block_on(client.tag_tree(ops::tag_tree::Params::new())).ok(),
+        honig::block_on(client.tag_tree(ops::tag_tree::Params::new())).ok(),
         Some(ops::tag_tree::Response::Ok(tree()))
     );
     assert_eq!(
-        api::block_on(client.any_page(ops::any_page::Params::new())).ok(),
+        honig::block_on(client.any_page(ops::any_page::Params::new())).ok(),
         Some(ops::any_page::Response::Ok(any()))
     );
 }

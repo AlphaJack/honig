@@ -6,7 +6,7 @@ use shop::api::{self, operations as ops, types};
 // ANCHOR: client
 async fn create_and_read(base_url: &str, product: types::Product) -> Result<types::Product, api::ClientError> {
     let client =
-        api::Client::new(api::ReqwestTransport::new(base_url).expect("a base URL")).with_api_key(shop::API_KEY);
+        api::Client::new(honig::ReqwestTransport::new(base_url).expect("a base URL")).with_api_key(shop::API_KEY);
     client.create_product(ops::create_product::Params::new(product)).await?;
     match client.get_product(ops::get_product::Params::new(0)).await? {
         ops::get_product::Response::Ok(product) => Ok(product),
@@ -32,7 +32,7 @@ async fn a_wrong_key_is_refused() {
     let base_url = format!("http://{}/v1", listener.local_addr().unwrap());
     let app = api::Server::new(Catalog::default()).into_axum();
     tokio::spawn(async move { axum::serve(listener, app).await });
-    let client = api::Client::new(api::ReqwestTransport::new(base_url).expect("a base URL")).with_api_key("guess");
+    let client = api::Client::new(honig::ReqwestTransport::new(base_url).expect("a base URL")).with_api_key("guess");
     let answer = client.get_product(ops::get_product::Params::new(0)).await;
     assert!(
         matches!(&answer, Err(api::ClientError::UnexpectedStatus { status, .. }) if status.as_u16() == 401),

@@ -67,10 +67,7 @@ pub fn manifest() -> Vec<String> {
 }
 
 fn unused<T>() -> std::future::Ready<Result<T, mp::api::ApiError>> {
-    std::future::ready(Err(mp::api::ApiError::new(
-        mp::api::http::StatusCode::INTERNAL_SERVER_ERROR,
-        "not in the sweep",
-    )))
+    std::future::ready(Err(mp::api::ApiError::new(honig::http::StatusCode::INTERNAL_SERVER_ERROR, "not in the sweep")))
 }
 
 struct Scans;
@@ -134,7 +131,7 @@ impl dl::api::Api for Exports {
         _: dl::api::operations::get_export::Params,
         _: &dl::api::Context<'_>,
     ) -> Result<dl::api::operations::get_export::Response, dl::api::ApiError> {
-        let blob = dl::api::runtime::Blob::stream(futures_util::stream::iter(chunks()));
+        let blob = honig::Blob::stream(futures_util::stream::iter(chunks()));
         Ok(dl::api::operations::get_export::Response::Ok(blob))
     }
     async fn get_manifest(
@@ -223,10 +220,7 @@ impl xml::api::Api for Books {
 }
 
 fn not_here<T>() -> std::future::Ready<Result<T, val::api::ApiError>> {
-    std::future::ready(Err(val::api::ApiError::new(
-        val::api::http::StatusCode::INTERNAL_SERVER_ERROR,
-        "not in the sweep",
-    )))
+    std::future::ready(Err(val::api::ApiError::new(honig::http::StatusCode::INTERNAL_SERVER_ERROR, "not in the sweep")))
 }
 
 struct Members;

@@ -29,9 +29,9 @@ pub(crate) fn wire_checks(api: &Api, space: &Space<'_>) -> Vec<TokenStream> {
 /// Returns `wire`: compares a parameter as sent with its documented `serializedValue`.
 pub(crate) fn wire_fn() -> TokenStream {
     quote! {
-        fn wire(bad: &mut Vec<String>, at: &str, got: Result<String, runtime::ClientError>, want: &str) {
+        fn wire(bad: &mut Vec<String>, at: &str, got: Result<String, ::honig::ClientError>, want: &str) {
             match got {
-                Ok(got) if got == want || runtime::pct_decode(&got).is_some_and(|g| g == want) => {}
+                Ok(got) if got == want || ::honig::__private::pct_decode(&got).is_some_and(|g| g == want) => {}
                 Ok(got) => bad.push(format!("{at}: sent `{got}`, documented `{want}`")),
                 Err(e) => bad.push(format!("{at}: {e}")),
             }
@@ -53,26 +53,26 @@ pub(crate) fn wire_check(
     }
     let (wire, e) = (lit(&p.wire), param_enc(p));
     let encode = match p.location {
-        Location::Path => quote!(runtime::encode_path(#wire, &v, #e).unwrap_or_else(|e| panic!("{e}"))),
+        Location::Path => quote!(::honig::__private::encode_path(#wire, &v, #e).unwrap_or_else(|e| panic!("{e}"))),
         Location::Query => quote!({
             let mut q = Vec::new();
-            runtime::encode_query(&mut q, #wire, &v, #e).unwrap_or_else(|e| panic!("{e}"));
+            ::honig::__private::encode_query(&mut q, #wire, &v, #e).unwrap_or_else(|e| panic!("{e}"));
             q.join("&")
         }),
         Location::QueryString => return None,
         Location::Header | Location::Part => {
-            quote!(runtime::encode_header(&v, #e).unwrap_or_else(|e| panic!("{e}")).unwrap_or_default())
+            quote!(::honig::__private::encode_header(&v, #e).unwrap_or_else(|e| panic!("{e}")).unwrap_or_default())
         }
         Location::Cookie => quote!({
             let mut c = Vec::new();
-            runtime::encode_cookie(&mut c, #wire, &v, #e).unwrap_or_else(|e| panic!("{e}"));
+            ::honig::__private::encode_cookie(&mut c, #wire, &v, #e).unwrap_or_else(|e| panic!("{e}"));
             c.join("; ")
         }),
     };
     let (at, text, want) = (lit(at), lit(&v.to_string()), lit(want));
     Some(quote! {
         let got = serde_json::from_str::<#t>(#text)
-            .map_err(|e| runtime::ClientError::Encode(e.to_string()))
+            .map_err(|e| ::honig::ClientError::Encode(e.to_string()))
             .map(|v| #encode);
         wire(&mut bad, #at, got, #want);
     })
@@ -137,7 +137,7 @@ fn xml_check_fn() -> TokenStream {
     quote! {
         fn xml<T>(bad: &mut Vec<String>, at: &str, data: &str, text: &str)
         where
-            T: serde::de::DeserializeOwned + serde::Serialize + runtime::XmlShape + PartialEq + std::fmt::Debug,
+            T: serde::de::DeserializeOwned + serde::Serialize + ::honig::__private::XmlShape + PartialEq + std::fmt::Debug,
         {
             let want: T = match serde_json::from_str(data) {
                 Ok(v) => v,
@@ -146,11 +146,11 @@ fn xml_check_fn() -> TokenStream {
                     return;
                 }
             };
-            let decoded = runtime::xml_decode::<T>(None, text.as_bytes());
+            let decoded = ::honig::__private::xml_decode::<T>(None, text.as_bytes());
             if decoded.as_ref().ok() != Some(&want) {
                 bad.push(format!("{at}: the XML decodes to {decoded:?}, not {want:?}"));
             }
-            let back = runtime::xml_encode(&want).and_then(|b| runtime::xml_decode::<T>(None, &b));
+            let back = ::honig::__private::xml_encode(&want).and_then(|b| ::honig::__private::xml_decode::<T>(None, &b));
             if back.as_ref().ok() != Some(&want) {
                 bad.push(format!("{at}: encoded and decoded, it is {back:?}"));
             }
@@ -215,7 +215,7 @@ pub(crate) fn tests(api: &Api, space: &Space<'_>) -> Option<TokenStream> {
             fn param<T: serde::de::DeserializeOwned>(bad: &mut Vec<String>, at: &'static str, text: &str) {
                 // A parameter is decoded as its style coerces it: the documented value is parsed once for that. The
                 // error points to `at`.
-                if let Err(e) = runtime::from_param::<T>(serde_json::from_str(text).ok(), at) {
+                if let Err(e) = ::honig::__private::from_param::<T>(serde_json::from_str(text).ok(), at) {
                     bad.push(e.to_string());
                 }
             }
@@ -223,7 +223,7 @@ pub(crate) fn tests(api: &Api, space: &Space<'_>) -> Option<TokenStream> {
     });
     Some(quote! {
         #![allow(unused_imports, reason = "which of them the examples need depends on the description")]
-        use super::{runtime, types};
+        use super::types;
 
         #value_fn
         #param_fn

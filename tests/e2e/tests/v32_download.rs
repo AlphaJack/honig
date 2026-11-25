@@ -82,7 +82,7 @@ impl api::Api for Server {
                 last_modified: Some(LAST_MODIFIED.to_owned()),
             }),
             Some(Err(_)) => {
-                Err(api::ApiError::new(api::http::StatusCode::INTERNAL_SERVER_ERROR, "manifest lock poisoned"))
+                Err(api::ApiError::new(honig::http::StatusCode::INTERNAL_SERVER_ERROR, "manifest lock poisoned"))
             }
             None => Ok(ops::get_manifest::Response::NotFound),
         })
@@ -94,13 +94,12 @@ impl api::Api for Server {
         p: ops::replace_manifest::Params,
         ctx: &api::Context<'_>,
     ) -> Result<ops::replace_manifest::Response, api::ApiError> {
-        let mut manifest = self
-            .manifest
-            .lock()
-            .map_err(|_| api::ApiError::new(api::http::StatusCode::INTERNAL_SERVER_ERROR, "manifest lock poisoned"))?;
+        let mut manifest = self.manifest.lock().map_err(|_| {
+            api::ApiError::new(honig::http::StatusCode::INTERNAL_SERVER_ERROR, "manifest lock poisoned")
+        })?;
         let etag = format!("\"v{}\"", manifest.0);
         // 412 unless the client changed the version it received.
-        ctx.preconditions(Some(api::CacheValidators { etag: Some(&etag), last_modified: Some(LAST_MODIFIED) }))?;
+        ctx.preconditions(Some(honig::CacheValidators { etag: Some(&etag), last_modified: Some(LAST_MODIFIED) }))?;
         *manifest = (manifest.0 + 1, p.body);
         Ok(ops::replace_manifest::Response::NoContent)
     }
@@ -122,41 +121,41 @@ fn client() -> Client<impl api::Transport> {
 
 #[test]
 fn the_server_streams_a_blob_without_buffering_it() {
-    let req = api::runtime::new_request("GET", "/exports/big".to_owned(), vec![]).unwrap();
-    let r = api::block_on(api::Server::new(Server::default()).into_service().handle(req));
+    let req = honig::__private::new_request("GET", "/exports/big".to_owned(), vec![]).unwrap();
+    let r = honig::block_on(api::Server::new(Server::default()).into_service().handle(req));
     assert_eq!(r.status().as_u16(), 200);
     assert_eq!(r.headers().get("content-type").and_then(|v| v.to_str().ok()), Some("application/zip"));
     assert!(r.body().bytes().is_empty() && r.body().is_streamed(), "the chunks are still to come");
-    assert_eq!(api::block_on(r.into_body().collect()).unwrap(), CHUNKS.concat());
+    assert_eq!(honig::block_on(r.into_body().collect()).unwrap(), CHUNKS.concat());
 }
 
 #[test]
 fn the_client_reads_a_blob_whole_or_as_chunks() {
     let c = client();
-    let whole = api::block_on(c.get_export(ops::get_export::Params { id: "big".to_owned() })).unwrap();
+    let whole = honig::block_on(c.get_export(ops::get_export::Params { id: "big".to_owned() })).unwrap();
     assert_eq!(whole, ops::get_export::Response::Ok(api::Blob::from(CHUNKS.concat())));
-    let small = api::block_on(c.get_export(ops::get_export::Params { id: "small".to_owned() })).unwrap();
+    let small = honig::block_on(c.get_export(ops::get_export::Params { id: "small".to_owned() })).unwrap();
     assert_eq!(small, ops::get_export::Response::Ok(b"zip".to_vec().into()));
-    let none = api::block_on(c.get_export(ops::get_export::Params { id: "none".to_owned() }));
+    let none = honig::block_on(c.get_export(ops::get_export::Params { id: "none".to_owned() }));
     assert_eq!(none.ok(), Some(ops::get_export::Response::NotFound), "the declared 404, whole");
-    let stream = api::block_on(c.get_export_stream(ops::get_export::Params { id: "big".to_owned() })).unwrap();
+    let stream = honig::block_on(c.get_export_stream(ops::get_export::Params { id: "big".to_owned() })).unwrap();
     let api::Streamed::Ok(resp) = stream else { panic!("200 streams: {stream:?}") };
-    assert_eq!(api::block_on(resp.into_body().collect()).unwrap(), CHUNKS.concat());
+    assert_eq!(honig::block_on(resp.into_body().collect()).unwrap(), CHUNKS.concat());
     // The declared 404 arrives typed as from `get_export`.
-    let missing = api::block_on(c.get_export_stream(ops::get_export::Params { id: "none".to_owned() }));
+    let missing = honig::block_on(c.get_export_stream(ops::get_export::Params { id: "none".to_owned() }));
     assert_matches!(missing, Ok(api::Streamed::Whole(ops::get_export::Response::NotFound)), "{missing:?}");
 }
 
 /// A `GET` of the manifest with these request headers through the server.
 fn get_manifest(server: &impl Fn(api::Request) -> Pending, headers: &[(&'static str, &'static str)]) -> api::Response {
-    let mut req = api::runtime::new_request("GET", "/exports/small/manifest".to_owned(), vec![]).unwrap();
+    let mut req = honig::__private::new_request("GET", "/exports/small/manifest".to_owned(), vec![]).unwrap();
     for (k, v) in headers {
         req.headers_mut().append(
             honig::http::HeaderName::try_from(*k).unwrap(),
             honig::http::HeaderValue::try_from((*v).to_owned()).unwrap(),
         );
     }
-    api::block_on(server(req))
+    honig::block_on(server(req))
 }
 
 #[test]
@@ -187,7 +186,7 @@ fn a_replace_of_a_version_the_client_did_not_read_is_refused_412() {
             if_match: Some(if_match.to_owned()),
             ..ops::replace_manifest::Params::new("small".to_owned(), vec!["a.csv".to_owned()])
         };
-        api::block_on(c.replace_manifest(p)).unwrap()
+        honig::block_on(c.replace_manifest(p)).unwrap()
     };
     assert_eq!(replace(r#""v0""#), ops::replace_manifest::Response::NoContent);
     assert_eq!(replace(r#""v0""#), ops::replace_manifest::Response::PreconditionFailed, "v0 is gone");
@@ -197,15 +196,15 @@ fn a_replace_of_a_version_the_client_did_not_read_is_refused_412() {
 
 /// A `GET` of an export with these request headers through the server. Its streamed body is collected.
 fn get_export(id: &str, headers: &[(&'static str, &'static str)]) -> api::Response {
-    let mut req = api::runtime::new_request("GET", format!("/exports/{id}"), vec![]).unwrap();
+    let mut req = honig::__private::new_request("GET", format!("/exports/{id}"), vec![]).unwrap();
     for (k, v) in headers {
         req.headers_mut().append(
             honig::http::HeaderName::try_from(*k).unwrap(),
             honig::http::HeaderValue::try_from((*v).to_owned()).unwrap(),
         );
     }
-    let (head, body) = api::block_on(server()(req)).into_parts();
-    api::Response::from_parts(head, api::Body::new(api::block_on(body.collect()).unwrap()))
+    let (head, body) = honig::block_on(server()(req)).into_parts();
+    api::Response::from_parts(head, honig::Body::new(honig::block_on(body.collect()).unwrap()))
 }
 
 #[test]
@@ -283,13 +282,13 @@ proptest::proptest! {
 #[test]
 fn a_range_goes_out_as_the_media_type_of_the_blob() {
     let sent = |id: &str| {
-        let req = api::runtime::new_request("GET", format!("/exports/{id}/thumbnail"), vec![]).unwrap();
-        api::block_on(server()(req)).headers().get("content-type").and_then(|v| v.to_str().ok()).map(str::to_owned)
+        let req = honig::__private::new_request("GET", format!("/exports/{id}/thumbnail"), vec![]).unwrap();
+        honig::block_on(server()(req)).headers().get("content-type").and_then(|v| v.to_str().ok()).map(str::to_owned)
     };
     assert_eq!(sent("png").as_deref(), Some("image/png"));
     assert_eq!(sent("zip").as_deref(), Some("application/octet-stream"), "not an image");
     assert_eq!(sent("plain").as_deref(), Some("application/octet-stream"), "no type");
-    let got = api::block_on(client().get_thumbnail(ops::get_thumbnail::Params { id: "png".to_owned() })).unwrap();
+    let got = honig::block_on(client().get_thumbnail(ops::get_thumbnail::Params { id: "png".to_owned() })).unwrap();
     let ops::get_thumbnail::Response::Ok(blob) = got;
     assert_eq!(blob.media(), Some("image/png"));
 }

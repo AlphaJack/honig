@@ -3,6 +3,10 @@
 // `String` per piece. The workspace allows both for code that runs once; `codec::push_all` appends without one.
 #![warn(clippy::format_push_string, clippy::format_collect)]
 
+// The macros write `::honig::` paths in serde attributes: their tests here call them too.
+#[cfg(test)]
+extern crate self as honig;
+
 mod auth;
 #[cfg(feature = "base64")]
 mod base64;

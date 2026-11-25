@@ -96,7 +96,7 @@ impl api::Api for Server {
 }
 
 fn send(method: &'static str, path: &str, headers: &[(&str, &str)], body: Option<&str>) -> api::Response {
-    let mut r = api::runtime::new_request(method, path.to_owned(), vec![]).unwrap();
+    let mut r = honig::__private::new_request(method, path.to_owned(), vec![]).unwrap();
     r.headers_mut().append("authorization", honig::http::HeaderValue::try_from("Bearer t".to_owned()).unwrap());
     for (k, v) in headers {
         r.headers_mut().append(
@@ -109,7 +109,7 @@ fn send(method: &'static str, path: &str, headers: &[(&str, &str)], body: Option
             .insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::from_static("application/json"));
         *r.body_mut() = honig::Body::from(b.as_bytes().to_vec());
     }
-    api::block_on(api::Server::new(Server).into_service().handle(r))
+    honig::block_on(api::Server::new(Server).into_service().handle(r))
 }
 
 /// JSON Schema 2020-12 section 10.3.2.3: with `additionalProperties: false` an
@@ -159,10 +159,10 @@ fn a_status_range_answers_with_its_actual_status() {
 /// requirement; an operation without `security` inherits it.
 #[test]
 fn an_empty_security_list_overrides_the_top_level_one() {
-    let mut r = api::runtime::new_request("GET", "/public".to_owned(), vec![]).unwrap();
-    assert_eq!(api::block_on(api::Server::new(Server).into_service().handle(r)).status().as_u16(), 204);
-    r = api::runtime::new_request("GET", "/inherits".to_owned(), vec![]).unwrap();
-    assert_eq!(api::block_on(api::Server::new(Server).into_service().handle(r)).status().as_u16(), 401);
+    let mut r = honig::__private::new_request("GET", "/public".to_owned(), vec![]).unwrap();
+    assert_eq!(honig::block_on(api::Server::new(Server).into_service().handle(r)).status().as_u16(), 204);
+    r = honig::__private::new_request("GET", "/inherits".to_owned(), vec![]).unwrap();
+    assert_eq!(honig::block_on(api::Server::new(Server).into_service().handle(r)).status().as_u16(), 401);
 }
 
 /// 3.2 Header Object, "Representing the `Set-Cookie` Header": one value per
@@ -174,7 +174,7 @@ fn set_cookie_values_go_on_separate_lines_and_come_back_whole() {
     assert_eq!(lines, ["a=1; Expires=Wed, 21 Oct 2015 07:28:00 GMT", "b=2"]);
     let client =
         Client::new(support::loopback(|req| api::Server::new(Server).into_service().handle(req))).with_cookie_key("s");
-    let resp = api::block_on(client.cookies(ops::cookies::Params::default())).expect("204");
+    let resp = honig::block_on(client.cookies(ops::cookies::Params::default())).expect("204");
     let ops::cookies::Response::NoContent { set_cookie } = resp;
     assert_eq!(set_cookie.expect("cookies").len(), 2, "the comma inside `Expires` does not split a cookie");
 }
@@ -184,15 +184,15 @@ fn set_cookie_values_go_on_separate_lines_and_come_back_whole() {
 fn a_header_sent_on_two_lines_reads_as_one_list() {
     // `limit` is a query parameter; `Authorization` lines must not merge into
     // anything else either: the request still authenticates.
-    let mut r = api::runtime::new_request("GET", "/items/1".to_owned(), vec![]).unwrap();
+    let mut r = honig::__private::new_request("GET", "/items/1".to_owned(), vec![]).unwrap();
     r.headers_mut().append("authorization", honig::http::HeaderValue::try_from("Bearer t".to_owned()).unwrap());
-    assert_eq!(api::block_on(api::Server::new(Server).into_service().handle(r)).status().as_u16(), 201);
-    let mut headers = api::http::HeaderMap::new();
+    assert_eq!(honig::block_on(api::Server::new(Server).into_service().handle(r)).status().as_u16(), 201);
+    let mut headers = honig::http::HeaderMap::new();
     for (k, v) in [("X", "a"), ("x", "b"), ("Y", "c")] {
-        headers.append(api::http::HeaderName::try_from(k).unwrap(), api::http::HeaderValue::from_static(v));
+        headers.append(honig::http::HeaderName::try_from(k).unwrap(), honig::http::HeaderValue::from_static(v));
     }
-    assert_eq!(api::runtime::joined_header(&headers, "X").as_deref(), Some("a,b"));
-    assert_eq!(api::runtime::joined_header(&headers, "Z"), None);
+    assert_eq!(honig::__private::joined_header(&headers, "X").as_deref(), Some("a,b"));
+    assert_eq!(honig::__private::joined_header(&headers, "Z"), None);
 }
 
 /// 3.2 Encoding Object defaults: `integer`, `number` and `boolean` parts are
@@ -207,7 +207,7 @@ fn multipart_parts_get_the_default_content_types_in_schema_order() {
     }))
     .with_bearer("t");
     let body = serde_json::from_value(serde_json::json!({"name": "n", "count": 3, "meta": {"x": 1}})).expect("body");
-    api::block_on(client.upload(ops::upload::Params { body })).expect("204");
+    honig::block_on(client.upload(ops::upload::Params { body })).expect("204");
     let sent = BODY.lock().unwrap().clone();
     let part = |name: &str| {
         let at = sent.find(&format!("name=\"{name}\"")).unwrap_or_else(|| panic!("no {name} part in {sent}"));
@@ -227,20 +227,20 @@ fn multipart_parts_get_the_default_content_types_in_schema_order() {
 fn the_client_reads_a_status_range_with_its_actual_status() {
     let service = api::Server::new(Server).into_service();
     let client = Client::new(service).with_bearer("t");
-    let got = api::block_on(client.get_item(ops::get_item::Params::new("1".to_owned())));
+    let got = honig::block_on(client.get_item(ops::get_item::Params::new("1".to_owned())));
     assert_eq!(
         got.ok(),
         Some(ops::get_item::Response::Success { status: ops::get_item::SuccessStatus::Created, body: "x".to_owned() })
     );
     let missing = Client::new(support::loopback(|_| {
-        let mut r = api::runtime::new_response(404);
+        let mut r = honig::__private::new_response(404);
         r.headers_mut()
             .insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::from_static("application/json"));
         *r.body_mut() = honig::Body::from(b"{}".to_vec());
         std::future::ready(r)
     }))
     .with_bearer("t");
-    let got = api::block_on(missing.get_item(ops::get_item::Params::new("1".to_owned())));
+    let got = honig::block_on(missing.get_item(ops::get_item::Params::new("1".to_owned())));
     assert_eq!(
         got.ok(),
         Some(ops::get_item::Response::Default {

@@ -130,7 +130,7 @@ pub fn at(size: usize) -> (Head, Base) {
         site: None,
         meta: None,
         loyalty: None,
-        note: val::api::runtime::Nullable::Absent,
+        note: honig::Nullable::Absent,
     };
     let head = Head {
         up: up::api::Client::new(over("/up")),

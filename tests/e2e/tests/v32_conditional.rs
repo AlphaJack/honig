@@ -54,11 +54,11 @@ impl api::Api for Accept {
 }
 
 fn post_b(body: &serde_json::Value) -> api::Response {
-    let mut req = api::runtime::new_request("POST", "/b".to_owned(), vec![]).unwrap();
+    let mut req = honig::__private::new_request("POST", "/b".to_owned(), vec![]).unwrap();
     req.headers_mut()
         .insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::from_static("application/json"));
     *req.body_mut() = honig::Body::from(serde_json::to_vec(body).unwrap());
-    api::block_on(api::Server::new(Accept).into_service().handle(req))
+    honig::block_on(api::Server::new(Accept).into_service().handle(req))
 }
 
 #[test]

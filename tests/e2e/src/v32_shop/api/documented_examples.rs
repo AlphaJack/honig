@@ -3,7 +3,7 @@
     unused_imports,
     reason = "which of them the examples need depends on the description"
 )]
-use super::{runtime, types};
+use super::types;
 fn value<T: serde::de::DeserializeOwned>(bad: &mut Vec<String>, at: &str, text: &str) {
     if let Err(e) = serde_json::from_str::<T>(text) {
         bad.push(format!("{at}: {e}"));
@@ -14,7 +14,9 @@ fn param<T: serde::de::DeserializeOwned>(
     at: &'static str,
     text: &str,
 ) {
-    if let Err(e) = runtime::from_param::<T>(serde_json::from_str(text).ok(), at) {
+    if let Err(e) = ::honig::__private::from_param::<
+        T,
+    >(serde_json::from_str(text).ok(), at) {
         bad.push(e.to_string());
     }
 }
@@ -85,7 +87,7 @@ fn documented_examples_decode() {
         types::ProductRating,
     >(&mut bad, "/components/schemas/Product/properties/rating/examples/0", "0.68");
     value::<
-        runtime::DateTimeStr,
+        ::honig::DateTimeStr,
     >(
         &mut bad,
         "/components/schemas/Product/properties/listedAt/examples/0",
@@ -106,21 +108,21 @@ fn documented_examples_decode() {
         "[\"office\",\"lighting\",\"in-stock\"]",
     );
     value::<
-        runtime::DateTimeStr,
+        ::honig::DateTimeStr,
     >(
         &mut bad,
         "/components/schemas/Product/properties/lastUpdated/examples/0",
         "\"2024-01-15T14:30:00Z\"",
     );
     value::<
-        runtime::url::Url,
+        ::honig::url::Url,
     >(
         &mut bad,
         "/components/schemas/Product/properties/successCallbackUrl/examples/0",
         "\"https://example.com/webhook\"",
     );
     value::<
-        runtime::url::Url,
+        ::honig::url::Url,
     >(
         &mut bad,
         "/components/schemas/Product/properties/failureCallbackUrl/examples/0",
@@ -172,7 +174,7 @@ fn documented_examples_decode() {
         "\"-rating\"",
     );
     value::<
-        runtime::UuidStr,
+        ::honig::UuidStr,
     >(
         &mut bad,
         "/components/schemas/ProductEvent/properties/id/examples/0",
@@ -186,7 +188,7 @@ fn documented_examples_decode() {
         "\"created\"",
     );
     value::<
-        runtime::DateTimeStr,
+        ::honig::DateTimeStr,
     >(
         &mut bad,
         "/components/schemas/ProductEvent/properties/occurredAt/examples/0",
@@ -210,7 +212,7 @@ fn documented_examples_decode() {
         "\"Studio North\"",
     );
     value::<
-        runtime::DateTimeStr,
+        ::honig::DateTimeStr,
     >(
         &mut bad,
         "/components/schemas/PhotoBatchMeta/properties/takenAt/examples/0",
@@ -234,7 +236,7 @@ fn documented_examples_decode() {
         "\"https://cdn.example.com/images/8f47c132-9d1f-4f83-b5a4-91db5ee757ab.jpg\"",
     );
     value::<
-        runtime::DateTimeStr,
+        ::honig::DateTimeStr,
     >(
         &mut bad,
         "/components/schemas/ImageUploadedMessage/properties/uploadedAt/examples/0",
@@ -674,7 +676,7 @@ fn documented_examples_decode() {
         "12",
     );
     value::<
-        runtime::UuidStr,
+        ::honig::UuidStr,
     >(
         &mut bad,
         "/paths/~1products~1{productId}~1photos/post/responses/202/content/application~1json/schema/properties/batchId/examples/0",
@@ -812,7 +814,7 @@ fn documented_examples_decode() {
         types::ProductRating,
     >(&mut bad, "/components/schemas/Product/properties/rating/examples/0", "0.68");
     value::<
-        runtime::DateTimeStr,
+        ::honig::DateTimeStr,
     >(
         &mut bad,
         "/components/schemas/Product/properties/listedAt/examples/0",
@@ -833,14 +835,14 @@ fn documented_examples_decode() {
         "[\"office\",\"lighting\",\"in-stock\"]",
     );
     value::<
-        runtime::url::Url,
+        ::honig::url::Url,
     >(
         &mut bad,
         "/components/schemas/Product/properties/successCallbackUrl/examples/0",
         "\"https://example.com/webhook\"",
     );
     value::<
-        runtime::url::Url,
+        ::honig::url::Url,
     >(
         &mut bad,
         "/components/schemas/Product/properties/failureCallbackUrl/examples/0",
@@ -863,7 +865,7 @@ fn documented_examples_decode() {
         types::VariantType,
     >(&mut bad, "/components/schemas/Variant/properties/type/examples/0", "\"size\"");
     value::<
-        runtime::UuidStr,
+        ::honig::UuidStr,
     >(
         &mut bad,
         "/components/schemas/ProductEvent/properties/id/examples/0",
@@ -877,7 +879,7 @@ fn documented_examples_decode() {
         "\"created\"",
     );
     value::<
-        runtime::DateTimeStr,
+        ::honig::DateTimeStr,
     >(
         &mut bad,
         "/components/schemas/ProductEvent/properties/occurredAt/examples/0",

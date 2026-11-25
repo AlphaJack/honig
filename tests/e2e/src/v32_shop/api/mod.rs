@@ -65,10 +65,6 @@
 )]
 #[rustfmt::skip]
 pub mod operations;
-#[doc(hidden)]
-#[rustfmt::skip]
-pub mod runtime;
-pub use honig::*;
 #[rustfmt::skip]
 pub mod types;
 #[rustfmt::skip]
@@ -88,3 +84,10 @@ pub use server::{webhook, Webhooks, WebhookOperation, WebhookContext};
 #[cfg(test)]
 #[rustfmt::skip]
 mod documented_examples;
+pub use ::honig::{
+    ApiError, AuthMetadata, Basic, Binary, Body, BuildError, ClientError, DateTimeStr,
+    DeviceCode, DevicePoll, EmailStr, Exchange, Framing, Granted, InstanceLocation,
+    ItemStream, Items, Message, Nullable, Passed, Pkce, ProblemSchema, Reason, Request,
+    Response, Secured, ServerUrl, Streamed, Token, Transport, UriReferenceStr, UuidStr,
+    Verified, Violation, send, send_streaming, url,
+};

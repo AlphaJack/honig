@@ -105,7 +105,7 @@ The type features of the `honig` dependency pick the type of each string format:
 honig = { version = "=x.y.z", features = ["client", "server", "uuid", "url", "ipnet", "jiff"] }
 ```
 
-honig re-exports each crate. So generated code refers to `api::runtime::uuid::Uuid` and your crate needs no `uuid` dependency of its own. Your code can still write `uuid::Uuid` with its own `uuid` dependency of the same major version: cargo builds one copy.
+honig re-exports each crate. So generated code refers to `honig::uuid::Uuid` and your crate needs no `uuid` dependency of its own. Your code can still write `uuid::Uuid` with its own `uuid` dependency of the same major version: cargo builds one copy.
 
 {{#include generated/formats.md}}
 

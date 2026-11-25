@@ -206,7 +206,7 @@ impl<T: DeserializeOwned> Items<T> {
     }
 
     /// Returns [`Items::received`] with the text of the library formats of each item checked first, as `H` says
-    /// (`runtime::formats`).
+    /// (`__private::formats`).
     ///
     /// # Errors
     /// `body` does not decode.
@@ -616,7 +616,7 @@ impl<T: DeserializeOwned> ItemStream<T> {
         Self::with(Inner::Decoding(Box::new(Decoder::new(status, body, framing))))
     }
 
-    /// Reads each item with the text of its library formats validated first, as `H` says (`runtime::formats`).
+    /// Reads each item with the text of its library formats validated first, as `H` says (`__private::formats`).
     #[doc(hidden)]
     #[must_use]
     pub fn validated<H: for<'de> crate::formats::Holds<'de, T>>(self) -> Self {
@@ -787,7 +787,7 @@ pub(crate) struct Record<'a> {
     bytes: &'a [u8],
 }
 
-/// Returns `record` decoded as `U`: `T`, or `T` decoded through `runtime::formats`.
+/// Returns `record` decoded as `U`: `T`, or `T` decoded through `__private::formats`.
 fn decode<U: DeserializeOwned>(record: &Record<'_>) -> Result<U, ClientError> {
     let (status, bytes) = (record.status, record.bytes);
     match record.framing {

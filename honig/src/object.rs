@@ -2,15 +2,15 @@
 //! `Serialize` and `Deserialize` through `NoSeq`.
 
 /// Writes an object type: the struct with the serde attributes of each field, and its `Serialize` and `Deserialize`.
-/// `Deserialize` decodes through `NoSeq`: `type: object` accepts no array. The serde attributes refer to `runtime::`
-/// paths, so the calling module imports honig as `runtime`. The body is a struct, so it looks and prints as one.
+/// `Deserialize` decodes through `NoSeq`: `type: object` accepts no array. The serde attributes refer to `::honig::`
+/// paths, so the calling crate depends on honig by that name. The body is a struct, so it looks and prints as one.
 ///
 /// A marker first on a field picks its kind:
 ///
 /// - none: the field as it is, with only the attributes given
 /// - `#[optional] pub f: T`: `Option<T>`, absent when `None`; `null` is refused
 /// - `#[maybe] pub f: T`: `Option<T>`, absent when `None`; `null` decodes as absent
-/// - `#[nullable] pub f: T`: `runtime::Nullable<T>`, absent when `Absent`
+/// - `#[nullable] pub f: T`: `::honig::Nullable<T>`, absent when `Absent`
 ///
 /// `#[unique_keys]` first on the struct writes through `UniqueKeys`: an extra map may not repeat a declared name.
 #[doc(hidden)]
@@ -24,7 +24,7 @@ macro_rules! object {
     };
     (@fields $attrs:tt $name:ident $enc:tt [$($done:tt)*] #[optional] $(#[$fm:meta])* pub $f:ident : $t:ty, $($rest:tt)*) => {
         $crate::object!(@fields $attrs $name $enc [$($done)*
-            #[serde(default, skip_serializing_if = "Option::is_none", deserialize_with = "runtime::not_null")]
+            #[serde(default, skip_serializing_if = "Option::is_none", deserialize_with = "::honig::__private::not_null")]
             $(#[$fm])* pub $f: Option<$t>,] $($rest)*);
     };
     (@fields $attrs:tt $name:ident $enc:tt [$($done:tt)*] #[maybe] $(#[$fm:meta])* pub $f:ident : $t:ty, $($rest:tt)*) => {
@@ -34,7 +34,7 @@ macro_rules! object {
     };
     (@fields $attrs:tt $name:ident $enc:tt [$($done:tt)*] #[nullable] $(#[$fm:meta])* pub $f:ident : $t:ty, $($rest:tt)*) => {
         $crate::object!(@fields $attrs $name $enc [$($done)*
-            #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
+            #[serde(default, skip_serializing_if = "::honig::Nullable::is_absent")]
             $(#[$fm])* pub $f: $crate::Nullable<$t>,] $($rest)*);
     };
     (@fields $attrs:tt $name:ident $enc:tt [$($done:tt)*] $(#[$fm:meta])* pub $f:ident : $t:ty, $($rest:tt)*) => {
@@ -62,10 +62,6 @@ macro_rules! object {
 #[cfg(test)]
 mod tests {
     #![expect(unreachable_pub, reason = "`object!` writes public items, here in a private module")]
-
-    mod runtime {
-        pub use crate::{__private::*, *};
-    }
 
     crate::object! {
         #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

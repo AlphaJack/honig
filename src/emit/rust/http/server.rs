@@ -36,8 +36,8 @@ pub(crate) fn api_method(op: &Operation, allow_unimplemented: bool) -> TokenStre
     let body = if allow_unimplemented {
         quote!({
             let _ = (params, ctx);
-            std::future::ready(Err(runtime::ApiError::new(
-                runtime::http::StatusCode::NOT_IMPLEMENTED,
+            std::future::ready(Err(::honig::ApiError::new(
+                ::honig::http::StatusCode::NOT_IMPLEMENTED,
                 "not implemented",
             )))
         })
@@ -58,8 +58,8 @@ fn operation_type(op: &Operation) -> proc_macro2::Ident {
     ident(if is_path(op) { "Operation" } else { "WebhookOperation" })
 }
 
-/// Returns `name`: one variant per operation of `ops`, each to its `runtime::Op`. Then honig types typed by it
-/// under the names in `aliases` (`Context` to `runtime::Context`), the one way your code refers to them.
+/// Returns `name`: one variant per operation of `ops`, each to its `::honig::__private::Op`. Then honig types typed by it
+/// under the names in `aliases` (`Context` to `::honig::Context`), the one way your code refers to them.
 fn operation_enum(name: &str, ops: &[&Operation], aliases: &[(&str, &str)]) -> TokenStream {
     let name = ident(name);
     let variants = ops.iter().map(|op| operation_variant(op));
@@ -70,16 +70,16 @@ fn operation_enum(name: &str, ops: &[&Operation], aliases: &[(&str, &str)]) -> T
     let aliases = aliases.iter().map(|(alias, base)| {
         let (alias, base) = (ident(alias), ident(base));
         match base.to_string().as_str() {
-            "Context" => quote!(pub type #alias<'a, C = ()> = runtime::Context<'a, C, #name>;),
-            _ => quote!(pub type #alias = runtime::#base<#name>;),
+            "Context" => quote!(pub type #alias<'a, C = ()> = ::honig::Context<'a, C, #name>;),
+            _ => quote!(pub type #alias = ::honig::#base<#name>;),
         }
     });
     quote! {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
         pub enum #name { #(#variants),* }
 
-        impl runtime::Operation for #name {
-            fn op(self) -> &'static runtime::Op {
+        impl ::honig::Operation for #name {
+            fn op(self) -> &'static ::honig::__private::Op {
                 match self { #(#arms)* }
             }
         }
@@ -103,7 +103,7 @@ fn error_response_method(operation: &TokenStream, filled: bool) -> TokenStream {
     };
     quote! {
         #[doc = #doc]
-        fn error_response(rejection: runtime::Rejection<#operation>) -> runtime::Response #body
+        fn error_response(rejection: ::honig::Rejection<#operation>) -> ::honig::Response #body
     }
 }
 
@@ -131,7 +131,7 @@ pub(crate) fn server(api: &Api, space: &Space<'_>, allow_unimplemented: bool) ->
     });
     let error_response = (!path_ops.is_empty()).then(|| error_response_method(&quote!(Operation), filled));
     quote! {
-        use super::{operations as ops, runtime};
+        use super::operations as ops;
         use std::future::Future;
 
         pub trait Api: Send + Sync + Sized + 'static {
@@ -166,7 +166,7 @@ fn webhooks(api: &Api, allow_unimplemented: bool, filled: bool) -> Option<TokenS
     let dispatch = verify_fn(api, &hooks, &quote!(&*self.api), &quote!(WebhookSchemeValue));
     let found = hooks.iter().map(|op| {
         let (key, method, v) = (lit(&hook_name(op)), lit(&op.method), operation_variant(op));
-        quote!((#key, #method) => Ok((WebhookOperation::#v, runtime::Spans::default())),)
+        quote!((#key, #method) => Ok((WebhookOperation::#v, ::honig::__private::Spans::default())),)
     });
     let operations = operation_enum("WebhookOperation", &hooks, &[("WebhookContext", "Context")]);
     let pairs = hooks.iter().map(|op| {
@@ -193,18 +193,18 @@ fn webhooks(api: &Api, allow_unimplemented: bool, filled: bool) -> Option<TokenS
 
         /// Returns the server of the webhook or callback `name`, answered by `api`.
         #[must_use]
-        pub fn webhook<A: Webhooks>(api: std::sync::Arc<A>, name: &'static str) -> runtime::Server<WebhookRoutes<A>> {
-            runtime::Server::new(WebhookRoutes { api, name })
+        pub fn webhook<A: Webhooks>(api: std::sync::Arc<A>, name: &'static str) -> ::honig::Server<WebhookRoutes<A>> {
+            ::honig::Server::new(WebhookRoutes { api, name })
         }
 
         #operations
         #values
 
-        impl<A: Webhooks> runtime::Operations for WebhookRoutes<A> {
+        impl<A: Webhooks> ::honig::__private::Operations for WebhookRoutes<A> {
             type Value = #value;
             type Operation = WebhookOperation;
 
-            fn error_response(&self) -> fn(runtime::Rejection<WebhookOperation>) -> runtime::Response {
+            fn error_response(&self) -> fn(::honig::Rejection<WebhookOperation>) -> ::honig::Response {
                 |rejection| A::error_response(rejection)
             }
 
@@ -212,34 +212,34 @@ fn webhooks(api: &Api, allow_unimplemented: bool, filled: bool) -> Option<TokenS
                 &[]
             }
 
-            fn route(&self, method: &str, _: &str) -> Result<(WebhookOperation, runtime::Spans), runtime::Reason> {
+            fn route(&self, method: &str, _: &str) -> Result<(WebhookOperation, ::honig::__private::Spans), ::honig::Reason> {
                 match (self.name, method) {
                     #(#found)*
                     (name, _) => {
                         let allowed: Vec<&'static str> = WEBHOOK_METHODS.iter().filter(|(n, _)| *n == name).map(|(_, m)| *m).collect();
-                        Err(if allowed.is_empty() { runtime::Reason::NotFound } else { runtime::Reason::MethodNotAllowed(allowed) })
+                        Err(if allowed.is_empty() { ::honig::Reason::NotFound } else { ::honig::Reason::MethodNotAllowed(allowed) })
                     }
                 }
             }
 
-            fn errors(&self) -> runtime::ProblemSchemas {
+            fn errors(&self) -> ::honig::__private::ProblemSchemas {
                 error_schema
             }
 
             #dispatch
 
-            fn call<'r>(&'r self, req: runtime::Request, call: runtime::Call<'r, Option<runtime::Passed<#value>>, WebhookOperation>) -> runtime::BoxFuture<'r, runtime::Response> {
+            fn call<'r>(&'r self, req: ::honig::Request, call: ::honig::__private::Call<'r, Option<::honig::Passed<#value>>, WebhookOperation>) -> ::honig::__private::BoxFuture<'r, ::honig::Response> {
                 Box::pin(async move {
                     let api = &*self.api;
                     let mut req = req;
                     let uri = req.uri().clone();
                     let raw_query = uri.query().unwrap_or_default();
-                    let query = runtime::parse_query(raw_query);
-                    let routed = runtime::Routed { request: &mut req, caps: &[], raw_query, query: &query };
+                    let query = ::honig::__private::parse_query(raw_query);
+                    let routed = ::honig::__private::Routed { request: &mut req, caps: &[], raw_query, query: &query };
                     match (self.name, routed.request.method().as_str()) {
                         #(#arms)*
                         // `route` found the operation first.
-                        _ => runtime::new_response(404),
+                        _ => ::honig::__private::new_response(404),
                     }
                 })
             }
@@ -250,7 +250,7 @@ fn webhooks(api: &Api, allow_unimplemented: bool, filled: bool) -> Option<TokenS
     })
 }
 
-/// Returns the handler of one operation: its `runtime::Op` and what `runtime::serve` calls to decode, run and encode
+/// Returns the handler of one operation: its `::honig::__private::Op` and what `::honig::__private::serve` calls to decode, run and encode
 /// it. Does the server answer `Range` for `op`? Yes for a `GET` whose success response is binary. Not if it declares a
 /// `206` (or `2XX`) or a `Range` parameter. Then its handler answers ranges itself.
 fn serves_ranges(op: &Operation) -> bool {
@@ -303,10 +303,10 @@ pub(crate) fn server_op(space: &Space<'_>, api: &Api, sec: &Securities, op: &Ope
     let produces = crate::emit::rust::http::shared::produces(op).into_iter().map(|(m, _)| lit(m));
     let ranges = serves_ranges(op);
     let serve = if op.security.is_empty() {
-        quote!(runtime::serve(routed, call.map(|_| ()), &steps).await)
+        quote!(::honig::__private::serve(routed, call.map(|_| ()), &steps).await)
     } else {
         let security = security_of(api, op, &m);
-        quote!(runtime::serve_signed_in(routed, call.map(#security), &steps).await)
+        quote!(::honig::__private::serve_signed_in(routed, call.map(#security), &steps).await)
     };
     let routes = ident(if is_path(op) { "Routes" } else { "WebhookRoutes" });
     let id = operation_type(op);
@@ -319,12 +319,12 @@ pub(crate) fn server_op(space: &Space<'_>, api: &Api, sec: &Securities, op: &Ope
         .chain((!produces.is_empty()).then(|| quote!(produces: &[#(#produces),*],)))
         .chain(ranges.then(|| quote!(ranges: true,)))
         .collect();
-    let new = quote!(runtime::Op::new(#op_name, #method, #route, #span, error_schema));
-    let op_value = if set.is_empty() { new } else { quote!(runtime::Op { #(#set)* ..#new }) };
+    let new = quote!(::honig::__private::Op::new(#op_name, #method, #route, #span, error_schema));
+    let op_value = if set.is_empty() { new } else { quote!(::honig::__private::Op { #(#set)* ..#new }) };
     quote! {
-        static #info: runtime::Op = #op_value;
-        async fn #name<A: #tr>(api: &A, routed: runtime::Routed<'_>, call: runtime::Call<'_, Option<runtime::Passed<<#routes<A> as runtime::Operations>::Value>>, #id>) -> runtime::Response {
-            let steps = runtime::Steps { api, decode: #decode, call: |a, p, c| Box::pin(a.#name(p, c)), encode: #encode };
+        static #info: ::honig::__private::Op = #op_value;
+        async fn #name<A: #tr>(api: &A, routed: ::honig::__private::Routed<'_>, call: ::honig::__private::Call<'_, Option<::honig::Passed<<#routes<A> as ::honig::__private::Operations>::Value>>, #id>) -> ::honig::Response {
+            let steps = ::honig::__private::Steps { api, decode: #decode, call: |a, p, c| Box::pin(a.#name(p, c)), encode: #encode };
             #serve
         }
         #params_def
