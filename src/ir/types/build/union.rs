@@ -130,7 +130,10 @@ impl Builder<'_> {
         ptr: &str,
         name: &Name,
     ) -> Struct {
-        let patterns = (held.iter().enumerate())
+        // In the order of the pattern text: a reorder of the description renames no map.
+        let mut held: Vec<_> = held.iter().collect();
+        held.sort_unstable_by_key(|(p, _)| *p);
+        let patterns = (held.into_iter().enumerate())
             .map(|(i, (p, x))| {
                 let at = join(&join(ptr, "patternProperties"), p);
                 let ty = self.ty(x, &at, &name.and(&Name::new(&format!("pattern {}", i + 1))));

@@ -1370,18 +1370,23 @@ fn required_unique_and_format_without_a_type_check_their_kind() {
 
 /// `patternProperties` beside declared properties is a map per pattern, of the type of its schema: each undeclared
 /// name decodes into the map of its pattern, and `additionalProperties: false` refuses the rest. No check inspects the
-/// names after decoding.
+/// names after decoding. The maps number in the order of the pattern text, so a reorder of the patterns renames none.
 #[test]
 fn pattern_properties_beside_properties_are_typed_maps() {
-    let tags = json!({"type": "object", "properties": {"id": {"type": "string"}},
-        "patternProperties": {"^x_": {"type": "string"}, "^n_": {"type": "integer", "minimum": 0}},
-        "additionalProperties": false});
-    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Tags": tags}}));
-    let types =
-        common::file(&common::generate("patterns", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
-    assert!(types.contains("pub pattern_1: std::collections::BTreeMap<String, String>,"), "{types}");
-    assert!(types.contains("pub pattern_2: std::collections::BTreeMap<String,"), "{types}");
+    let tags = |first: (&str, serde_json::Value), second: (&str, serde_json::Value)| {
+        let mut patterns = serde_json::Map::new();
+        patterns.extend([first, second].map(|(p, s)| (p.to_owned(), s)));
+        let tags = json!({"type": "object", "properties": {"id": {"type": "string"}},
+            "patternProperties": patterns, "additionalProperties": false});
+        let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Tags": tags}}));
+        common::file(&common::generate("patterns", &doc, &crate::emit::Options::default()), "types.rs").to_owned()
+    };
+    let (x, n) = (("^x_", json!({"type": "string"})), ("^n_", json!({"type": "integer", "minimum": 0})));
+    let types = tags(x.clone(), n.clone());
+    assert!(types.contains("pub pattern_1: std::collections::BTreeMap<String, TagsPattern1>,"), "{types}");
+    assert!(types.contains("pub pattern_2: std::collections::BTreeMap<String, String>,"), "{types}");
     assert!(types.contains("runtime::Closed") && !types.contains("runtime::pattern_matches("), "{types}");
+    assert_eq!(types, tags(n, x));
 }
 
 /// `additionalProperties` with a schema beside `patternProperties` types the names that no pattern matches: a map of
