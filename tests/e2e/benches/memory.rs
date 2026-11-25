@@ -138,6 +138,8 @@ fn main() -> ExitCode {
                 let ((_, head_frames), (_, base_frames)) =
                     (cost::serve(&generated, &path).await, cost::serve(&baseline, &path).await);
                 let (head_allocs, head_peak) = cost::heap(&generated, &path).await;
+                // As `tests/allocations.rs` counts them: the budgets set on the CI apply on a Mac too.
+                let head_allocs = head_allocs.saturating_sub(cost::SERVER_LOCKS * cost::lock_box());
                 let (base_allocs, base_peak) = cost::heap(&baseline, &path).await;
                 let head = Side { peak: head_peak, allocs: head_allocs, frames: head_frames };
                 let base = Side { peak: base_peak, allocs: base_allocs, frames: base_frames };
