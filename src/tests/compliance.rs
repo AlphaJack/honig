@@ -1415,3 +1415,17 @@ fn an_ignored_header_parameter_is_a_warning() {
         assert_eq!(warned, 1, "{at}: {:#?}", made.diagnostics);
     }
 }
+
+/// `x-enum-varnames` as a list names the values by position, so a reordered `enum` renames them: it warns. An object
+/// from value to name does not.
+#[test]
+fn enum_names_by_position_warn() {
+    let schemas =
+        |names: Value| json!({"schemas": {"E": {"type": "integer", "enum": [1, 2], "x-enum-varnames": names}}});
+    let warned = |names: Value| {
+        let (_, w) = common::build("enum-names", &doc(&json!({}), &schemas(names)), &[]);
+        w.iter().any(|m| m.starts_with("/components/schemas/E/x-enum-varnames:"))
+    };
+    assert!(warned(json!(["One", "Two"])), "a list");
+    assert!(!warned(json!({"1": "One", "2": "Two"})), "an object");
+}

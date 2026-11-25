@@ -150,15 +150,39 @@ impl<'a> Builder<'a> {
         }
     }
 
-    /// Reports names for the values of an enum that are not one string for each value.
-    fn check_enum_names(&mut self, o: &serde_json::Map<String, Value>, values: usize, ptr: &str) {
+    /// Reports names for the values of an enum that are not one string for each value. A list names them by position, so a
+    /// reordered `enum` renames them without a word: it warns. An object from value to name names each one.
+    fn check_enum_names(&mut self, o: &serde_json::Map<String, Value>, values: &[i64], ptr: &str) {
         for key in keywords::ENUM_NAMES {
-            let Some(Value::Array(names)) = o.get(*key) else { continue };
-            if names.len() != values || names.iter().any(|n| !n.is_string()) {
-                self.diags.error(
+            match o.get(*key) {
+                Some(Value::Array(names)) if names.len() != values.len() || names.iter().any(|n| !n.is_string()) => {
+                    self.diags.error(
+                        join(ptr, key),
+                        format!(
+                            "`{key}` has {} entries for {} values: list one name for each value",
+                            names.len(),
+                            values.len()
+                        ),
+                    );
+                }
+                Some(Value::Array(_)) => self.diags.warning(
                     join(ptr, key),
-                    format!("`{key}` has {} entries for {values} values: list one name for each value", names.len()),
-                );
+                    format!("`{key}` names the values by position, so a reordered `enum` renames them: write an object from value to name"),
+                ),
+                Some(Value::Object(names)) => {
+                    let missing: Vec<String> = values
+                        .iter()
+                        .filter(|v| !names.get(&v.to_string()).is_some_and(Value::is_string))
+                        .map(i64::to_string)
+                        .collect();
+                    if !missing.is_empty() {
+                        self.diags.warning(
+                            join(ptr, key),
+                            format!("`{key}` names no value {}: the variants keep their default names", missing.join(", ")),
+                        );
+                    }
+                }
+                _ => {}
             }
         }
     }
@@ -831,7 +855,7 @@ impl<'a> Builder<'a> {
             return self.all_of(o, ptr, name);
         }
         if let Some(ints) = int_enum_values(o) {
-            self.check_enum_names(o, ints.len(), ptr);
+            self.check_enum_names(o, &ints, ptr);
             return Some(int_enum(o, &ints));
         }
         if let Some(Value::Array(values)) = o.get("enum") {
@@ -1290,11 +1314,13 @@ mod tests {
         }
     }
 
-    /// An integer enum's variants are named by their values, or by `x-enum-varnames` when it lists one for each.
+    /// An integer enum's variants are named by their values, or by `x-enum-varnames` when it names each: a list by
+    /// position or an object from value to name.
     #[test]
     fn integer_variants_are_named_by_value() {
         let s = build(
-            &json!({"E": {"type": "integer", "enum": [0, -1, 1]}, "F": {"type": "integer", "enum": [1, 2], "x-enum-varnames": ["One", "Two"]}}),
+            &json!({"E": {"type": "integer", "enum": [0, -1, 1]}, "F": {"type": "integer", "enum": [1, 2], "x-enum-varnames": ["One", "Two"]},
+                "G": {"type": "integer", "enum": [1, 2], "x-enum-varnames": {"2": "Two", "1": "One"}}}),
         );
         let names = |n: &str| {
             let Kind::IntEnum(vs) = &by_name(&s, n).kind else { panic!("{n}: an integer enum") };
@@ -1302,6 +1328,7 @@ mod tests {
         };
         assert_eq!(names("E"), ["N0", "Minus1", "N1"]);
         assert_eq!(names("F"), ["One", "Two"]);
+        assert_eq!(names("G"), ["One", "Two"]);
     }
 
     /// Two aliases that contain each other cannot be `type` aliases: each becomes a newtype.
