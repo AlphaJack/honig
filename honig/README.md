@@ -28,7 +28,7 @@ generated code needs a feature that is off, `generate` stops and prints the line
 | `ureq` | ureq | `UreqTransport`: blocking client | Optional: you use this adapter |
 | `gloo-net` | gloo-net | `GlooTransport`: browser `fetch` on `wasm32` only | Optional: you use this adapter |
 | `axum` | axum | `Server::into_axum` and the address of the client from the `ConnectInfo` of axum | Optional: you use this adapter |
-| `tracing` | tracing | A span per request and a log line for each wide event | Optional: you use this adapter |
+| `tracing` | tracing | A span per request with its operation, route and status, in the conventions of OpenTelemetry | Optional: you use this adapter |
 | `tracing-opentelemetry` | opentelemetry | W3C Trace Context: `traceparent` and `tracestate` | Optional: you use this adapter |
 | `jiff` | jiff | `date-time`, `date`, `date-time-local` and `time-local` as `jiff` types, and `FullTime` in them | Optional: you want these types |
 | `uuid` | uuid | `uuid` as `uuid::Uuid` | Optional: you want these types |
