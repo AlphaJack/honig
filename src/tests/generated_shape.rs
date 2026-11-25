@@ -2724,3 +2724,28 @@ fn codec_features_follow_the_description() {
     let param = features(json!({"application/json": {"schema": object}}), cookie_param, "header");
     assert!(param.contains(cookie), "{param:?}");
 }
+
+/// An `enum` that no Rust type holds (objects, numbers beside strings, `null` alone) is compared as JSON; one of strings
+/// or of integers is a typed enum and needs no such comparison. A keyword beside each keeps them from being a plain
+/// union.
+#[test]
+fn only_values_that_no_type_holds_are_compared_as_json() {
+    let types = |schema: serde_json::Value| {
+        let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"S": schema}}));
+        common::file(&common::generate("untyped-values", &doc, &crate::emit::Options::default()), "types.rs").to_owned()
+    };
+    let compared = "is not one of the allowed values";
+    let untyped = [
+        json!({"enum": [{"a": 1}, {"b": 2}], "maxProperties": 3}),
+        json!({"enum": [1, "a"], "maxLength": 3}),
+        json!({"enum": [null], "maxLength": 3}),
+    ];
+    for schema in untyped {
+        assert!(types(schema.clone()).contains(compared), "{schema}");
+    }
+    for schema in
+        [json!({"enum": ["a", null], "maxLength": 3}), json!({"type": "integer", "enum": [1, 2], "minimum": 0})]
+    {
+        assert!(!types(schema.clone()).contains(compared), "{schema}");
+    }
+}

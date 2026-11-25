@@ -482,14 +482,17 @@ pub(super) fn values_union(o: &serde_json::Map<String, Value>) -> Option<serde_j
     Some(u)
 }
 
-/// Does `o` list values that no Rust type represents: an empty `enum`, one of other than strings or integers, or a
-/// `const` of other than a string? A constant is a unit type that decodes its one value, and a union of them a list of
-/// values ([`values_union`]), so each enforces its keyword.
+/// Does `o` list values that no Rust type represents: an `enum` that is empty or of `null` alone, one of other than
+/// strings or integers, or a `const` of other than a string? A constant is a unit type that decodes its one value, and a
+/// union of them a list of values ([`values_union`]), so each enforces its keyword.
 pub(super) fn untyped_values(o: &serde_json::Map<String, Value>) -> bool {
     let untyped = |v: &Value| !v.is_string() && !v.is_null();
     typed_const(o).is_none()
         && values_union(o).is_none()
-        && ((o.get("enum").and_then(Value::as_array).is_some_and(|e| e.is_empty() || e.iter().any(untyped))
+        && ((o
+            .get("enum")
+            .and_then(Value::as_array)
+            .is_some_and(|e| e.iter().all(Value::is_null) || e.iter().any(untyped))
             && int_enum_values(o).is_none())
             || o.get("const").is_some_and(untyped))
 }
