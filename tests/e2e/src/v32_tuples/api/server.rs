@@ -147,7 +147,7 @@ async fn plan<A: Api>(
         api,
         decode: plan_params,
         call: |a, p, c| Box::pin(a.plan(p, c)),
-        encode: |r, _| plan_encode(r),
+        encode: |r, _| plan_encode(&r),
     };
     runtime::serve(routed, call.map(|_| ()), &steps).await
 }
@@ -161,8 +161,8 @@ fn plan_params(
     })
 }
 fn plan_encode(
-    resp: ops::plan::Response,
+    resp: &ops::plan::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     let ops::plan::Response::Ok(body) = resp;
-    Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
+    Ok(runtime::body_response(200, "application/json", runtime::json_encode(body)?))
 }

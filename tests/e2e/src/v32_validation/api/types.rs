@@ -2803,6 +2803,12 @@ pub type UserNote = UserNote2;
 pub struct UserNote2(pub(super) String);
 runtime::checked_twin!(UserNote2, NarrowStampAt, String);
 runtime::checked_str_impls!(UserNote2);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum GetModeOk {
+    On,
+    Off,
+}
+runtime::str_enum_impls!(GetModeOk { Off => "off", On => "on" });
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct CreateUserLimit(pub(super) i64);

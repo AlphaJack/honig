@@ -210,7 +210,7 @@ async fn list_items<A: Api>(
         api,
         decode: |i| list_items_params(&i),
         call: |a, p, c| Box::pin(a.list_items(p, c)),
-        encode: |r, _| list_items_encode(r),
+        encode: |r, _| list_items_encode(&r),
     };
     runtime::serve(routed, call.map(|_| ()), &steps).await
 }
@@ -330,10 +330,10 @@ fn list_items_params(
     })
 }
 fn list_items_encode(
-    resp: ops::list_items::Response,
+    resp: &ops::list_items::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     let ops::list_items::Response::Ok(body) = resp;
-    Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
+    Ok(runtime::body_response(200, "application/json", runtime::json_encode(body)?))
 }
 static UPLOAD_OP: runtime::Op = runtime::Op::new(
     "upload",
@@ -557,13 +557,13 @@ async fn list_keys<A: Api>(
         api,
         decode: |_| Ok(ops::list_keys::Params {}),
         call: |a, p, c| Box::pin(a.list_keys(p, c)),
-        encode: |r, _| list_keys_encode(r),
+        encode: |r, _| list_keys_encode(&r),
     };
     runtime::serve(routed, call.map(|_| ()), &steps).await
 }
 fn list_keys_encode(
-    resp: ops::list_keys::Response,
+    resp: &ops::list_keys::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     let ops::list_keys::Response::Ok(body) = resp;
-    Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
+    Ok(runtime::body_response(200, "application/json", runtime::json_encode(body)?))
 }

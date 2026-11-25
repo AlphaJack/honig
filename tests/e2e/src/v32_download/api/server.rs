@@ -278,7 +278,7 @@ async fn get_manifest<A: Api>(
         api,
         decode: |i| get_manifest_params(&i),
         call: |a, p, c| Box::pin(a.get_manifest(p, c)),
-        encode: |r, _| get_manifest_encode(r),
+        encode: |r, _| get_manifest_encode(&r),
     };
     runtime::serve(routed, call.map(|_| ()), &steps).await
 }
@@ -291,7 +291,7 @@ fn get_manifest_params(
     })
 }
 fn get_manifest_encode(
-    resp: ops::get_manifest::Response,
+    resp: &ops::get_manifest::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
@@ -309,7 +309,7 @@ fn get_manifest_encode(
                 runtime::Message::set_body(
                     &mut r,
                     "application/json",
-                    runtime::json_encode(&body)?,
+                    runtime::json_encode(body)?,
                 );
                 r
             }

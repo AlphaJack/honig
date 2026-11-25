@@ -164,7 +164,7 @@ async fn add_note<A: Api>(
         api,
         decode: add_note_params,
         call: |a, p, c| Box::pin(a.add_note(p, c)),
-        encode: |r, _| add_note_encode(r),
+        encode: |r, _| add_note_encode(&r),
     };
     runtime::serve(routed, call.map(|_| ()), &steps).await
 }
@@ -178,7 +178,7 @@ fn add_note_params(
     })
 }
 fn add_note_encode(
-    resp: ops::add_note::Response,
+    resp: &ops::add_note::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     let ops::add_note::Response::Ok { body, x_count } = resp;
     Ok({

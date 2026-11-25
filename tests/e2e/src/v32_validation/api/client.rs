@@ -15,6 +15,33 @@ impl<T> Client<T> {
     }
 }
 impl<T: runtime::Transport> Client<T> {
+    pub async fn get_mode(
+        &self,
+        _p: impl runtime::IntoArg<'_, ops::get_mode::Params>,
+    ) -> Result<ops::get_mode::Response, runtime::ClientError> {
+        let path = String::from("/mode");
+        let query = Vec::new();
+        let mut req = runtime::new_request("GET", path, query)?;
+        runtime::Message::set_header(&mut req, "Accept", "application/json")?;
+        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::propagate_trace(&mut req);
+        let resp = runtime::send(&self.transport, req).await?;
+        let (head, body) = resp.into_parts();
+        let (body, _) = body.into_parts();
+        let status = head.status.as_u16();
+        if status == 200 {
+            {
+                runtime::check_media_of(&head, &body, &["application/json"])?;
+                runtime::json_decode(Some(status), &body)
+                    .map(ops::get_mode::Response::Ok)
+            }
+        } else {
+            Err(runtime::ClientError::UnexpectedStatus {
+                status: head.status,
+                body,
+            })
+        }
+    }
     pub async fn create_user(
         &self,
         p: impl runtime::IntoArg<'_, ops::create_user::Params>,

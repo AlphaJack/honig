@@ -11,12 +11,21 @@ use crate::emit::rust::space::Space;
 use crate::emit::rust::syntax::{ident, lit};
 use crate::emit::rust::syntax::{pascal_ident, snake_ident};
 use crate::ir::http::{Content, Operation};
+use crate::ir::media::MediaKind;
 use crate::ir::names::Name;
 use crate::ir::types::Ty;
 
 /// Does any response variant contain a body or a header the encoder moves out? A status alone is copied.
+/// Does the encoder take the response by value? Only when an arm moves a body out (an owned `String` text body, bytes, a
+/// multipart body, a stream) or encodes XML, whose shape is the type's own and not a reference's. Every other body and
+/// every header encodes from a borrow.
 pub(crate) fn carries_data(op: &Operation) -> bool {
-    op.responses.iter().any(|r| !r.contents.is_empty() || !r.headers.is_empty())
+    op.responses.iter().flat_map(|r| &r.contents).any(|c| match c.kind {
+        MediaKind::Text => matches!(c.ty, Ty::String),
+        MediaKind::Json | MediaKind::Linkset | MediaKind::Form => false,
+        MediaKind::JsonLines | MediaKind::JsonSeq | MediaKind::Sse => c.streams(),
+        MediaKind::Xml | MediaKind::Bytes | MediaKind::Multipart | MediaKind::MultipartMixed => true,
+    })
 }
 
 pub(crate) fn encode_fallible(op: &Operation) -> bool {
@@ -76,19 +85,20 @@ pub(crate) fn server_encode(space: &Space<'_>, op: &Operation, op_mod: &TokenStr
             };
             quote!(if let Some(h) = #value { runtime::Message::set_header(&mut r, #wire, h)?; })
         });
-        let e = if bx.resp[i] { quote!(*body) } else { quote!(body) };
+        // A borrowed response binds a reference: the body encodes from it as it is, also when it is boxed.
+        let e = if bx.resp[i] && carries { quote!(*body) } else { quote!(body) };
         let body = (!r.contents.is_empty()).then(|| {
             if collapses(space, r) {
-                return in_chosen_media(&r.contents, &e, &produces);
+                return in_chosen_media(&r.contents, &e, &produces, !carries);
             }
             let enum_path = {
                 let n = format_ident!("{}Body", pascal(&r.variant));
                 quote!(#op_mod::#n)
             };
-            encode_contents(&quote!(r), &e, &r.contents, &enum_path, &bx.resp_enums[i], false, false)
+            encode_contents(&quote!(r), &e, &r.contents, &enum_path, &bx.resp_enums[i], false, !carries)
         });
         let whole = match (r.headers.is_empty(), r.contents.as_slice()) {
-            (true, [c]) => body_bytes(&e, c, false).map(|b| (lit(&send_media(c)), b)),
+            (true, [c]) => body_bytes(&e, c, !carries).map(|b| (lit(&send_media(c)), b)),
             _ => None,
         };
         let arm = if r.headers.is_empty() && r.contents.is_empty() {
@@ -113,13 +123,13 @@ pub(crate) fn server_encode(space: &Space<'_>, op: &Operation, op_mod: &TokenStr
 }
 
 /// Returns one value in the media type `Accept` chose: its index in the operation's `produces`.
-fn in_chosen_media(contents: &[Content], e: &TokenStream, produces: &[(&str, &Name)]) -> TokenStream {
+fn in_chosen_media(contents: &[Content], e: &TokenStream, produces: &[(&str, &Name)], borrowed: bool) -> TokenStream {
     let arms = contents.iter().skip(1).map(|c| {
         let i = num(produces.iter().position(|(m, _)| *m == c.media).unwrap_or(0));
-        let stmts = encode_body(&quote!(r), e, c, false, false);
+        let stmts = encode_body(&quote!(r), e, c, false, borrowed);
         quote!(#i => { #stmts })
     });
-    let first = encode_body(&quote!(r), e, &contents[0], false, false);
+    let first = encode_body(&quote!(r), e, &contents[0], false, borrowed);
     quote!(match media { #(#arms)* _ => { #first } })
 }
 

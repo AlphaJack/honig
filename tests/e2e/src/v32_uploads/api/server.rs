@@ -155,7 +155,7 @@ async fn put_file<A: Api>(
         api,
         decode: put_file_params,
         call: |a, p, c| Box::pin(a.put_file(p, c)),
-        encode: |r, _| put_file_encode(r),
+        encode: |r, _| put_file_encode(&r),
     };
     runtime::serve(routed, call.map(|_| ()), &steps).await
 }
@@ -173,8 +173,8 @@ fn put_file_params(
     })
 }
 fn put_file_encode(
-    resp: ops::put_file::Response,
+    resp: &ops::put_file::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     let ops::put_file::Response::Ok(body) = resp;
-    Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
+    Ok(runtime::body_response(200, "application/json", runtime::json_encode(body)?))
 }

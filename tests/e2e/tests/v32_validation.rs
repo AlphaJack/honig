@@ -99,6 +99,13 @@ impl api::Api for Users {
         let reply = types::Login { user, token: "t0k".to_owned() };
         std::future::ready(Ok(ops::login::Response::Created(reply)))
     }
+    fn get_mode(
+        &self,
+        _: ops::get_mode::Params,
+        _: &api::Context<'_>,
+    ) -> impl Future<Output = Result<ops::get_mode::Response, api::ApiError>> + Send {
+        std::future::ready(Ok(ops::get_mode::Response::Ok(types::GetModeOk::On)))
+    }
     fn create_shipment(
         &self,
         _: ops::create_shipment::Params,
@@ -248,6 +255,13 @@ fn pattern_fields_are_checked_types() {
 struct Recording(std::sync::Mutex<Vec<serde_json::Map<String, serde_json::Value>>>);
 
 impl api::Api for Recording {
+    fn get_mode(
+        &self,
+        _: ops::get_mode::Params,
+        _: &api::Context<'_>,
+    ) -> impl Future<Output = Result<ops::get_mode::Response, api::ApiError>> + Send {
+        std::future::ready(Ok(ops::get_mode::Response::Ok(types::GetModeOk::On)))
+    }
     fn error_response(rejection: api::Rejection) -> api::Response {
         rejection.response()
     }

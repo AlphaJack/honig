@@ -1140,12 +1140,12 @@ async fn collection_with_links<A: Api>(
         decode: |_| Ok(ops::collection_with_links::Params {
         }),
         call: |a, p, c| Box::pin(a.collection_with_links(p, c)),
-        encode: |r, _| collection_with_links_encode(r),
+        encode: |r, _| collection_with_links_encode(&r),
     };
     runtime::serve(routed, call.map(|_| ()), &steps).await
 }
 fn collection_with_links_encode(
-    resp: ops::collection_with_links::Response,
+    resp: &ops::collection_with_links::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     let ops::collection_with_links::Response::Ok { body, link } = resp;
     Ok({
@@ -1156,7 +1156,7 @@ fn collection_with_links_encode(
         runtime::Message::set_body(
             &mut r,
             "application/json",
-            runtime::json_encode(&body)?,
+            runtime::json_encode(body)?,
         );
         r
     })
@@ -1185,19 +1185,19 @@ async fn standalone_json_linkset<A: Api>(
         decode: |_| Ok(ops::standalone_json_linkset::Params {
         }),
         call: |a, p, c| Box::pin(a.standalone_json_linkset(p, c)),
-        encode: |r, _| standalone_json_linkset_encode(r),
+        encode: |r, _| standalone_json_linkset_encode(&r),
     };
     runtime::serve(routed, call.map(|_| ()), &steps).await
 }
 fn standalone_json_linkset_encode(
-    resp: ops::standalone_json_linkset::Response,
+    resp: &ops::standalone_json_linkset::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     let ops::standalone_json_linkset::Response::Ok(body) = resp;
     Ok(
         runtime::body_response(
             200,
             "application/linkset+json",
-            runtime::json_encode(&body)?,
+            runtime::json_encode(body)?,
         ),
     )
 }
@@ -1224,19 +1224,19 @@ async fn linkset_body<A: Api>(
         api,
         decode: |_| Ok(ops::linkset_body::Params {}),
         call: |a, p, c| Box::pin(a.linkset_body(p, c)),
-        encode: |r, _| linkset_body_encode(r),
+        encode: |r, _| linkset_body_encode(&r),
     };
     runtime::serve(routed, call.map(|_| ()), &steps).await
 }
 fn linkset_body_encode(
-    resp: ops::linkset_body::Response,
+    resp: &ops::linkset_body::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     let ops::linkset_body::Response::Ok(body) = resp;
     Ok(
         runtime::body_response(
             200,
             "application/linkset",
-            runtime::linkset_encode(&body)?.into_bytes(),
+            runtime::linkset_encode(body)?.into_bytes(),
         ),
     )
 }
@@ -1263,15 +1263,15 @@ async fn media_type_json<A: Api>(
         api,
         decode: |_| Ok(ops::media_type_json::Params {}),
         call: |a, p, c| Box::pin(a.media_type_json(p, c)),
-        encode: |r, _| media_type_json_encode(r),
+        encode: |r, _| media_type_json_encode(&r),
     };
     runtime::serve(routed, call.map(|_| ()), &steps).await
 }
 fn media_type_json_encode(
-    resp: ops::media_type_json::Response,
+    resp: &ops::media_type_json::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     let ops::media_type_json::Response::Ok(body) = resp;
-    Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
+    Ok(runtime::body_response(200, "application/json", runtime::json_encode(body)?))
 }
 static LOG_STREAM_OP: runtime::Op = runtime::Op {
     produces: &["application/json-seq", "application/jsonl", "application/x-ndjson"],

@@ -331,7 +331,7 @@ async fn list_orders<A: Api>(
         api,
         decode: |i| list_orders_params(&i),
         call: |a, p, c| Box::pin(a.list_orders(p, c)),
-        encode: |r, _| list_orders_encode(r),
+        encode: |r, _| list_orders_encode(&r),
     };
     runtime::serve_signed_in(
             routed,
@@ -411,7 +411,7 @@ fn list_orders_params(
     })
 }
 fn list_orders_encode(
-    resp: ops::list_orders::Response,
+    resp: &ops::list_orders::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
@@ -426,7 +426,7 @@ fn list_orders_encode(
                 runtime::Message::set_body(
                     &mut r,
                     "application/json",
-                    runtime::json_encode(&body)?,
+                    runtime::json_encode(body)?,
                 );
                 r
             }
@@ -434,7 +434,7 @@ fn list_orders_encode(
                 runtime::body_response(
                     status.as_u16(),
                     "application/problem+json",
-                    runtime::json_encode(&body)?,
+                    runtime::json_encode(body)?,
                 )
             }
         },
@@ -458,7 +458,7 @@ async fn create_order<A: Api>(
         api,
         decode: create_order_params,
         call: |a, p, c| Box::pin(a.create_order(p, c)),
-        encode: |r, _| create_order_encode(r),
+        encode: |r, _| create_order_encode(&r),
     };
     runtime::serve_signed_in(
             routed,
@@ -499,7 +499,7 @@ fn create_order_params(
     })
 }
 fn create_order_encode(
-    resp: ops::create_order::Response,
+    resp: &ops::create_order::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
@@ -507,21 +507,21 @@ fn create_order_encode(
                 runtime::body_response(
                     201,
                     "application/json",
-                    runtime::json_encode(&*body)?,
+                    runtime::json_encode(body)?,
                 )
             }
             ops::create_order::Response::UnprocessableEntity(body) => {
                 runtime::body_response(
                     422,
                     "application/problem+json",
-                    runtime::json_encode(&body)?,
+                    runtime::json_encode(body)?,
                 )
             }
             ops::create_order::Response::Default { status, body } => {
                 runtime::body_response(
                     status.as_u16(),
                     "application/problem+json",
-                    runtime::json_encode(&body)?,
+                    runtime::json_encode(body)?,
                 )
             }
         },
@@ -551,7 +551,7 @@ async fn get_order<A: Api>(
         api,
         decode: |i| get_order_params(&i),
         call: |a, p, c| Box::pin(a.get_order(p, c)),
-        encode: |r, _| get_order_encode(r),
+        encode: |r, _| get_order_encode(&r),
     };
     runtime::serve_signed_in(
             routed,
@@ -589,7 +589,7 @@ fn get_order_params(
     })
 }
 fn get_order_encode(
-    resp: ops::get_order::Response,
+    resp: &ops::get_order::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
@@ -604,7 +604,7 @@ fn get_order_encode(
                 runtime::Message::set_body(
                     &mut r,
                     "application/json",
-                    runtime::json_encode(&*body)?,
+                    runtime::json_encode(body)?,
                 );
                 r
             }
@@ -612,14 +612,14 @@ fn get_order_encode(
                 runtime::body_response(
                     404,
                     "application/problem+json",
-                    runtime::json_encode(&body)?,
+                    runtime::json_encode(body)?,
                 )
             }
             ops::get_order::Response::Default { status, body } => {
                 runtime::body_response(
                     status.as_u16(),
                     "application/problem+json",
-                    runtime::json_encode(&body)?,
+                    runtime::json_encode(body)?,
                 )
             }
         },

@@ -165,7 +165,7 @@ async fn get_order<A: Api>(
         api,
         decode: |i| get_order_params(&i),
         call: |a, p, c| Box::pin(a.get_order(p, c)),
-        encode: |r, _| get_order_encode(r),
+        encode: |r, _| get_order_encode(&r),
     };
     runtime::serve(routed, call.map(|_| ()), &steps).await
 }
@@ -178,10 +178,10 @@ fn get_order_params(
     })
 }
 fn get_order_encode(
-    resp: ops::get_order::Response,
+    resp: &ops::get_order::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     let ops::get_order::Response::Ok(body) = resp;
-    Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
+    Ok(runtime::body_response(200, "application/json", runtime::json_encode(body)?))
 }
 static PUT_ORDER_OP: runtime::Op = runtime::Op::new(
     "put_order",

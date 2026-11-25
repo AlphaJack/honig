@@ -180,15 +180,15 @@ async fn list_products<A: Api>(
         api,
         decode: |_| Ok(ops::list_products::Params {}),
         call: |a, p, c| Box::pin(a.list_products(p, c)),
-        encode: |r, _| list_products_encode(r),
+        encode: |r, _| list_products_encode(&r),
     };
     runtime::serve(routed, call.map(|_| ()), &steps).await
 }
 fn list_products_encode(
-    resp: ops::list_products::Response,
+    resp: &ops::list_products::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     let ops::list_products::Response::Ok(body) = resp;
-    Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
+    Ok(runtime::body_response(200, "application/json", runtime::json_encode(body)?))
 }
 static TAG_TREE_OP: runtime::Op = runtime::Op {
     produces: &["application/json"],
@@ -207,15 +207,15 @@ async fn tag_tree<A: Api>(
         api,
         decode: |_| Ok(ops::tag_tree::Params {}),
         call: |a, p, c| Box::pin(a.tag_tree(p, c)),
-        encode: |r, _| tag_tree_encode(r),
+        encode: |r, _| tag_tree_encode(&r),
     };
     runtime::serve(routed, call.map(|_| ()), &steps).await
 }
 fn tag_tree_encode(
-    resp: ops::tag_tree::Response,
+    resp: &ops::tag_tree::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     let ops::tag_tree::Response::Ok(body) = resp;
-    Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
+    Ok(runtime::body_response(200, "application/json", runtime::json_encode(body)?))
 }
 static ANY_PAGE_OP: runtime::Op = runtime::Op {
     produces: &["application/json"],
@@ -234,13 +234,13 @@ async fn any_page<A: Api>(
         api,
         decode: |_| Ok(ops::any_page::Params {}),
         call: |a, p, c| Box::pin(a.any_page(p, c)),
-        encode: |r, _| any_page_encode(r),
+        encode: |r, _| any_page_encode(&r),
     };
     runtime::serve(routed, call.map(|_| ()), &steps).await
 }
 fn any_page_encode(
-    resp: ops::any_page::Response,
+    resp: &ops::any_page::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     let ops::any_page::Response::Ok(body) = resp;
-    Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
+    Ok(runtime::body_response(200, "application/json", runtime::json_encode(body)?))
 }
