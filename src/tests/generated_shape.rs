@@ -2656,3 +2656,30 @@ fn a_keyword_beside_a_checked_type_is_checked() {
         "{types}"
     );
 }
+
+/// The default of a number field is a literal of the field's Rust type, for every width: `5i8`, `5u16`, `1.5f32`.
+#[test]
+fn a_number_default_is_a_literal_of_its_width() {
+    let field = |t: &str, f: &str, d: serde_json::Value| json!({"type": t, "format": f, "default": d});
+    let fields = json!({"a": field("integer", "int8", json!(5)), "b": field("integer", "int16", json!(5)),
+        "c": field("integer", "uint8", json!(5)), "d": field("integer", "uint16", json!(5)),
+        "e": field("integer", "uint32", json!(5)), "f": field("number", "double", json!(1.5)),
+        "g": field("number", "float", json!(1.5))});
+    let doc =
+        common::spec("3.2.0", &json!({}), &json!({"schemas": {"Widths": {"type": "object", "properties": fields}}}));
+    let types: String =
+        common::file(&common::generate("default-widths", &doc, &crate::emit::Options::default()), "types.rs")
+            .split_whitespace()
+            .collect();
+    for (t, literal) in [
+        ("i8", "5i8"),
+        ("i16", "5i16"),
+        ("u8", "5u8"),
+        ("u16", "5u16"),
+        ("u32", "5u32"),
+        ("f64", "1.5f64"),
+        ("f32", "1.5f32"),
+    ] {
+        assert!(types.contains(&format!("->{t}{{{literal}}}")), "{literal}: {types}");
+    }
+}
