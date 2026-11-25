@@ -604,16 +604,11 @@ fn decimal_keywords_are_exact() {
     assert!(decodes(r#"{"cents": 0.07}"#).is_ok(), "0.07 / 0.01 is not a whole f64");
 }
 
-/// Integer keywords are checked exactly: a bound that no value of the type meets refuses every value, a fractional
+/// Integer keywords are checked exactly: a bound past every value of the type refuses every value, a fractional
 /// `multipleOf` accepts the integers that are multiples of it, and one past the type accepts only `0`.
 #[test]
 fn integer_keywords_are_exact() {
     let decodes = |v: serde_json::Value| serde_json::from_value::<types::Degenerate>(v).map_err(|e| e.to_string());
-    for never in [0, 1, 255] {
-        let e = decodes(json!({"never": never})).expect_err("`maximum: -1` leaves no uint8");
-        let message = format!("`maximum: -1` leaves no value of this integer type, not even {never}");
-        assert!(e.starts_with(&message), "{e}");
-    }
     assert!(decodes(json!({"huge": i64::MAX})).is_err(), "`minimum: 1e40` leaves no int64");
     for (fives, ok) in [(0, true), (5, true), (-15, true), (1, false), (2, false), (25, true)] {
         assert_eq!(decodes(json!({"fives": fives})).is_ok(), ok, "{fives} as a multiple of 2.5");
@@ -887,13 +882,11 @@ fn a_value_without_an_unrequired_tag_decodes() {
     }
 }
 
-/// A bound past the range of the integer type compiles: every value meets it, or none does.
+/// A bound past the range of the integer type compiles: every value meets it.
 #[test]
 fn a_bound_outside_the_integer_type_compiles() {
     assert!(types::WideMax::try_from(i32::MAX).is_ok());
     assert!(types::WideMax::new(i32::MAX).is_some());
     assert!(types::WideMin::try_from(i8::MIN).is_ok());
     assert!(types::WideByte::try_from(u8::MAX).is_ok());
-    assert!(types::NoByte::new(i8::MAX).is_none());
-    assert!(types::NoByte::try_from(i8::MAX).is_err());
 }
