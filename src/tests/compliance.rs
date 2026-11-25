@@ -84,7 +84,9 @@ fn a_scheme_listed_by_name_and_by_uri_fails_generation() {
     {
         let path = common::write(&format!("sec-twice-{i}"), &doc(&secured_op(security), &components), &[]);
         let err = crate::generate::generate(&path, &Options::default()).expect_err("must refuse");
-        assert!(err.iter().any(|d| d.pointer == "/paths/~1a/get/security/0"), "{security}: {:#?}", err.0);
+        let at: Vec<&str> = err.iter().map(|d| d.message.as_str()).collect();
+        assert_eq!(at.len(), 1, "one error and no unresolved key left behind: {security}: {:#?}", err.0);
+        assert!(at[0].contains("one scheme with different scopes"), "{security}: {:#?}", err.0);
     }
 }
 
