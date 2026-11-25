@@ -26,9 +26,9 @@ exclude_globs = [
 
 # Mutants that change nothing a test can see.
 exclude_re = [
-  # The hop bound of `needs_checks`: `break_cycles` has made every alias in a loop a newtype before `checked::wrap`
-  # runs, so no alias chain reaches it.
-  'src/ir/checked\.rs:\d+:\d+: replace (match guard hops < MAX_ALIAS_HOPS with true|< with <=|\+ with \*) in needs_checks$',
+  # The hop bound of `needs_checks` and `json_held_by_type`: `break_cycles` has made every alias in a loop a newtype
+  # before `checked::wrap` and the emitter run, so no alias chain reaches it.
+  'src/ir/checked\.rs:\d+:\d+: replace (match guard hops < MAX_ALIAS_HOPS with true|< with <=|\+ with \*) in (needs_checks|json_held_by_type)$',
   # `Debug` output and serde's `expecting` text.
   'impl (std::)?fmt::Debug for ',
   '>::expecting -> ',
