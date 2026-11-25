@@ -2763,3 +2763,15 @@ fn a_member_with_a_union_beside_its_all_of_stays_whole() {
         common::file(&common::generate("member-union", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
     assert!(types.contains("pub struct S(pub(super) SVariants);"), "{types}");
 }
+
+/// A `format` without `type` (`{format: email}`) applies to strings: the value is checked by its kind, so a string that
+/// is no address is refused and a number passes.
+#[test]
+fn a_format_without_a_type_is_checked_on_strings() {
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"S": {"format": "email"}}}));
+    let types: String =
+        common::file(&common::generate("typeless-format", &doc, &crate::emit::Options::default()), "types.rs")
+            .split_whitespace()
+            .collect();
+    assert!(types.contains("ifletserde_json::Value::String(text)=&value{::honig::__private::check_format(out,&::honig::InstanceLocation::Root,text,\"email\",);}"), "{types}");
+}
