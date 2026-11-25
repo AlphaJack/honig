@@ -32,11 +32,6 @@ Sets the response for a request that the server answers without the response of 
 route, bad input, missing credentials, the `Err` of a layer, validation, a handler `Err` or an encoding failure.
 Default: the `error_response` of the generated `Api`. This one replaces it for this server alone.
 
-### `on_event`
-
-Sets the sink that receives the wide event (`RequestEvent`) of each request once the response is ready. By
-default the event is logged with `tracing` when the server lists the `tracing` adapter, and dropped otherwise.
-
 ### `errors`
 
 Returns the error responses of the description for a layer outside the server. Such a layer is a timeout, a body

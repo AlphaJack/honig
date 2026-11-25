@@ -50,10 +50,10 @@ const fn trip(name: &'static str, (max_allocs, max_time): (f64, f64)) -> Trip {
 pub const TRIPS: [Trip; 9] = [
     trip("upload", (1.45, 2.5)),
     trip("multipart_b64", (2.0, 2.4)),
-    trip("download", (1.6, 2.85)),
-    trip("json_get", (1.3, 1.9)),
+    trip("download", (1.65, 2.85)),
+    trip("json_get", (1.35, 1.9)),
     trip("json_put", (1.35, 1.75)),
-    trip("sse", (1.25, 1.45)),
+    trip("sse", (1.3, 1.45)),
     trip("jsonl", (1.1, 2.2)),
     trip("xml", (0.7, 1.2)),
     trip("form", (1.8, 2.75)),

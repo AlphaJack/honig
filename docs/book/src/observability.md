@@ -10,7 +10,7 @@ Every request that reaches the server produces one wide event. Under `into_axum`
 
 Layers add fields with `req.event().set(key, value)`. Handlers add fields with `ctx.event.set(key, value)`. A key is an `EventKey`. Declare it as a `const` such as `const TENANT: EventKey = EventKey::new("tenant")`. Then a key that has the name of a built-in field fails to compile.
 
-Send the event anywhere with `on_event`:
+The server puts the event in the extensions of the response. A layer outside the server reads it there and sends it anywhere, as `TraceLayer::on_response` of tower-http does:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_catalog/observability.rs:events}}
@@ -18,7 +18,7 @@ Send the event anywhere with `on_event`:
 
 ## Tracing
 
-With the `tracing` adapter each request runs in a span that wraps your layers and handler. The span follows the HTTP server conventions of OpenTelemetry (`otel.name`, `http.route` and `http.response.status_code`). The default `on_event` logs the wide event inside the span as one structured line. Export the spans with `tracing-opentelemetry`.
+With the `tracing` adapter each request runs in a span that wraps your layers and handler. The span follows the HTTP server conventions of OpenTelemetry (`otel.name`, `http.route` and `http.response.status_code`). Export the spans with `tracing-opentelemetry`.
 
 ## Trace context
 

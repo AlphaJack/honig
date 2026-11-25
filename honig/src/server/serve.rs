@@ -19,30 +19,17 @@ pub struct Config<Id> {
     pub(crate) max_body_bytes: usize,
     /// Renders a request the server answers without your handler's response.
     pub(crate) errors: Arc<dyn Fn(Rejection<Id>) -> Response + Send + Sync>,
-    /// Receives each request's wide event.
-    pub(crate) on_event: EventSink<Id>,
 }
-
-/// What receives each request's wide event.
-type EventSink<Id> = Arc<dyn Fn(&RequestEvent<Id>) + Send + Sync>;
 
 impl<Id> Clone for Config<Id> {
     fn clone(&self) -> Self {
-        Self {
-            max_body_bytes: self.max_body_bytes,
-            errors: Arc::clone(&self.errors),
-            on_event: Arc::clone(&self.on_event),
-        }
+        Self { max_body_bytes: self.max_body_bytes, errors: Arc::clone(&self.errors) }
     }
 }
 
 impl<Id: Operation> Default for Config<Id> {
     fn default() -> Self {
-        Self {
-            max_body_bytes: BODY_LIMIT,
-            errors: Arc::new(|rejection: Rejection<Id>| rejection.response()),
-            on_event: Arc::new(log),
-        }
+        Self { max_body_bytes: BODY_LIMIT, errors: Arc::new(|rejection: Rejection<Id>| rejection.response()) }
     }
 }
 
@@ -71,48 +58,18 @@ impl<Id: Operation> Config<Id> {
     pub(crate) fn unrouted(&self, errors: ProblemSchemas, head: &http::request::Parts, reason: Reason) -> Response {
         let started = std::time::Instant::now();
         let method = known_method(head.method.as_str());
-        let event = RequestEvent::new(None, method);
+        let event = RequestEvent::<Id>::new(None, method);
         if let (true, Reason::MethodNotAllowed(allow)) = (head.method == http::Method::OPTIONS, &reason) {
             let mut resp = crate::message::new_response(http::StatusCode::NO_CONTENT.as_u16());
             if let Ok(value) = http::HeaderValue::from_str(&crate::reject::allow_header(allow)) {
                 resp.headers_mut().insert(http::header::ALLOW, value);
             }
-            event.finish(&resp, started);
-            (self.on_event)(&event);
-            return resp;
+            return event.finish(resp, started);
         }
         event.fail(&reason);
-        let resp = for_method(method, self.reject(errors, None, reason, head.headers.clone()));
-        event.finish(&resp, started);
-        (self.on_event)(&event);
-        resp
+        event.finish(for_method(method, self.reject(errors, None, reason, head.headers.clone())), started)
     }
 }
-
-#[cfg(feature = "tracing")]
-fn log<Id: Operation>(event: &RequestEvent<Id>) {
-    let f = event.snapshot();
-    tracing::info!(
-        target: "api",
-        operation = f.operation.map_or("", Operation::name),
-        method = f.method,
-        route = f.route,
-        status = f.status,
-        duration_us = f.duration_us,
-        request_bytes = f.request_bytes,
-        response_bytes = f.response_bytes,
-        schemes = %f.schemes.join(","),
-        scopes = %f.scopes.join(","),
-        error = f.error.as_ref().map(Reason::name),
-        violations = f.violations,
-        // `tracing` fixes the names of its fields at compile time. So the fields that you set go as one JSON object.
-        fields = %serde_json::Value::Object(f.extra),
-        "request"
-    );
-}
-
-#[cfg(not(feature = "tracing"))]
-fn log<Id>(_: &RequestEvent<Id>) {}
 
 /// A routed request.
 #[derive(Debug)]
