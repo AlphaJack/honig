@@ -26,6 +26,14 @@ fn is(v: &Value, t: &str) -> bool {
     }
 }
 
+/// Returns `v` as the description wrote it where JSON can tell: a YAML `007` loads as the float `7.0` and shows as `7`.
+fn shown(v: &Value) -> String {
+    match v.as_f64() {
+        Some(f) if v.is_f64() && f.fract() == 0.0 => format!("{f:.0}"),
+        _ => v.to_string(),
+    }
+}
+
 /// Pushes each `enum` or `const` value of `s` that its `type` does not allow.
 fn rule(s: &Obj, ptr: &str, out: &mut Vec<(String, String)>) {
     let types: Vec<&str> = match s.get("type") {
@@ -39,7 +47,10 @@ fn rule(s: &Obj, ptr: &str, out: &mut Vec<(String, String)>) {
     for (key, value) in listed.chain(single) {
         if !one_of(value) {
             let at = crate::json::join(ptr, key);
-            out.push((at, format!("`{value}` is not of type `{}`: quote it or fix the type", types.join("` or `"))));
+            out.push((
+                at,
+                format!("`{}` is not of type `{}`: quote it or fix the type", shown(value), types.join("` or `")),
+            ));
         }
     }
 }
@@ -61,5 +72,15 @@ mod tests {
         assert_eq!(count(&json!({"type": ["string", "null"], "enum": ["a", null]})), 0);
         assert_eq!(count(&json!({"type": "integer", "enum": [1, 2.0]})), 0, "2.0 is an integer");
         assert_eq!(count(&json!({"enum": [7, "a"]})), 0, "no type, nothing to contradict");
+    }
+
+    /// A YAML `007` loads as the float `7.0`: the message shows `7`, as the description wrote the number.
+    #[test]
+    fn a_whole_float_shows_as_an_integer() {
+        let found = found(
+            &json!({"openapi": "3.2.0", "components": {"schemas": {"S": {"type": "string", "enum": [7.0, 1.5]}}}}),
+        );
+        let shown: Vec<&str> = found.iter().map(|(_, m)| m.split('`').nth(1).unwrap_or_default()).collect();
+        assert_eq!(shown, ["7", "1.5"]);
     }
 }
