@@ -8,8 +8,8 @@ use crate::base64::base64url;
 mod random;
 use crate::{ClientError, Message, Request, Response, Transport, base64::base64, codec::json_decode, params::pct};
 
-/// An `OAuth2` access token from a token endpoint.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+/// An `OAuth2` access token from a token endpoint. Its `Debug` hides both tokens.
+#[derive(Clone, PartialEq, Eq, serde::Deserialize)]
 pub struct Token {
     /// The bearer credential.
     pub access_token: String,
@@ -26,6 +26,21 @@ pub struct Token {
     #[serde(default)]
     pub scope: Option<String>,
 }
+
+impl std::fmt::Debug for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Token")
+            .field("access_token", &HIDDEN)
+            .field("token_type", &self.token_type)
+            .field("expires_in", &self.expires_in)
+            .field("refresh_token", &self.refresh_token.as_ref().map(|_| HIDDEN))
+            .field("scope", &self.scope)
+            .finish()
+    }
+}
+
+/// What `Debug` shows in place of a secret.
+const HIDDEN: &str = "<hidden>";
 
 /// Sends a token request with form `fields`. A given secret means client
 /// authentication by HTTP basic auth. Otherwise `client_id` goes in the form.
@@ -108,14 +123,21 @@ impl std::error::Error for NoRandomness {
 }
 
 /// A PKCE pair (RFC 7636). Send `challenge` in the authorization URL. Keep
-/// `verifier` for the code exchange.
+/// `verifier` for the code exchange. Its `Debug` hides the verifier.
 #[cfg(feature = "pkce")]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Pkce {
     /// The secret kept by the client.
     pub verifier: String,
     /// `BASE64URL(SHA256(verifier))`. It is sent with `code_challenge_method=S256`.
     pub challenge: String,
+}
+
+#[cfg(feature = "pkce")]
+impl std::fmt::Debug for Pkce {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Pkce").field("verifier", &HIDDEN).field("challenge", &self.challenge).finish()
+    }
 }
 
 #[cfg(feature = "pkce")]
@@ -249,8 +271,8 @@ pub async fn client_credentials<T: Transport>(
 }
 
 /// A device authorization response (RFC 8628 section 3.2). Show `user_code` and
-/// `verification_uri` to the user. Then poll with [`device_token`].
-#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+/// `verification_uri` to the user. Then poll with [`device_token`]. Its `Debug` hides the device code.
+#[derive(Clone, PartialEq, Eq, serde::Deserialize)]
 pub struct DeviceCode {
     /// Code the client polls with.
     pub device_code: String,
@@ -266,6 +288,19 @@ pub struct DeviceCode {
     /// Seconds to wait between polls (default 5).
     #[serde(default = "default_interval")]
     pub interval: u64,
+}
+
+impl std::fmt::Debug for DeviceCode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DeviceCode")
+            .field("device_code", &HIDDEN)
+            .field("user_code", &self.user_code)
+            .field("verification_uri", &self.verification_uri)
+            .field("verification_uri_complete", &self.verification_uri_complete)
+            .field("expires_in", &self.expires_in)
+            .field("interval", &self.interval)
+            .finish()
+    }
 }
 
 /// Seconds between device-flow polls when the server gives none (RFC 8628 section 3.2).
@@ -354,6 +389,26 @@ fn answer<R: serde::de::DeserializeOwned>(resp: Response) -> Result<R, ClientErr
 
 #[cfg(test)]
 mod tests {
+    /// The `Debug` of a token, a PKCE pair and a device code, as a log line shows them, holds none of their secrets.
+    #[test]
+    fn debug_hides_the_secrets() {
+        let token = Token {
+            access_token: "at-secret".into(),
+            token_type: "Bearer".into(),
+            expires_in: Some(60),
+            refresh_token: Some("rt-secret".into()),
+            scope: None,
+        };
+        let device: DeviceCode = serde_json::from_str(
+            r#"{"device_code": "dc-secret", "user_code": "WDJB", "verification_uri": "https://x", "expires_in": 9}"#,
+        )
+        .unwrap();
+        #[cfg(feature = "pkce")]
+        assert!(!format!("{:?}", Pkce::from_verifier(&"v".repeat(43))).contains(&"v".repeat(43)));
+        let shown = format!("{token:?} {device:?}");
+        assert!(!shown.contains("secret") && shown.contains("Bearer") && shown.contains("WDJB"), "{shown}");
+    }
+
     use assert_matches::assert_matches;
 
     use super::*;
