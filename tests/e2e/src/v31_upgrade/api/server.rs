@@ -171,7 +171,7 @@ async fn get_file<A: Api>(
         api,
         decode: |i| get_file_params(&i),
         call: |a, p, c| Box::pin(a.get_file(p, c)),
-        encode: |r, _| get_file_encode(r),
+        encode: |r, _| get_file_encode(&r),
     };
     runtime::serve(routed, call.map(|_| ()), &steps).await
 }
@@ -193,10 +193,10 @@ fn get_file_params(
     })
 }
 fn get_file_encode(
-    resp: ops::get_file::Response,
+    resp: &ops::get_file::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     let ops::get_file::Response::Ok(body) = resp;
-    Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
+    Ok(runtime::body_response(200, "application/json", runtime::json_encode(body)?))
 }
 static ADMIN_OP: runtime::Op = runtime::Op::new(
     "admin",

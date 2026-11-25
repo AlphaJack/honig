@@ -290,10 +290,12 @@ pub(crate) fn server_op(space: &Space<'_>, api: &Api, sec: &Securities, op: &Ope
     let encode = match (encode_fallible(op), carries_data(op), encodes_by_media(space, op)) {
         (true, true, true) => quote!(#encode_fn),
         (true, true, false) => quote!(|r, _| #encode_fn(r)),
-        (true, false, _) => quote!(|r, _| #encode_fn(&r)),
+        (true, false, true) => quote!(|r, m| #encode_fn(&r, m)),
+        (true, false, false) => quote!(|r, _| #encode_fn(&r)),
         (false, true, true) => quote!(|r, m| Ok(#encode_fn(r, m))),
         (false, true, false) => quote!(|r, _| Ok(#encode_fn(r))),
-        (false, false, _) => quote!(|r, _| Ok(#encode_fn(&r))),
+        (false, false, true) => quote!(|r, m| Ok(#encode_fn(&r, m))),
+        (false, false, false) => quote!(|r, _| Ok(#encode_fn(&r))),
     };
     let params_def = (!empty).then(|| server_params(space, op, &m, &inputs, &bx));
     let encode_def = server_encode(space, op, &m, &bx);

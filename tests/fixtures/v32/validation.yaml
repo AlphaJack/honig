@@ -1,6 +1,16 @@
 openapi: 3.2.0
 info: {title: Validation, version: "1"}
 paths:
+  # The only response is a string enum: a `Copy` body that the server encodes.
+  /mode:
+    get:
+      operationId: getMode
+      responses:
+        "200":
+          description: The mode
+          content:
+            application/json:
+              schema: {type: string, enum: [on, off]}
   /users:
     post:
       operationId: createUser

@@ -1224,7 +1224,7 @@ async fn search_products<A: Api>(
         api,
         decode: |i| search_products_params(&i),
         call: |a, p, c| Box::pin(a.search_products(p, c)),
-        encode: |r, _| search_products_encode(r),
+        encode: |r, _| search_products_encode(&r),
     };
     runtime::serve(routed, call.map(|_| ()), &steps).await
 }
@@ -1240,7 +1240,7 @@ fn search_products_params(
     })
 }
 fn search_products_encode(
-    resp: ops::search_products::Response,
+    resp: &ops::search_products::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     let ops::search_products::Response::Ok { body, x_request_id } = resp;
     Ok({
@@ -1251,7 +1251,7 @@ fn search_products_encode(
         runtime::Message::set_body(
             &mut r,
             "application/json",
-            runtime::json_encode(&body)?,
+            runtime::json_encode(body)?,
         );
         r
     })
@@ -2426,7 +2426,7 @@ async fn create_item<A: Api>(
         api,
         decode: create_item_params,
         call: |a, p, c| Box::pin(a.create_item(p, c)),
-        encode: |r, _| create_item_encode(r),
+        encode: |r, _| create_item_encode(&r),
     };
     runtime::serve_signed_in(
             routed,
@@ -2509,10 +2509,10 @@ fn create_item_params(
     })
 }
 fn create_item_encode(
-    resp: ops::create_item::Response,
+    resp: &ops::create_item::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     let ops::create_item::Response::Created(body) = resp;
-    Ok(runtime::body_response(201, "application/json", runtime::json_encode(&body)?))
+    Ok(runtime::body_response(201, "application/json", runtime::json_encode(body)?))
 }
 static CREATE_USER_OP: runtime::Op = runtime::Op {
     produces: &["application/json", "application/xml"],

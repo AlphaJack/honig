@@ -243,7 +243,7 @@ async fn list_products<A: Api>(
         api,
         decode: |i| list_products_params(&i),
         call: |a, p, c| Box::pin(a.list_products(p, c)),
-        encode: |r, _| list_products_encode(r),
+        encode: |r, _| list_products_encode(&r),
     };
     runtime::serve_signed_in(
             routed,
@@ -289,7 +289,7 @@ fn list_products_params(
     })
 }
 fn list_products_encode(
-    resp: ops::list_products::Response,
+    resp: &ops::list_products::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
@@ -301,7 +301,7 @@ fn list_products_encode(
                 runtime::Message::set_body(
                     &mut r,
                     "application/json",
-                    runtime::json_encode(&body)?,
+                    runtime::json_encode(body)?,
                 );
                 r
             }
@@ -309,7 +309,7 @@ fn list_products_encode(
                 runtime::body_response(
                     status.as_u16(),
                     "application/json",
-                    runtime::json_encode(&body)?,
+                    runtime::json_encode(body)?,
                 )
             }
         },
@@ -339,7 +339,7 @@ async fn create_product<A: Api>(
         api,
         decode: create_product_params,
         call: |a, p, c| Box::pin(a.create_product(p, c)),
-        encode: |r, _| create_product_encode(r),
+        encode: |r, _| create_product_encode(&r),
     };
     runtime::serve_signed_in(
             routed,
@@ -372,7 +372,7 @@ fn create_product_params(
     })
 }
 fn create_product_encode(
-    resp: ops::create_product::Response,
+    resp: &ops::create_product::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
@@ -380,14 +380,14 @@ fn create_product_encode(
                 runtime::body_response(
                     201,
                     "application/json",
-                    runtime::json_encode(&body)?,
+                    runtime::json_encode(body)?,
                 )
             }
             ops::create_product::Response::Default { status, body } => {
                 runtime::body_response(
                     status.as_u16(),
                     "application/json",
-                    runtime::json_encode(&body)?,
+                    runtime::json_encode(body)?,
                 )
             }
         },
@@ -417,7 +417,7 @@ async fn get_product<A: Api>(
         api,
         decode: |i| get_product_params(&i),
         call: |a, p, c| Box::pin(a.get_product(p, c)),
-        encode: |r, _| get_product_encode(r),
+        encode: |r, _| get_product_encode(&r),
     };
     runtime::serve_signed_in(
             routed,
@@ -454,7 +454,7 @@ fn get_product_params(
     })
 }
 fn get_product_encode(
-    resp: ops::get_product::Response,
+    resp: &ops::get_product::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
@@ -462,14 +462,14 @@ fn get_product_encode(
                 runtime::body_response(
                     200,
                     "application/json",
-                    runtime::json_encode(&body)?,
+                    runtime::json_encode(body)?,
                 )
             }
             ops::get_product::Response::NotFound(body) => {
                 runtime::body_response(
                     404,
                     "application/json",
-                    runtime::json_encode(&body)?,
+                    runtime::json_encode(body)?,
                 )
             }
         },

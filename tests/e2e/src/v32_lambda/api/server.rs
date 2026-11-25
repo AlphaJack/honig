@@ -160,7 +160,7 @@ async fn get_item<A: Api>(
         api,
         decode: |i| get_item_params(&i),
         call: |a, p, c| Box::pin(a.get_item(p, c)),
-        encode: |r, _| get_item_encode(r),
+        encode: |r, _| get_item_encode(&r),
     };
     runtime::serve(routed, call.map(|_| ()), &steps).await
 }
@@ -198,10 +198,10 @@ fn get_item_params(
     })
 }
 fn get_item_encode(
-    resp: ops::get_item::Response,
+    resp: &ops::get_item::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     let ops::get_item::Response::Ok(body) = resp;
-    Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
+    Ok(runtime::body_response(200, "application/json", runtime::json_encode(body)?))
 }
 static PUT_BLOB_OP: runtime::Op = runtime::Op {
     takes_body: true,

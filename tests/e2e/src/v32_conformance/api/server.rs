@@ -408,7 +408,7 @@ async fn get_item<A: Api>(
         api,
         decode: |i| get_item_params(&i),
         call: |a, p, c| Box::pin(a.get_item(p, c)),
-        encode: |r, _| get_item_encode(r),
+        encode: |r, _| get_item_encode(&r),
     };
     runtime::serve_signed_in(
             routed,
@@ -442,7 +442,7 @@ fn get_item_params(
     })
 }
 fn get_item_encode(
-    resp: ops::get_item::Response,
+    resp: &ops::get_item::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
@@ -450,14 +450,14 @@ fn get_item_encode(
                 runtime::body_response(
                     status.as_u16(),
                     "application/json",
-                    runtime::json_encode(&body)?,
+                    runtime::json_encode(body)?,
                 )
             }
             ops::get_item::Response::Default { status, body } => {
                 runtime::body_response(
                     status.as_u16(),
                     "application/json",
-                    runtime::json_encode(&body)?,
+                    runtime::json_encode(body)?,
                 )
             }
         },
@@ -708,7 +708,7 @@ async fn cookies<A: Api>(
         api,
         decode: |_| Ok(ops::cookies::Params {}),
         call: |a, p, c| Box::pin(a.cookies(p, c)),
-        encode: |r, _| cookies_encode(r),
+        encode: |r, _| cookies_encode(&r),
     };
     runtime::serve_signed_in(
             routed,
@@ -732,7 +732,7 @@ async fn cookies<A: Api>(
         .await
 }
 fn cookies_encode(
-    resp: ops::cookies::Response,
+    resp: &ops::cookies::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     let ops::cookies::Response::NoContent { set_cookie } = resp;
     Ok({

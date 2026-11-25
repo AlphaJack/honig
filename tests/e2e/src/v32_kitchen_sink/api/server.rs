@@ -1164,7 +1164,7 @@ async fn search_products<A: Api>(
         api,
         decode: search_products_params,
         call: |a, p, c| Box::pin(a.search_products(p, c)),
-        encode: |r, _| search_products_encode(r),
+        encode: |r, _| search_products_encode(&r),
     };
     runtime::serve_signed_in(
             routed,
@@ -1218,10 +1218,10 @@ fn search_products_params(
     })
 }
 fn search_products_encode(
-    resp: ops::search_products::Response,
+    resp: &ops::search_products::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     let ops::search_products::Response::Ok(body) = resp;
-    Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
+    Ok(runtime::body_response(200, "application/json", runtime::json_encode(body)?))
 }
 static COPY_PRODUCTS_OP: runtime::Op = runtime::Op {
     security: ops::SECURITY_0,
@@ -1319,7 +1319,7 @@ async fn get_product<A: Api>(
         api,
         decode: |i| get_product_params(&i),
         call: |a, p, c| Box::pin(a.get_product(p, c)),
-        encode: |r, _| get_product_encode(r),
+        encode: |r, _| get_product_encode(&r),
     };
     runtime::serve_signed_in(
             routed,
@@ -1364,10 +1364,10 @@ fn get_product_params(
     })
 }
 fn get_product_encode(
-    resp: ops::get_product::Response,
+    resp: &ops::get_product::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     let ops::get_product::Response::Ok(body) = resp;
-    Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
+    Ok(runtime::body_response(200, "application/json", runtime::json_encode(body)?))
 }
 static PUT_PRODUCT_OP: runtime::Op = runtime::Op {
     security: ops::SECURITY_0,

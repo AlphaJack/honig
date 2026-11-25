@@ -415,7 +415,7 @@ async fn status_by_key<A: Api>(
         api,
         decode: |i| status_by_key_params(&i),
         call: |a, p, c| Box::pin(a.status_by_key(p, c)),
-        encode: |r, _| status_by_key_encode(r),
+        encode: |r, _| status_by_key_encode(&r),
     };
     runtime::serve(routed, call.map(|_| ()), &steps).await
 }
@@ -428,10 +428,10 @@ fn status_by_key_params(
     })
 }
 fn status_by_key_encode(
-    resp: ops::status_by_key::Response,
+    resp: &ops::status_by_key::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     let ops::status_by_key::Response::Ok(body) = resp;
-    Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
+    Ok(runtime::body_response(200, "application/json", runtime::json_encode(body)?))
 }
 static LATEST_META_OP: runtime::Op = runtime::Op::new(
     "latest_meta",
@@ -484,7 +484,7 @@ async fn file_raw<A: Api>(
         api,
         decode: |i| file_raw_params(&i),
         call: |a, p, c| Box::pin(a.file_raw(p, c)),
-        encode: |r, _| file_raw_encode(r),
+        encode: |r, _| file_raw_encode(&r),
     };
     runtime::serve(routed, call.map(|_| ()), &steps).await
 }
@@ -497,10 +497,10 @@ fn file_raw_params(
     })
 }
 fn file_raw_encode(
-    resp: ops::file_raw::Response,
+    resp: &ops::file_raw::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     let ops::file_raw::Response::Ok(body) = resp;
-    Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
+    Ok(runtime::body_response(200, "application/json", runtime::json_encode(body)?))
 }
 static FILE_EXT_OP: runtime::Op = runtime::Op {
     produces: &["application/json"],
@@ -525,7 +525,7 @@ async fn file_ext<A: Api>(
         api,
         decode: |i| file_ext_params(&i),
         call: |a, p, c| Box::pin(a.file_ext(p, c)),
-        encode: |r, _| file_ext_encode(r),
+        encode: |r, _| file_ext_encode(&r),
     };
     runtime::serve(routed, call.map(|_| ()), &steps).await
 }
@@ -539,10 +539,10 @@ fn file_ext_params(
     })
 }
 fn file_ext_encode(
-    resp: ops::file_ext::Response,
+    resp: &ops::file_ext::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     let ops::file_ext::Response::Ok(body) = resp;
-    Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
+    Ok(runtime::body_response(200, "application/json", runtime::json_encode(body)?))
 }
 static MIX_LITERAL_TAIL_OP: runtime::Op = runtime::Op::new(
     "mix_literal_tail",
@@ -603,7 +603,7 @@ async fn mix_mixed_tail<A: Api>(
         api,
         decode: |i| mix_mixed_tail_params(&i),
         call: |a, p, c| Box::pin(a.mix_mixed_tail(p, c)),
-        encode: |r, _| mix_mixed_tail_encode(r),
+        encode: |r, _| mix_mixed_tail_encode(&r),
     };
     runtime::serve(routed, call.map(|_| ()), &steps).await
 }
@@ -618,10 +618,10 @@ fn mix_mixed_tail_params(
     })
 }
 fn mix_mixed_tail_encode(
-    resp: ops::mix_mixed_tail::Response,
+    resp: &ops::mix_mixed_tail::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     let ops::mix_mixed_tail::Response::Ok(body) = resp;
-    Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
+    Ok(runtime::body_response(200, "application/json", runtime::json_encode(body)?))
 }
 static MIX_VAR_TAIL_OP: runtime::Op = runtime::Op::new(
     "mix_var_tail",

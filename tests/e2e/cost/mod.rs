@@ -243,6 +243,13 @@ impl val::api::Api for Members {
     ) -> impl Future<Output = Result<val::api::operations::create_user::Response, val::api::ApiError>> + Send {
         not_here()
     }
+    fn get_mode(
+        &self,
+        _: val::api::operations::get_mode::Params,
+        _: &val::api::Context<'_, ()>,
+    ) -> impl Future<Output = Result<val::api::operations::get_mode::Response, val::api::ApiError>> + Send {
+        not_here()
+    }
     fn create_shipment(
         &self,
         _: val::api::operations::create_shipment::Params,

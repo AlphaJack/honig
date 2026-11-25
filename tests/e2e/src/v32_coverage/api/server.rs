@@ -221,12 +221,12 @@ async fn archive<A: Api>(
         api,
         decode: |_| Ok(ops::archive::Params {}),
         call: |a, p, c| Box::pin(a.archive(p, c)),
-        encode: |r, _| archive_encode(r),
+        encode: |r, _| archive_encode(&r),
     };
     runtime::serve(routed, call.map(|_| ()), &steps).await
 }
 fn archive_encode(
-    resp: ops::archive::Response,
+    resp: &ops::archive::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
@@ -235,7 +235,7 @@ fn archive_encode(
                 runtime::body_response(
                     409,
                     "application/json",
-                    runtime::json_encode(&body)?,
+                    runtime::json_encode(body)?,
                 )
             }
         },
@@ -261,12 +261,12 @@ async fn unarchive<A: Api>(
         api,
         decode: |_| Ok(ops::unarchive::Params {}),
         call: |a, p, c| Box::pin(a.unarchive(p, c)),
-        encode: |r, _| unarchive_encode(r),
+        encode: |r, _| unarchive_encode(&r),
     };
     runtime::serve(routed, call.map(|_| ()), &steps).await
 }
 fn unarchive_encode(
-    resp: ops::unarchive::Response,
+    resp: &ops::unarchive::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
@@ -275,7 +275,7 @@ fn unarchive_encode(
                 runtime::body_response(
                     409,
                     "application/json",
-                    runtime::json_encode(&body)?,
+                    runtime::json_encode(body)?,
                 )
             }
         },
@@ -298,7 +298,7 @@ async fn add_note<A: Api>(
         api,
         decode: add_note_params,
         call: |a, p, c| Box::pin(a.add_note(p, c)),
-        encode: |r, _| add_note_encode(r),
+        encode: |r, _| add_note_encode(&r),
     };
     runtime::serve(routed, call.map(|_| ()), &steps).await
 }
@@ -312,7 +312,7 @@ fn add_note_params(
     })
 }
 fn add_note_encode(
-    resp: ops::add_note::Response,
+    resp: &ops::add_note::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     let ops::add_note::Response::Created { body, x_count, x_tags } = resp;
     Ok({
@@ -333,7 +333,7 @@ fn add_note_encode(
         runtime::Message::set_body(
             &mut r,
             "application/json",
-            runtime::json_encode(&body)?,
+            runtime::json_encode(body)?,
         );
         r
     })
@@ -355,7 +355,7 @@ async fn find_box<A: Api>(
         api,
         decode: |i| find_box_params(&i),
         call: |a, p, c| Box::pin(a.find_box(p, c)),
-        encode: |r, _| find_box_encode(r),
+        encode: |r, _| find_box_encode(&r),
     };
     runtime::serve(routed, call.map(|_| ()), &steps).await
 }
@@ -399,8 +399,8 @@ fn find_box_params(
     })
 }
 fn find_box_encode(
-    resp: ops::find_box::Response,
+    resp: &ops::find_box::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     let ops::find_box::Response::Ok(body) = resp;
-    Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
+    Ok(runtime::body_response(200, "application/json", runtime::json_encode(body)?))
 }

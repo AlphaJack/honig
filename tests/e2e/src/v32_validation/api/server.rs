@@ -4,6 +4,11 @@ use std::future::Future;
 pub trait Api: Send + Sync + Sized + 'static {
     /// Answers a request that the server refuses itself (no route, bad input, missing credentials, a handler `Err`) in the error body of the description. No standard defines its fields, so this maps them: `rejection.json(&body)` sends `body` with the status of the reason, and `rejection.message()` is the detail.
     fn error_response(rejection: runtime::Rejection<Operation>) -> runtime::Response;
+    fn get_mode(
+        &self,
+        params: ops::get_mode::Params,
+        ctx: &Context<'_, ()>,
+    ) -> impl Future<Output = ops::get_mode::Result> + Send;
     fn create_user(
         &self,
         params: ops::create_user::Params,
@@ -37,6 +42,7 @@ pub trait Api: Send + Sync + Sized + 'static {
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {
+    GetMode,
     CreateUser,
     CreateShipment,
     Login,
@@ -47,6 +53,7 @@ pub enum Operation {
 impl runtime::Operation for Operation {
     fn op(self) -> &'static runtime::Op {
         match self {
+            Self::GetMode => &GET_MODE_OP,
             Self::CreateUser => &CREATE_USER_OP,
             Self::CreateShipment => &CREATE_SHIPMENT_OP,
             Self::Login => &LOGIN_OP,
@@ -82,6 +89,7 @@ fn error_schema(
     }
 }
 static METHODS: &[&[(&str, Operation)]] = &[
+    &[("GET", Operation::GetMode)],
     &[("POST", Operation::CreateUser)],
     &[("POST", Operation::CreateShipment)],
     &[("POST", Operation::Login)],
@@ -92,12 +100,13 @@ static METHODS: &[&[(&str, Operation)]] = &[
 static ROUTES: &[runtime::Node] = &[
     runtime::node(
         &[
-            ("users", 1),
-            ("badges", 6),
-            ("closed", 5),
-            ("logins", 3),
-            ("members", 4),
-            ("shipments", 2),
+            ("mode", 1),
+            ("users", 2),
+            ("badges", 7),
+            ("closed", 6),
+            ("logins", 4),
+            ("members", 5),
+            ("shipments", 3),
         ],
         &[],
         runtime::Node::NONE,
@@ -109,12 +118,14 @@ static ROUTES: &[runtime::Node] = &[
     runtime::node(&[], &[], runtime::Node::NONE, 3),
     runtime::node(&[], &[], runtime::Node::NONE, 4),
     runtime::node(&[], &[], runtime::Node::NONE, 5),
+    runtime::node(&[], &[], runtime::Node::NONE, 6),
 ];
 static PATHS: &[&str] = &[
     "/badges",
     "/closed",
     "/logins",
     "/members",
+    "/mode",
     "/shipments",
     "/users",
 ];
@@ -207,6 +218,7 @@ async fn dispatch<A: Api>(
     >,
 ) -> runtime::Response {
     match op {
+        Operation::GetMode => Box::pin(get_mode(api, routed, call)).await,
         Operation::CreateUser => Box::pin(create_user(api, routed, call)).await,
         Operation::CreateShipment => Box::pin(create_shipment(api, routed, call)).await,
         Operation::Login => Box::pin(login(api, routed, call)).await,
@@ -214,6 +226,33 @@ async fn dispatch<A: Api>(
         Operation::AddClosed => Box::pin(add_closed(api, routed, call)).await,
         Operation::AddBadge => Box::pin(add_badge(api, routed, call)).await,
     }
+}
+static GET_MODE_OP: runtime::Op = runtime::Op {
+    produces: &["application/json"],
+    ..runtime::Op::new("get_mode", "GET", "/mode", "GET /mode", error_schema)
+};
+async fn get_mode<A: Api>(
+    api: &A,
+    routed: runtime::Routed<'_>,
+    call: runtime::Call<
+        '_,
+        Option<runtime::Passed<<Routes<A> as runtime::Operations>::Value>>,
+        Operation,
+    >,
+) -> runtime::Response {
+    let steps = runtime::Steps {
+        api,
+        decode: |_| Ok(ops::get_mode::Params {}),
+        call: |a, p, c| Box::pin(a.get_mode(p, c)),
+        encode: |r, _| get_mode_encode(&r),
+    };
+    runtime::serve(routed, call.map(|_| ()), &steps).await
+}
+fn get_mode_encode(
+    resp: &ops::get_mode::Response,
+) -> Result<runtime::Response, runtime::ClientError> {
+    let ops::get_mode::Response::Ok(body) = resp;
+    Ok(runtime::body_response(200, "application/json", runtime::json_encode(body)?))
 }
 static CREATE_USER_OP: runtime::Op = runtime::Op {
     produces: &["application/json"],
@@ -232,7 +271,7 @@ async fn create_user<A: Api>(
         api,
         decode: create_user_params,
         call: |a, p, c| Box::pin(a.create_user(p, c)),
-        encode: |r, _| create_user_encode(r),
+        encode: |r, _| create_user_encode(&r),
     };
     runtime::serve(routed, call.map(|_| ()), &steps).await
 }
@@ -254,7 +293,7 @@ fn create_user_params(
     })
 }
 fn create_user_encode(
-    resp: ops::create_user::Response,
+    resp: &ops::create_user::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
@@ -262,14 +301,14 @@ fn create_user_encode(
                 runtime::body_response(
                     201,
                     "application/json",
-                    runtime::json_encode(&*body)?,
+                    runtime::json_encode(body)?,
                 )
             }
             ops::create_user::Response::ClientError { status, body } => {
                 runtime::body_response(
                     status.as_u16(),
                     "application/problem+json",
-                    runtime::json_encode(&body)?,
+                    runtime::json_encode(body)?,
                 )
             }
         },
@@ -295,7 +334,7 @@ async fn create_shipment<A: Api>(
         api,
         decode: create_shipment_params,
         call: |a, p, c| Box::pin(a.create_shipment(p, c)),
-        encode: |r, _| create_shipment_encode(r),
+        encode: |r, _| create_shipment_encode(&r),
     };
     runtime::serve(routed, call.map(|_| ()), &steps).await
 }
@@ -309,7 +348,7 @@ fn create_shipment_params(
     })
 }
 fn create_shipment_encode(
-    resp: ops::create_shipment::Response,
+    resp: &ops::create_shipment::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
@@ -318,7 +357,7 @@ fn create_shipment_encode(
                 runtime::body_response(
                     400,
                     "application/problem+json",
-                    runtime::json_encode(&body)?,
+                    runtime::json_encode(body)?,
                 )
             }
         },
@@ -341,7 +380,7 @@ async fn login<A: Api>(
         api,
         decode: login_params,
         call: |a, p, c| Box::pin(a.login(p, c)),
-        encode: |r, _| login_encode(r),
+        encode: |r, _| login_encode(&r),
     };
     runtime::serve(routed, call.map(|_| ()), &steps).await
 }
@@ -355,10 +394,10 @@ fn login_params(
     })
 }
 fn login_encode(
-    resp: ops::login::Response,
+    resp: &ops::login::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
     let ops::login::Response::Created(body) = resp;
-    Ok(runtime::body_response(201, "application/json", runtime::json_encode(&body)?))
+    Ok(runtime::body_response(201, "application/json", runtime::json_encode(body)?))
 }
 static ADD_MEMBER_OP: runtime::Op = runtime::Op::new(
     "add_member",
