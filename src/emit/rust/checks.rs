@@ -1288,6 +1288,22 @@ fn branch_count_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path:
 mod tests {
     use quote::quote;
 
+    /// An exclusive bound at the edge of the range still excludes the edge: `exclusiveMinimum: 0` of a `u8` refuses 0,
+    /// and `exclusiveMinimum: -1` refuses no value.
+    #[test]
+    fn a_bound_at_the_edge_of_the_range_still_checks() {
+        use super::{Bound, Within};
+        let (lo, hi) = (0, 255);
+        assert!(matches!(Bound::Above.within(-1, lo, hi), Within::Every));
+        assert!(matches!(Bound::Above.within(0, lo, hi), Within::Some(0)));
+        assert!(matches!(Bound::Above.within(255, lo, hi), Within::No));
+        assert!(matches!(Bound::Below.within(256, lo, hi), Within::Every));
+        assert!(matches!(Bound::Below.within(255, lo, hi), Within::Some(255)));
+        assert!(matches!(Bound::Below.within(0, lo, hi), Within::No));
+        assert!(matches!(Bound::AtLeast.within(0, lo, hi), Within::Every));
+        assert!(matches!(Bound::AtMost.within(255, lo, hi), Within::Every));
+    }
+
     /// A receiver drops a leading `&` (methods auto-borrow) and puts any other expression of several tokens in
     /// parentheses.
     #[test]
