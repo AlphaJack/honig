@@ -14,10 +14,17 @@ pub const SERVERS: &[::honig::ServerUrl] = &[
         variables: &[("protocol", "https", &["https", "http"]), ("path", "", &[])],
     },
 ];
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Client<T> {
     pub transport: T,
     pub(super) credentials: ::honig::__private::Credentials,
+}
+impl<T: std::fmt::Debug> std::fmt::Debug for Client<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Client")
+            .field("transport", &self.transport)
+            .finish_non_exhaustive()
+    }
 }
 impl<T> Client<T> {
     #[must_use]
@@ -3034,10 +3041,17 @@ impl<T: ::honig::Transport> Client<T> {
     }
 }
 /// Sends the webhooks of the API and the callbacks (`callbacks`) of its operations.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct WebhookClient<T> {
     pub transport: T,
     pub(super) credentials: ::honig::__private::Credentials,
+}
+impl<T: std::fmt::Debug> std::fmt::Debug for WebhookClient<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("WebhookClient")
+            .field("transport", &self.transport)
+            .finish_non_exhaustive()
+    }
 }
 impl<T> WebhookClient<T> {
     pub const fn new(transport: T) -> Self {
