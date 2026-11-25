@@ -38,7 +38,7 @@ Values that outer tower layers attach also reach the `verify_` methods. So does 
 
 ## Signatures over the body
 
-Some schemes sign the body, such as webhooks that carry a signature of the body in a header. The layer that checks the signature collects the body with `api::read_body(&mut req).await`. The operation decodes the same bytes and collects nothing again:
+Some schemes sign the body, such as webhooks that carry a signature of the body in a header. The layer that checks the signature collects the body with `honig::read_body(&mut req).await`. The operation decodes the same bytes and collects nothing again:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_catalog/layers.rs:signed-body}}

@@ -201,3 +201,6 @@ mod tests {
         assert_eq!(crate::block_on(std::future::poll_fn(|cx| Pin::new(&mut beats).poll_next(cx))), Some(0));
     }
 }
+
+/// The transports of the browser: none outside wasm32, where `GlooTransport` sends through `fetch`.
+pub mod browser {}

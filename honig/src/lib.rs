@@ -122,7 +122,8 @@ pub use source::{Blob, Body, ByteStream, Sse};
 pub use stream::{Framing, ItemStream, Items, Streamed};
 #[cfg(any(feature = "client", feature = "server"))]
 pub use tower_service::Service;
-pub use transport::block_on;
+pub use transport::browser;
+pub use transport::{MaybeSend, MaybeSync, block_on};
 #[cfg(feature = "url")]
 pub use url;
 #[cfg(feature = "uuid")]
