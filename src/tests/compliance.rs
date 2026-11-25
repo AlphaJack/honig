@@ -457,20 +457,6 @@ fn two_scopes_of_one_variant_fail_generation() {
     assert!(err.iter().any(|d| d.pointer == at), "the second scope: {:#?}", err.0);
 }
 
-/// A required `Authorization` header parameter is ignored by OAS: a server built from it would never ask for the
-/// header, and a client would send it beside its credentials. The description states authentication with a security scheme.
-#[test]
-fn an_authorization_header_parameter_fails_generation() {
-    let param = json!({"name": "Authorization", "in": "header", "required": true, "schema": {"type": "string"}});
-    let paths = json!({"/a": {"get": {"operationId": "a", "parameters": [param],
-        "responses": {"204": {"description": "ok"}}}}});
-    let path = common::write("sec-auth-param", &doc(&paths, &json!({})), &[]);
-    let err = crate::generate::generate(&path, &Options::default()).expect_err("must refuse");
-    assert!(err.iter().any(|d| d.message.contains("security scheme")), "{:#?}", err.0);
-    let client = Options { server: false, tests: false, ..Options::default() };
-    crate::generate::generate(&path, &client).expect_err("a client fails too");
-}
-
 /// A schema that no value of its type meets generates a type that refuses every value: `generate` fails and points at
 /// the schema.
 #[test]
@@ -1401,15 +1387,17 @@ fn every_subschema_is_validated() {
     }
 }
 
-/// An `Accept` or `Content-Type` header parameter is ignored (OAS 3.2 section 4.12.2): one warning each says so.
+/// An `Accept`, `Content-Type` or required `Authorization` header parameter is ignored (OAS 3.2 section 4.12.2): one
+/// warning each says so, and generation goes on.
 #[test]
 fn an_ignored_header_parameter_is_a_warning() {
-    let param = |name: &str| json!({"name": name, "in": "header", "schema": {"type": "string"}});
-    let paths = json!({"/a": {"get": {"operationId": "a", "parameters": [param("Accept"), param("Content-Type")],
+    let param = |name: &str| json!({"name": name, "in": "header", "required": true, "schema": {"type": "string"}});
+    let params = [param("Accept"), param("Content-Type"), param("Authorization")];
+    let paths = json!({"/a": {"get": {"operationId": "a", "parameters": params,
         "responses": {"204": {"description": "ok"}}}}});
     let path = common::write("ignored-headers", &doc(&paths, &json!({})), &[]);
     let made = crate::generate::generate(&path, &Options::default()).expect("generates");
-    for i in ["0", "1"] {
+    for i in ["0", "1", "2"] {
         let at = format!("/paths/~1a/get/parameters/{i}");
         let warned = made.diagnostics.iter().filter(|d| d.pointer == at && d.message.contains("is ignored")).count();
         assert_eq!(warned, 1, "{at}: {:#?}", made.diagnostics);

@@ -680,13 +680,13 @@ fn param_value(
 
 /// Returns parameters: operation-level ones override path-level ones (name + in).
 /// Is the header parameter one that OAS says "SHALL be ignored"? honig manages `Content-Type`, `Accept` and
-/// `Authorization`. A required `Authorization` is an error: a server would never ask for it.
+/// `Authorization`; for a required `Authorization` the warning points at security schemes.
 fn ignored_header(b: &mut Builder<'_>, wire: &str, param: &Value, ptr: &str) -> bool {
     if !["content-type", "accept", "authorization"].contains(&wire.to_ascii_lowercase().as_str()) {
         return false;
     }
     if wire.eq_ignore_ascii_case("authorization") && json::flag(param, "required") {
-        b.diags.error(
+        b.diags.warning(
             ptr,
             format!("a required `{wire}` header parameter is ignored: describe authentication with a security scheme"),
         );
