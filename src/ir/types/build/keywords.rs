@@ -816,17 +816,17 @@ pub(crate) fn int_enum_values(o: &serde_json::Map<String, Value>) -> Option<Vec<
     (!ints.is_empty()).then_some(ints)
 }
 
-/// The extension keywords that name the values of an integer enum by position.
+/// The extension keywords that name the values of an integer enum: an object from value to name, or a list by position.
 pub(crate) const ENUM_NAMES: &[&str] = &["x-enum-varnames", "x-enumNames", "x-enum-names"];
 
 /// Returns an integer enum. `x-enum-varnames`, `x-enumNames` or `x-enum-names` give the names of its variants when
-/// present. Otherwise they are `N0`, `N1` and `Minus1`.
+/// they name every value. Otherwise they are `N0`, `N1` and `Minus1`.
 pub(crate) fn int_enum(o: &serde_json::Map<String, Value>, values: &[i64]) -> Kind {
-    let names: Option<Vec<&str>> = ENUM_NAMES
-        .iter()
-        .find_map(|k| o.get(*k).and_then(Value::as_array))
-        .and_then(|a| a.iter().map(Value::as_str).collect::<Option<Vec<_>>>())
-        .filter(|n| n.len() == values.len());
+    let names: Option<Vec<&str>> = ENUM_NAMES.iter().find_map(|k| o.get(*k)).and_then(|names| match names {
+        Value::Array(a) => a.iter().map(Value::as_str).collect::<Option<Vec<_>>>().filter(|n| n.len() == values.len()),
+        Value::Object(m) => values.iter().map(|v| m.get(&v.to_string()).and_then(Value::as_str)).collect(),
+        Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => None,
+    });
     let mut taken = reserved(&["Other"]);
     let bases = values
         .iter()
