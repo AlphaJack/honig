@@ -448,3 +448,18 @@ pub(crate) fn chosen_types(c: &Content) -> TokenStream {
     });
     quote!(&p.part_types.choose(&[#(#declared),*])?)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{Generality, media_rank};
+
+    /// The rank of a `content` key, most specific first: parameters, exact type, range, any.
+    #[test]
+    fn a_media_type_ranks_by_how_much_it_names() {
+        assert_eq!(media_rank("text/plain; charset=utf-8"), Generality::WithParameters);
+        assert_eq!(media_rank("application/json"), Generality::Exact);
+        assert_eq!(media_rank("application/json; "), Generality::Exact);
+        assert_eq!(media_rank("text/*"), Generality::Range);
+        assert_eq!(media_rank("*/*"), Generality::Any);
+    }
+}
