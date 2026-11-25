@@ -316,24 +316,24 @@ fn an_anyof_whose_objects_cannot_be_told_apart_is_a_warning() {
     }
 }
 
-/// Discriminated branches that only an unpinned tag tells apart both match `{kind: "cat"}`, which `oneOf` then refuses:
-/// a warning says so. A required property of one keeps them apart, and the unpinned tag is still a warning.
+/// Discriminated branches that only an unpinned tag tells apart both match `{kind: "book"}`, which `oneOf` then
+/// refuses: a warning says so. A required property of one keeps them apart, and the unpinned tag is still a warning.
 #[test]
 fn discriminated_branches_that_only_an_unpinned_tag_separates_are_a_warning() {
-    let cat = json!({"type": "object", "required": ["kind"], "properties": {"kind": {"type": "string"}}});
-    let dog = |required: Value| {
+    let book = json!({"type": "object", "required": ["kind"], "properties": {"kind": {"type": "string"}}});
+    let gadget = |required: Value| {
         json!({"type": "object", "required": required,
-            "properties": {"kind": {"type": "string"}, "bark": {"type": "boolean"}}})
+            "properties": {"kind": {"type": "string"}, "batteries": {"type": "boolean"}}})
     };
-    let pets = json!({"oneOf": [{"$ref": "#/components/schemas/Cat"}, {"$ref": "#/components/schemas/Dog"}],
+    let items = json!({"oneOf": [{"$ref": "#/components/schemas/Book"}, {"$ref": "#/components/schemas/Gadget"}],
         "discriminator": {"propertyName": "kind"}});
-    for (dog, fine) in [(dog(json!(["kind"])), false), (dog(json!(["kind", "bark"])), true)] {
-        let d = doc(&json!({}), &json!({"schemas": {"Pet": pets, "Cat": cat, "Dog": dog}}));
+    for (gadget, fine) in [(gadget(json!(["kind"])), false), (gadget(json!(["kind", "batteries"])), true)] {
+        let d = doc(&json!({}), &json!({"schemas": {"Item": items, "Book": book, "Gadget": gadget}}));
         let path = common::write("unpinned-tag", &d, &[]);
         let made = crate::generate::generate(&path, &Options::default()).expect("a valid description generates");
         let only_tag = made.diagnostics.iter().any(|d| d.message.contains("differ only by `kind`"));
-        assert_eq!(only_tag, !fine, "a required bark tells them apart: {:#?}", made.diagnostics);
-        assert!(made.diagnostics.iter().any(|d| d.pointer == "/components/schemas/Pet/oneOf"), "a warning either way");
+        assert_eq!(only_tag, !fine, "a required `batteries` tells them apart: {:#?}", made.diagnostics);
+        assert!(made.diagnostics.iter().any(|d| d.pointer == "/components/schemas/Item/oneOf"), "a warning either way");
     }
 }
 

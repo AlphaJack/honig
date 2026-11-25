@@ -1098,7 +1098,7 @@ mod tests {
     fn only_a_leading_tag_streams() {
         let read = |text: &str| tagged::<_, Read>(&mut serde_json::Deserializer::from_str(text)).unwrap();
         assert_eq!(read(r#"{"kind": "cat", "a": 1}"#), Read::Streamed("cat".into()));
-        let other = r#"{"name": "cat", "kind": "dog"}"#;
+        let other = r#"{"name": "book", "kind": "gadget"}"#;
         assert_eq!(read(other), Read::Buffered(serde_json::from_str(other).unwrap()));
     }
 }

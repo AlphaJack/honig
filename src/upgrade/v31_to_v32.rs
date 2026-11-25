@@ -476,15 +476,15 @@ mod tests {
         let (doc, _) = up(json!({
             "openapi": "3.1.0",
             "tags": [{"name": "gadgets", "description": "Gadgets"}, {"name": "misc"}],
-            "x-tagGroups": [{"name": "Animals", "tags": ["gadgets", "books"]}],
+            "x-tagGroups": [{"name": "Catalog", "tags": ["gadgets", "books"]}],
             "paths": {"/c": {"get": {"tags": ["gadgets"]}}}
         }));
         assert_eq!(
             doc["tags"],
             json!([
-                {"name": "Animals"},
-                {"name": "gadgets", "description": "Gadgets", "parent": "Animals"},
-                {"name": "books", "parent": "Animals"},
+                {"name": "Catalog"},
+                {"name": "gadgets", "description": "Gadgets", "parent": "Catalog"},
+                {"name": "books", "parent": "Catalog"},
                 {"name": "misc"}
             ])
         );

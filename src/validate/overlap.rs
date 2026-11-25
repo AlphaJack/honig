@@ -2,9 +2,9 @@
 //! nothing tells apart decodes such a value as the first and drops what the others carry: a warning says so.
 //!
 //! A discriminated `oneOf` whose branches can all match one value. 3.2 says a discriminator "MUST NOT change the
-//! validation outcome": `oneOf` still means exactly one. Branches `Cat` and `Dog` that share every property both match
-//! `{"petType": "cat", "name": "Tom"}`, and the value is invalid. A branch that sets the discriminating property with
-//! `const` (or a one-value `enum`) cannot match another branch's tag. A warning lists the branches that do not.
+//! validation outcome": `oneOf` still means exactly one. Branches `Book` and `Gadget` that share every property both
+//! match `{"kind": "book", "name": "Dune"}`, and the value is invalid. A branch that sets the discriminating property
+//! with `const` (or a one-value `enum`) cannot match another branch's tag. A warning lists the branches that do not.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -228,20 +228,21 @@ mod tests {
 
     #[test]
     fn branches_that_do_not_pin_the_tag_are_named() {
-        let pet = |tag: Value| json!({"type": "object", "properties": {"petType": tag, "name": {"type": "string"}}});
+        let item = |tag: Value| json!({"type": "object", "properties": {"kind": tag, "name": {"type": "string"}}});
         let loose = json!({"openapi": "3.2.0", "components": {"schemas": {
-            "Pet": {"oneOf": [{"$ref": "#/components/schemas/Cat"}, {"$ref": "#/components/schemas/Dog"}],
-                    "discriminator": {"propertyName": "petType"}},
-            "Cat": pet(json!({"type": "string"})),
-            "Dog": {"allOf": [pet(json!({"const": "dog"})), {"required": ["bark"], "properties": {"bark": {"type": "boolean"}}}]}
+            "Item": {"oneOf": [{"$ref": "#/components/schemas/Book"}, {"$ref": "#/components/schemas/Gadget"}],
+                    "discriminator": {"propertyName": "kind"}},
+            "Book": item(json!({"type": "string"})),
+            "Gadget": {"allOf": [item(json!({"const": "gadget"})),
+                {"required": ["batteries"], "properties": {"batteries": {"type": "boolean"}}}]}
         }}});
         let w = warnings(loose);
         assert_eq!(w.len(), 1, "{w:?}");
-        assert!(w[0].contains("#/components/schemas/Cat") && !w[0].contains("Dog"), "{w:?}");
+        assert!(w[0].contains("#/components/schemas/Book") && !w[0].contains("Gadget"), "{w:?}");
         let pinned = json!({"openapi": "3.2.0", "components": {"schemas": {
-            "Pet": {"oneOf": [{"$ref": "#/components/schemas/Cat"}, {"$ref": "#/components/schemas/Dog"}],
-                    "discriminator": {"propertyName": "petType"}},
-            "Cat": pet(json!({"enum": ["cat"]})), "Dog": pet(json!({"const": "dog"}))
+            "Item": {"oneOf": [{"$ref": "#/components/schemas/Book"}, {"$ref": "#/components/schemas/Gadget"}],
+                    "discriminator": {"propertyName": "kind"}},
+            "Book": item(json!({"enum": ["book"]})), "Gadget": item(json!({"const": "gadget"}))
         }}});
         assert_eq!(warnings(pinned), Vec::<String>::new());
     }
@@ -252,15 +253,15 @@ mod tests {
     fn a_tag_pinned_through_a_long_chain_is_pinned() {
         let mut schemas = serde_json::Map::new();
         schemas.insert(
-            "Pet".into(),
-            json!({"oneOf": [{"$ref": "#/components/schemas/D0"}, {"$ref": "#/components/schemas/Cat"}],
-                "discriminator": {"propertyName": "petType"}}),
+            "Item".into(),
+            json!({"oneOf": [{"$ref": "#/components/schemas/D0"}, {"$ref": "#/components/schemas/Book"}],
+                "discriminator": {"propertyName": "kind"}}),
         );
-        schemas.insert("Cat".into(), json!({"type": "object", "properties": {"petType": {"const": "cat"}}}));
+        schemas.insert("Book".into(), json!({"type": "object", "properties": {"kind": {"const": "book"}}}));
         for i in 0..20 {
             schemas.insert(format!("D{i}"), json!({"allOf": [{"$ref": format!("#/components/schemas/D{}", i + 1)}]}));
         }
-        schemas.insert("D20".into(), json!({"type": "object", "properties": {"petType": {"const": "dog"}}}));
+        schemas.insert("D20".into(), json!({"type": "object", "properties": {"kind": {"const": "gadget"}}}));
         let doc = json!({"openapi": "3.2.0", "components": {"schemas": schemas.clone()}});
         assert_eq!(warnings(doc), Vec::<String>::new());
         schemas.insert("D20".into(), json!({"$ref": "#/components/schemas/D0"}));
