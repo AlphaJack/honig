@@ -81,14 +81,11 @@ impl Builder<'_> {
         // Unknown keys of an open object land in `extra`. So a proxy or a
         // load-modify-store cycle keeps them.
         let additional = match o.get("additionalProperties") {
-            // A name that `patternProperties` matches is not additional, so its value need not fit
-            // `additionalProperties`: the map stores any value and the run-time check judges each by its name.
-            Some(Value::Object(m)) if !m.is_empty() && o.contains_key("patternProperties") => Some(Ty::Any),
-            // Beside `patternProperties`, the schema applies only to names that no pattern matches: the check judges
-            // them.
             Some(ap @ Value::Object(m)) if !m.is_empty() && !o.contains_key("patternProperties") => {
                 Some(self.ty(ap, &join(ptr, "additionalProperties"), &name.and(&Name::new("Value"))))
             }
+            // A name that `patternProperties` matches is not additional, so its value need not fit
+            // `additionalProperties`: the map stores any value and the run-time check judges each by its name.
             Some(Value::Bool(true) | Value::Object(_)) => Some(Ty::Any),
             None if self.keep_unknown => Some(Ty::Any),
             _ => None,
