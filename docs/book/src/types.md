@@ -83,7 +83,7 @@ Money:
   ...
 ```
 
-`types::Money` becomes an alias of your type. It must serialize like the schema. It must implement `Debug`, `Clone`, `PartialEq` and the serde traits. It must also check the constraints of the schema: honig checks none of them, neither where the schema is declared nor where a body or a field uses it.
+`types::Money` becomes an alias of your type. It must serialize like the schema. It must implement `Debug`, `Clone`, `PartialEq` and the serde traits. honig checks the constraints of the schema on each value that it decodes into your type, in a body, a parameter or a field, before the conversion. Values that your code builds or sends are yours to keep within them.
 
 A type from another crate uses the object form:
 
