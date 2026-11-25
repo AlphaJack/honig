@@ -111,3 +111,11 @@ fn a_known_key_names_the_caller() {
 fn an_unknown_key_is_refused() {
     assert_eq!(list_with_key("guess").status(), 401);
 }
+
+/// The `Debug` of a client, as a log line shows it, holds its transport and none of its credentials.
+#[test]
+fn a_client_debug_hides_its_credentials() {
+    let client = api::Client::new("no transport").with_api_key("key-secret");
+    let shown = format!("{client:?}");
+    assert!(!shown.contains("key-secret") && shown.contains("no transport"), "{shown}");
+}

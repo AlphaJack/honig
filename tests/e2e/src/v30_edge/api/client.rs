@@ -7,10 +7,17 @@ pub const SERVERS: &[::honig::ServerUrl] = &[
         variables: &[],
     },
 ];
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Client<T> {
     pub transport: T,
     pub(super) credentials: ::honig::__private::Credentials,
+}
+impl<T: std::fmt::Debug> std::fmt::Debug for Client<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Client")
+            .field("transport", &self.transport)
+            .finish_non_exhaustive()
+    }
 }
 impl<T> Client<T> {
     pub const fn new(transport: T) -> Self {

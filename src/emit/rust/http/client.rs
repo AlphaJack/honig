@@ -49,6 +49,7 @@ pub(crate) fn client(api: &Api, space: &Space<'_>, opts: &crate::emit::Options) 
     let devices = device_methods(api);
     let (flows, flow_urls) = oauth_methods(api);
     let webhook_client = webhook_client(space, api, &sec);
+    let client_debug = debug_without_credentials("Client");
     let header = binary.then(|| quote!(#![allow(dead_code, reason = "a binary calls part of the client: its server list and setters may go unused")]));
     // The operations use credentials. The setters and flows write them. Without any operation none are kept.
     let keeps = api.http.operations.iter().any(|op| called(&op))
@@ -75,11 +76,13 @@ pub(crate) fn client(api: &Api, space: &Space<'_>, opts: &crate::emit::Options) 
         #servers_doc
         pub const SERVERS: &[::honig::ServerUrl] = &[#(#servers),*];
 
-        #[derive(Debug, Clone)]
+        #[derive(Clone)]
         pub struct Client<T> {
             pub transport: T,
             #credentials
         }
+
+        #client_debug
 
         impl<T> Client<T> {
             #(#flow_urls)*
@@ -103,20 +106,35 @@ pub(crate) fn client(api: &Api, space: &Space<'_>, opts: &crate::emit::Options) 
     }
 }
 
+/// Returns the `Debug` of a client named `name`: its transport, and not its credentials, which a log line would leak.
+fn debug_without_credentials(name: &str) -> TokenStream {
+    let (ident, name) = (format_ident!("{name}"), lit(name));
+    quote! {
+        impl<T: std::fmt::Debug> std::fmt::Debug for #ident<T> {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.debug_struct(#name).field("transport", &self.transport).finish_non_exhaustive()
+            }
+        }
+    }
+}
+
 /// Emits `WebhookClient`, which sends webhooks and callbacks if the API declares any.
 pub(crate) fn webhook_client(space: &Space<'_>, api: &Api, sec: &Securities) -> Option<TokenStream> {
     let hooks: Vec<TokenStream> =
         api.http.operations.iter().filter(|o| !is_path(o)).map(|op| client_op(space, api, sec, op, true)).collect();
     let setters = credential_setters(api);
     let with = setter_table(api, "WebhookClient");
+    let debug = debug_without_credentials("WebhookClient");
     (!hooks.is_empty()).then(|| {
         quote! {
             /// Sends the webhooks of the API and the callbacks (`callbacks`) of its operations.
-            #[derive(Debug, Clone)]
+            #[derive(Clone)]
             pub struct WebhookClient<T> {
                 pub transport: T,
                 pub(super) credentials: ::honig::__private::Credentials,
             }
+
+            #debug
 
             impl<T> WebhookClient<T> {
                 pub const fn new(transport: T) -> Self {
