@@ -146,11 +146,37 @@ pub mod get_all_data {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok { .. } => "status 200 (Ok)", });
+    /// The body and headers of the success by name: what `Response::into_result` gives.
+    #[derive(Debug, Clone, PartialEq)]
+    pub struct Success {
+        pub body: OkBody,
+        pub x_request_id: Option<runtime::UuidStr>,
+        pub x_pagination_total: Option<i64>,
+        pub x_pagination_page: Option<i64>,
+        pub x_pagination_per_page: Option<i64>,
+        pub x_cache_control: Option<String>,
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_result(self) -> Result<Self, Box<Self>> {
+        pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
-                success @ Self::Ok { .. } => Ok(success),
+                Self::Ok {
+                    body,
+                    x_request_id,
+                    x_pagination_total,
+                    x_pagination_page,
+                    x_pagination_per_page,
+                    x_cache_control,
+                } => {
+                    Ok(Success {
+                        body,
+                        x_request_id,
+                        x_pagination_total,
+                        x_pagination_page,
+                        x_pagination_per_page,
+                        x_cache_control,
+                    })
+                }
             }
         }
     }
@@ -576,11 +602,34 @@ pub mod get_product {
         Response { Self::Ok { .. } => "status 200 (Ok)", Self::NotFound(..) =>
         "status 404 (NotFound)", }
     );
+    /// The body and headers of the success by name: what `Response::into_result` gives.
+    #[derive(Debug, Clone, PartialEq)]
+    pub struct Success {
+        pub body: Box<types::Product>,
+        pub x_request_id: Option<runtime::UuidStr>,
+        pub e_tag: Option<String>,
+        pub last_modified: Option<runtime::DateTimeStr>,
+        pub x_cache_control: Option<String>,
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_result(self) -> Result<Self, Box<Self>> {
+        pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
-                success @ Self::Ok { .. } => Ok(success),
+                Self::Ok {
+                    body,
+                    x_request_id,
+                    e_tag,
+                    last_modified,
+                    x_cache_control,
+                } => {
+                    Ok(Success {
+                        body,
+                        x_request_id,
+                        e_tag,
+                        last_modified,
+                        x_cache_control,
+                    })
+                }
                 other @ Self::NotFound(..) => Err(Box::new(other)),
             }
         }
@@ -1488,11 +1537,34 @@ pub mod get_token {
         "status 401 (Unauthorized)", Self::Forbidden(..) => "status 403 (Forbidden)",
         Self::TooManyRequests { .. } => "status 429 (TooManyRequests)", }
     );
+    /// The body and headers of the success by name: what `Response::into_result` gives.
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct Success {
+        pub body: types::Token,
+        pub x_request_id: Option<runtime::UuidStr>,
+        pub x_rate_limit_limit: Option<i64>,
+        pub x_rate_limit_remaining: Option<i64>,
+        pub x_rate_limit_reset: Option<i64>,
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_result(self) -> Result<Self, Box<Self>> {
+        pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
-                success @ Self::Created { .. } => Ok(success),
+                Self::Created {
+                    body,
+                    x_request_id,
+                    x_rate_limit_limit,
+                    x_rate_limit_remaining,
+                    x_rate_limit_reset,
+                } => {
+                    Ok(Success {
+                        body,
+                        x_request_id,
+                        x_rate_limit_limit,
+                        x_rate_limit_remaining,
+                        x_rate_limit_reset,
+                    })
+                }
                 other @ (Self::BadRequest { .. }
                 | Self::Unauthorized(..)
                 | Self::Forbidden(..)
@@ -1569,11 +1641,34 @@ pub mod get_me {
         Response { Self::Ok { .. } => "status 200 (Ok)", Self::Unauthorized(..) =>
         "status 401 (Unauthorized)", Self::Forbidden(..) => "status 403 (Forbidden)", }
     );
+    /// The body and headers of the success by name: what `Response::into_result` gives.
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct Success {
+        pub body: types::User,
+        pub x_request_id: Option<runtime::UuidStr>,
+        pub e_tag: Option<String>,
+        pub last_modified: Option<runtime::DateTimeStr>,
+        pub x_cache_control: Option<String>,
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_result(self) -> Result<Self, Box<Self>> {
+        pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
-                success @ Self::Ok { .. } => Ok(success),
+                Self::Ok {
+                    body,
+                    x_request_id,
+                    e_tag,
+                    last_modified,
+                    x_cache_control,
+                } => {
+                    Ok(Success {
+                        body,
+                        x_request_id,
+                        e_tag,
+                        last_modified,
+                        x_cache_control,
+                    })
+                }
                 other @ (Self::Unauthorized(..) | Self::Forbidden(..)) => {
                     Err(Box::new(other))
                 }

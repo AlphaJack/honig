@@ -115,11 +115,24 @@ pub mod get_manifest {
         Response { Self::Ok { .. } => "status 200 (Ok)", Self::NotFound =>
         "status 404 (NotFound)", }
     );
+    /// The body and headers of the success by name: what `Response::into_result` gives.
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct Success {
+        pub body: Vec<String>,
+        pub e_tag: Option<String>,
+        pub last_modified: Option<String>,
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_result(self) -> Result<Self, Box<Self>> {
+        pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
-                success @ Self::Ok { .. } => Ok(success),
+                Self::Ok { body, e_tag, last_modified } => {
+                    Ok(Success {
+                        body,
+                        e_tag,
+                        last_modified,
+                    })
+                }
                 other @ Self::NotFound => Err(Box::new(other)),
             }
         }

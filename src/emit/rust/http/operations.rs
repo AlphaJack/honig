@@ -862,9 +862,9 @@ fn into_result(space: &Space<'_>, op: &Operation, bx: &Boxing) -> Option<TokenSt
     })
 }
 
-/// Returns the type that the one success `resp` gives from `into_result`, the match arm that destructures it and the alias
-/// that stands for a tuple: nothing, its body, its one header, or its body and headers as `Success` in order. Two of one
-/// type cannot be told apart by position: the response itself is the success then.
+/// Returns the type that the one success `resp` gives from `into_result`, the match arm that destructures it and the item
+/// that `Success` is: nothing, its body, its one header, or its body and headers as `Success`, a tuple in order. Two of
+/// one type cannot be told apart by position: `Success` is then a struct with a field for each.
 fn one_success(space: &Space<'_>, resp: &Resp, boxed_body: bool) -> (TokenStream, TokenStream, Option<TokenStream>) {
     let variant = pascal_ident(&resp.variant);
     let body = || {
@@ -889,12 +889,24 @@ fn one_success(space: &Space<'_>, resp: &Resp, boxed_body: bool) -> (TokenStream
                 return (single.clone(), quote!(Self::#variant { #name, .. } => Ok(#name),), None);
             }
             // Two of one type, such as `ETag` and `Last-Modified`: a reorder of the headers in the description would swap
-            // them without a compile error. The response keeps them by name.
+            // them in a tuple without a compile error. A struct names each.
             let mut texts: Vec<String> = types.iter().map(ToString::to_string).collect();
             texts.sort();
             texts.dedup();
             if texts.len() < types.len() {
-                return (quote!(Self), quote!(success @ Self::#variant { .. } => Ok(success),), None);
+                let tys: Vec<&Ty> =
+                    resp.contents.iter().map(|c| &c.ty).chain(resp.headers.iter().map(|h| &h.ty)).collect();
+                let eq = eq_derive(space, &tys);
+                let item = quote! {
+                    /// The body and headers of the success by name: what `Response::into_result` gives.
+                    #[derive(Debug, Clone, PartialEq, #eq)]
+                    pub struct Success { #(pub #names: #types),* }
+                };
+                return (
+                    quote!(Success),
+                    quote!(Self::#variant { #(#names),* } => Ok(Success { #(#names),* }),),
+                    Some(item),
+                );
             }
             let alias = quote! {
                 /// The body and headers of the success, in order: what `Response::into_result` gives.
