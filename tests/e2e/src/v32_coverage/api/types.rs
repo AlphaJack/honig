@@ -616,75 +616,155 @@ impl TryFrom<serde_json::Value> for NotChecked {
 pub mod builders {
     use super as types;
     ::honig::typestate_builder! {
-        Box2 => super::Box2; required { width : R0 : i64 = "width", height : R1 : i64 =
-        "height", depth : R2 : i64 = "depth", weight : R3 : i64 = "weight", color : R4 :
-        i64 = "color", shelf : R5 : i64 = "shelf", row : R6 : i64 = "row", bin : R7 : i64
-        = "bin" } optional {} fixed {}
+        Box2 => super::Box2;
+        required {
+            width: R0: i64 = "width",
+            height: R1: i64 = "height",
+            depth: R2: i64 = "depth",
+            weight: R3: i64 = "weight",
+            color: R4: i64 = "color",
+            shelf: R5: i64 = "shelf",
+            row: R6: i64 = "row",
+            bin: R7: i64 = "bin",
+        }
+        optional {}
+        fixed {}
     }
     ::honig::typestate_builder! {
-        TextNote => super::TextNoteFields, try_from super::TextNote; required { text : R0
-        : String = "text" } optional { kind(kind) : types::TextNoteKind = "kind" => some,
-        None, point(point) : [f64; 2] = "point" => some, None, rgb(rgb) :
-        types::TextNoteRgb = "rgb" => some, None } fixed {}
+        TextNote => super::TextNoteFields, try_from super::TextNote;
+        required {
+            text: R0: String = "text",
+        }
+        optional {
+            kind(kind): types::TextNoteKind = "kind" => some, None,
+            point(point): [f64; 2] = "point" => some, None,
+            rgb(rgb): types::TextNoteRgb = "rgb" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        ImageNote => super::ImageNote; required { url : R0 : String = "url" } optional {
-        width(width) : types::Pixels = "width" => value,
-        super::ImageNote::default_width(), crop(crop) : types::Crop = "crop" => some,
-        None } fixed { kind : types::ImageNoteKind {}, }
+        ImageNote => super::ImageNote;
+        required {
+            url: R0: String = "url",
+        }
+        optional {
+            width(width): types::Pixels = "width" => value, super::ImageNote::default_width(),
+            crop(crop): types::Crop = "crop" => some, None,
+        }
+        fixed {
+            kind: types::ImageNoteKind {},
+        }
     }
     ::honig::typestate_builder! {
-        NoteTextNote => super::NoteTextNoteFields, try_from super::NoteTextNote; required
-        { text : R0 : String = "text" } optional { kind(kind) : types::NoteTextNoteKind =
-        "kind" => some, None, point(point) : [f64; 2] = "point" => some, None, rgb(rgb) :
-        types::NoteTextNoteRgb = "rgb" => some, None, size(size) : i64 = "size" => some,
-        None } fixed {}
+        NoteTextNote => super::NoteTextNoteFields, try_from super::NoteTextNote;
+        required {
+            text: R0: String = "text",
+        }
+        optional {
+            kind(kind): types::NoteTextNoteKind = "kind" => some, None,
+            point(point): [f64; 2] = "point" => some, None,
+            rgb(rgb): types::NoteTextNoteRgb = "rgb" => some, None,
+            size(size): i64 = "size" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        NoteImageNote => super::NoteImageNote; required { url : R0 : String = "url" }
-        optional { width(width) : types::Pixels = "width" => value,
-        super::NoteImageNote::default_width(), crop(crop) : types::Crop = "crop" => some,
-        None, text(text) : String = "text" => some, None, size(size) : i64 = "size" =>
-        some, None } fixed { kind : types::NoteImageNoteKind {}, }
+        NoteImageNote => super::NoteImageNote;
+        required {
+            url: R0: String = "url",
+        }
+        optional {
+            width(width): types::Pixels = "width" => value, super::NoteImageNote::default_width(),
+            crop(crop): types::Crop = "crop" => some, None,
+            text(text): String = "text" => some, None,
+            size(size): i64 = "size" => some, None,
+        }
+        fixed {
+            kind: types::NoteImageNoteKind {},
+        }
     }
     ::honig::typestate_builder! {
-        CropVariant1Variant2 => super::CropVariant1Variant2; required {} optional { x(x)
-        : i64 = "x" => some, None, y(y) : i64 = "y" => some, None } fixed {}
+        CropVariant1Variant2 => super::CropVariant1Variant2;
+        required {}
+        optional {
+            x(x): i64 = "x" => some, None,
+            y(y): i64 = "y" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        ArchiveConflict => super::ArchiveConflict; required { code : R0 : i64 = "code",
-        message : R1 : String = "message" } optional {} fixed {}
+        ArchiveConflict => super::ArchiveConflict;
+        required {
+            code: R0: i64 = "code",
+            message: R1: String = "message",
+        }
+        optional {}
+        fixed {}
     }
     ::honig::typestate_builder! {
-        AddNoteCreatedXTags => super::AddNoteCreatedXTags; required {} optional { a(a) :
-        String = "a" => some, None, b(b) : String = "b" => some, None } fixed {}
+        AddNoteCreatedXTags => super::AddNoteCreatedXTags;
+        required {}
+        optional {
+            a(a): String = "a" => some, None,
+            b(b): String = "b" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        NotObject => super::NotObject; required {} optional { size(size) :
-        types::NotObjectSize = "size" => some, None } fixed { additional_properties :
-        std::collections::BTreeMap::new(), }
+        NotObject => super::NotObject;
+        required {}
+        optional {
+            size(size): types::NotObjectSize = "size" => some, None,
+        }
+        fixed {
+            additional_properties: std::collections::BTreeMap::new(),
+        }
     }
     ::honig::typestate_builder! {
-        Not2Object => super::Not2Object; required {} optional { text(text) :
-        types::Not2ObjectText = "text" => some, None } fixed { additional_properties :
-        std::collections::BTreeMap::new(), }
+        Not2Object => super::Not2Object;
+        required {}
+        optional {
+            text(text): types::Not2ObjectText = "text" => some, None,
+        }
+        fixed {
+            additional_properties: std::collections::BTreeMap::new(),
+        }
     }
     ::honig::typestate_builder! {
-        Not3 => super::Not3; required {} optional { kind(kind) : String = "kind" => some,
-        None, text(text) : String = "text" => some, None, size(size) : i64 = "size" =>
-        some, None } fixed { additional_properties : std::collections::BTreeMap::new(), }
+        Not3 => super::Not3;
+        required {}
+        optional {
+            kind(kind): String = "kind" => some, None,
+            text(text): String = "text" => some, None,
+            size(size): i64 = "size" => some, None,
+        }
+        fixed {
+            additional_properties: std::collections::BTreeMap::new(),
+        }
     }
     ::honig::typestate_builder! {
-        TextNoteFields => super::TextNoteFields; required { text : R0 : String = "text" }
-        optional { kind(kind) : types::TextNoteKind = "kind" => some, None, point(point)
-        : [f64; 2] = "point" => some, None, rgb(rgb) : types::TextNoteRgb = "rgb" =>
-        some, None } fixed {}
+        TextNoteFields => super::TextNoteFields;
+        required {
+            text: R0: String = "text",
+        }
+        optional {
+            kind(kind): types::TextNoteKind = "kind" => some, None,
+            point(point): [f64; 2] = "point" => some, None,
+            rgb(rgb): types::TextNoteRgb = "rgb" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        NoteTextNoteFields => super::NoteTextNoteFields; required { text : R0 : String =
-        "text" } optional { kind(kind) : types::NoteTextNoteKind = "kind" => some, None,
-        point(point) : [f64; 2] = "point" => some, None, rgb(rgb) :
-        types::NoteTextNoteRgb = "rgb" => some, None, size(size) : i64 = "size" => some,
-        None } fixed {}
+        NoteTextNoteFields => super::NoteTextNoteFields;
+        required {
+            text: R0: String = "text",
+        }
+        optional {
+            kind(kind): types::NoteTextNoteKind = "kind" => some, None,
+            point(point): [f64; 2] = "point" => some, None,
+            rgb(rgb): types::NoteTextNoteRgb = "rgb" => some, None,
+            size(size): i64 = "size" => some, None,
+        }
+        fixed {}
     }
 }

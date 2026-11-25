@@ -324,55 +324,96 @@ pub type TransferAmount = EventAmount;
 pub mod builders {
     use super as types;
     ::honig::typestate_builder! {
-        StoreNetwork => super::StoreNetwork; required { first : R0 : std::net::Ipv4Addr =
-        "first", last : R1 : std::net::Ipv6Addr = "last" } optional {} fixed {}
+        StoreNetwork => super::StoreNetwork;
+        required {
+            first: R0: std::net::Ipv4Addr = "first",
+            last: R1: std::net::Ipv6Addr = "last",
+        }
+        optional {}
+        fixed {}
     }
     ::honig::typestate_builder! {
-        Event => super::Event; required { id : R0 : ::honig::UuidStr = "id", at : R1 :
-        ::honig::DateTimeStr = "at" } optional { ip4(ip4) : std::net::Ipv4Addr = "ip4" =>
-        some, None, ip6(ip6) : std::net::Ipv6Addr = "ip6" => some, None, day(day) :
-        ::honig::DateStr = "day" => some, None, seen(seen) : Vec < ::honig::DateTimeStr >
-        = "seen" => some, None, token(token) : ::honig::Base64Url = "token" => some,
-        None, level(level) : i8 = "level" => some, None, port(port) : types::EventPort =
-        "port" => some, None, amount(amount) : types::EventAmount = "amount" => some,
-        None, sum(sum) : types::EventSum = "sum" => some, None, initial(initial) : char =
-        "initial" => some, None, home(home) : ::honig::url::Url = "home" => some, None,
-        net4(net4) : ::honig::ipnet::Ipv4Net = "net4" => some, None, net6(net6) :
-        ::honig::ipnet::Ipv6Net = "net6" => some, None, local(local) :
-        ::honig::DateTimeLocalStr = "local" => some, None, clock(clock) :
-        ::honig::TimeLocalStr = "clock" => some, None, price(price) : ::honig::DecimalStr
-        = "price" => some, None, total(total) : ::honig::Decimal128Str = "total" => some,
-        None, opens(opens) : ::honig::FullTime = "opens" => some, None, expires(expires)
-        : ::honig::HttpDateStr = "expires" => some, None, lasts(lasts) :
-        ::honig::DurationStr = "lasts" => some, None, link(link) :
-        ::honig::UriReferenceStr = "link" => some, None, page(page) : ::honig::IriStr =
-        "page" => some, None, rel(rel) : ::honig::IriReferenceStr = "rel" => some, None,
-        at_path(at_path) : ::honig::JsonPointerStr = "at_path" => some, None, up(up) :
-        ::honig::RelativeJsonPointerStr = "up" => some, None, filter(filter) :
-        ::honig::RegexStr = "filter" => some, None, search(search) :
-        ::honig::UriTemplateStr = "search" => some, None, charge(charge) :
-        types::EventCharge = "charge" => some, None, payment(payment) :
-        types::EventPayment = "payment" => some, None, payload(payload) :
-        types::EventPayload = "payload" => some, None } fixed {}
+        Event => super::Event;
+        required {
+            id: R0: ::honig::UuidStr = "id",
+            at: R1: ::honig::DateTimeStr = "at",
+        }
+        optional {
+            ip4(ip4): std::net::Ipv4Addr = "ip4" => some, None,
+            ip6(ip6): std::net::Ipv6Addr = "ip6" => some, None,
+            day(day): ::honig::DateStr = "day" => some, None,
+            seen(seen): Vec<::honig::DateTimeStr> = "seen" => some, None,
+            token(token): ::honig::Base64Url = "token" => some, None,
+            level(level): i8 = "level" => some, None,
+            port(port): types::EventPort = "port" => some, None,
+            amount(amount): types::EventAmount = "amount" => some, None,
+            sum(sum): types::EventSum = "sum" => some, None,
+            initial(initial): char = "initial" => some, None,
+            home(home): ::honig::url::Url = "home" => some, None,
+            net4(net4): ::honig::ipnet::Ipv4Net = "net4" => some, None,
+            net6(net6): ::honig::ipnet::Ipv6Net = "net6" => some, None,
+            local(local): ::honig::DateTimeLocalStr = "local" => some, None,
+            clock(clock): ::honig::TimeLocalStr = "clock" => some, None,
+            price(price): ::honig::DecimalStr = "price" => some, None,
+            total(total): ::honig::Decimal128Str = "total" => some, None,
+            opens(opens): ::honig::FullTime = "opens" => some, None,
+            expires(expires): ::honig::HttpDateStr = "expires" => some, None,
+            lasts(lasts): ::honig::DurationStr = "lasts" => some, None,
+            link(link): ::honig::UriReferenceStr = "link" => some, None,
+            page(page): ::honig::IriStr = "page" => some, None,
+            rel(rel): ::honig::IriReferenceStr = "rel" => some, None,
+            at_path(at_path): ::honig::JsonPointerStr = "at_path" => some, None,
+            up(up): ::honig::RelativeJsonPointerStr = "up" => some, None,
+            filter(filter): ::honig::RegexStr = "filter" => some, None,
+            search(search): ::honig::UriTemplateStr = "search" => some, None,
+            charge(charge): types::EventCharge = "charge" => some, None,
+            payment(payment): types::EventPayment = "payment" => some, None,
+            payload(payload): types::EventPayload = "payload" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        Card => super::Card; required { amount : R0 : types::CardAmount = "amount" }
-        optional {} fixed { method : types::CardMethod {}, }
+        Card => super::Card;
+        required {
+            amount: R0: types::CardAmount = "amount",
+        }
+        optional {}
+        fixed {
+            method: types::CardMethod {},
+        }
     }
     ::honig::typestate_builder! {
-        Transfer => super::Transfer; required { amount : R0 : types::TransferAmount =
-        "amount" } optional {} fixed { method : types::TransferMethod {}, }
+        Transfer => super::Transfer;
+        required {
+            amount: R0: types::TransferAmount = "amount",
+        }
+        optional {}
+        fixed {
+            method: types::TransferMethod {},
+        }
     }
     ::honig::typestate_builder! {
-        EventChargeRefund => super::EventChargeRefund; required { refund : R0 :
-        ::honig::Decimal = "refund" } optional {} fixed {}
+        EventChargeRefund => super::EventChargeRefund;
+        required {
+            refund: R0: ::honig::Decimal = "refund",
+        }
+        optional {}
+        fixed {}
     }
     ::honig::typestate_builder! {
-        EventChargeFee => super::EventChargeFee; required { fee : R0 : ::honig::Decimal =
-        "fee" } optional {} fixed {}
+        EventChargeFee => super::EventChargeFee;
+        required {
+            fee: R0: ::honig::Decimal = "fee",
+        }
+        optional {}
+        fixed {}
     }
     ::honig::typestate_builder! {
-        EventPayloadContent => super::EventPayloadContent; required { n : R0 : i64 = "n"
-        } optional {} fixed {}
+        EventPayloadContent => super::EventPayloadContent;
+        required {
+            n: R0: i64 = "n",
+        }
+        optional {}
+        fixed {}
     }
 }

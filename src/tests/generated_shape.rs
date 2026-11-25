@@ -2611,3 +2611,30 @@ fn generating_removes_the_runtime_file_of_an_earlier_run() {
     crate::disk::write_module(&dir, &dir.join("mod.rs"), &files).unwrap();
     assert!(!crate::disk::is_file(&old) && crate::disk::is_file(&dir.join("mod.rs")));
 }
+
+/// The body of a builder and of the errors of a response reads as Rust: one entry per line, `Vec<String>` and not
+/// `Vec < String >`. `prettyplease` prints a macro body as raw tokens.
+#[test]
+fn macro_bodies_print_one_entry_per_line() {
+    let tags = json!({"type": "object", "properties": {"name": {"type": "string"},
+        "tags": {"type": "array", "items": {"type": "string"}}}});
+    let failed = |code: u16| {
+        (
+            code.to_string(),
+            json!({"description": "no", "content": {"application/json":
+        {"schema": {"$ref": "#/components/schemas/Tags"}}}}),
+        )
+    };
+    let mut responses = serde_json::Map::from_iter([failed(400), failed(403), failed(404)]);
+    responses.insert("201".into(), json!({"description": "made"}));
+    let paths = json!({"/tags": {"post": {"operationId": "makeTags", "responses": responses}}});
+    let files = common::generate(
+        "macro-bodies",
+        &common::spec("3.2.0", &paths, &json!({"schemas": {"Tags": tags}})),
+        &crate::emit::Options::default(),
+    );
+    let types = common::file(&files, "types.rs");
+    assert!(types.contains("        optional {\n            name(name): String = \"name\" => some, None,\n            tags(tags): Vec<String> = \"tags\" => some, None,\n        }\n"), "{types}");
+    let ops = common::file(&files, "operations.rs");
+    assert!(ops.contains("            Self::Created => \"status 201 (Created)\",\n"), "{ops}");
+}

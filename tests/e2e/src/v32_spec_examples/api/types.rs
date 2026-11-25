@@ -1073,141 +1073,241 @@ impl TryFrom<serde_json::Value> for NotChecked {
 pub mod builders {
     use super as types;
     ::honig::typestate_builder! {
-        Address => super::Address; required {} optional { street(street) : String =
-        "street" => some, None, city(city) : String = "city" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        FormData => super::FormData; required {} optional { code(code) :
-        types::FormDataCodeChecked = "code" => some, None, count(count) : i64 = "count"
-        => some, None, extra(extra) : types::FormDataExtra = "extra" => some, None }
+        Address => super::Address;
+        required {}
+        optional {
+            street(street): String = "street" => some, None,
+            city(city): String = "city" => some, None,
+        }
         fixed {}
     }
     ::honig::typestate_builder! {
-        Product => super::Product; required {} optional { name(name) : String = "name" =>
-        some, None, product_type(product_type) : String = "productType" => some, None,
-        color(color) : String = "color" => some, None, material(material) : String =
-        "material" => some, None, brand(brand) : String = "brand" => some, None } fixed
-        {}
-    }
-    ::honig::typestate_builder! {
-        LogEntry => super::LogEntry; required {} optional { timestamp(timestamp) :
-        ::honig::DateTimeStr = "timestamp" => some, None, level(level) :
-        types::LogEntryLevel = "level" => some, None, message(message) : String =
-        "message" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        Event => super::Event; required { data : R0 : String = "data" } optional {
-        event(event) : String = "event" => some, None, id(id) : String = "id" => some,
-        None, retry(retry) : types::EventRetry = "retry" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        CollectionLinks => super::CollectionLinks; required { linkset : R0 : Vec <
-        types::CollectionLinksLinksetItem > = "linkset" } optional {} fixed {}
-    }
-    ::honig::typestate_builder! {
-        FormDataExtra => super::FormDataExtra; required {} optional { info(info) : String
-        = "info" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        SimpleLinkContextItem => super::SimpleLinkContextItem; required { href : R0 :
-        ::honig::UriReferenceStr = "href" } optional {} fixed {}
-    }
-    ::honig::typestate_builder! {
-        CollectionLinksLinksetItem => super::CollectionLinksLinksetItem; required {}
-        optional { anchor(anchor) : ::honig::url::Url = "anchor" => some, None } fixed {
-        additional_properties : std::collections::BTreeMap::new(), }
-    }
-    ::honig::typestate_builder! {
-        ParameterExamplesCookie => super::ParameterExamplesCookie; required {} optional {
-        greeting(greeting) : String = "greeting" => some, None, code(code) :
-        types::ParameterExamplesCookieCode = "code" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        ParameterExamplesCoordinates => super::ParameterExamplesCoordinates; required {
-        lat : R0 : f64 = "lat", long : R1 : f64 = "long" } optional {} fixed {}
-    }
-    ::honig::typestate_builder! {
-        QuerystringFormMetadata => super::QuerystringFormMetadata; required {} optional {
-        foo(foo) : String = "foo" => some, None, bar(bar) : bool = "bar" => some, None }
+        FormData => super::FormData;
+        required {}
+        optional {
+            code(code): types::FormDataCodeChecked = "code" => some, None,
+            count(count): i64 = "count" => some, None,
+            extra(extra): types::FormDataExtra = "extra" => some, None,
+        }
         fixed {}
     }
     ::honig::typestate_builder! {
-        QuerystringJsonJson => super::QuerystringJsonJson; required {} optional {
-        numbers(numbers) : Vec < i64 > = "numbers" => some, None, flag(flag) : bool =
-        "flag" => nullable, ::honig::Nullable::Absent } fixed {}
+        Product => super::Product;
+        required {}
+        optional {
+            name(name): String = "name" => some, None,
+            product_type(product_type): String = "productType" => some, None,
+            color(color): String = "color" => some, None,
+            material(material): String = "material" => some, None,
+            brand(brand): String = "brand" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        BasicMultipartFormBody => super::BasicMultipartFormBody; required {} optional {
-        id(id) : ::honig::UuidStr = "id" => some, None, profile_image(profile_image) :
-        ::honig::Binary = "profileImage" => some, None, addresses(addresses) : Vec <
-        types::Address > = "addresses" => some, None } fixed {}
+        LogEntry => super::LogEntry;
+        required {}
+        optional {
+            timestamp(timestamp): ::honig::DateTimeStr = "timestamp" => some, None,
+            level(level): types::LogEntryLevel = "level" => some, None,
+            message(message): String = "message" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        MultipartFormWithEncodingObjectsBody =>
-        super::MultipartFormWithEncodingObjectsBody; required {} optional { id(id) :
-        ::honig::UuidStr = "id" => some, None, alias(alias) :
-        types::MultipartFormWithEncodingObjectsBodyAlias = "alias" => some, None,
-        addresses(addresses) : Vec < types::Address > = "addresses" => some, None,
-        profile_image(profile_image) : ::honig::Binary = "profileImage" => some, None }
+        Event => super::Event;
+        required {
+            data: R0: String = "data",
+        }
+        optional {
+            event(event): String = "event" => some, None,
+            id(id): String = "id" => some, None,
+            retry(retry): types::EventRetry = "retry" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        CollectionLinks => super::CollectionLinks;
+        required {
+            linkset: R0: Vec<types::CollectionLinksLinksetItem> = "linkset",
+        }
+        optional {}
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        FormDataExtra => super::FormDataExtra;
+        required {}
+        optional {
+            info(info): String = "info" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        SimpleLinkContextItem => super::SimpleLinkContextItem;
+        required {
+            href: R0: ::honig::UriReferenceStr = "href",
+        }
+        optional {}
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        CollectionLinksLinksetItem => super::CollectionLinksLinksetItem;
+        required {}
+        optional {
+            anchor(anchor): ::honig::url::Url = "anchor" => some, None,
+        }
+        fixed {
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+    ::honig::typestate_builder! {
+        ParameterExamplesCookie => super::ParameterExamplesCookie;
+        required {}
+        optional {
+            greeting(greeting): String = "greeting" => some, None,
+            code(code): types::ParameterExamplesCookieCode = "code" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        ParameterExamplesCoordinates => super::ParameterExamplesCoordinates;
+        required {
+            lat: R0: f64 = "lat",
+            long: R1: f64 = "long",
+        }
+        optional {}
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        QuerystringFormMetadata => super::QuerystringFormMetadata;
+        required {}
+        optional {
+            foo(foo): String = "foo" => some, None,
+            bar(bar): bool = "bar" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        QuerystringJsonJson => super::QuerystringJsonJson;
+        required {}
+        optional {
+            numbers(numbers): Vec<i64> = "numbers" => some, None,
+            flag(flag): bool = "flag" => nullable, ::honig::Nullable::Absent,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        BasicMultipartFormBody => super::BasicMultipartFormBody;
+        required {}
+        optional {
+            id(id): ::honig::UuidStr = "id" => some, None,
+            profile_image(profile_image): ::honig::Binary = "profileImage" => some, None,
+            addresses(addresses): Vec<types::Address> = "addresses" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        MultipartFormWithEncodingObjectsBody => super::MultipartFormWithEncodingObjectsBody;
+        required {}
+        optional {
+            id(id): ::honig::UuidStr = "id" => some, None,
+            alias(alias): types::MultipartFormWithEncodingObjectsBodyAlias = "alias" => some, None,
+            addresses(addresses): Vec<types::Address> = "addresses" => some, None,
+            profile_image(profile_image): ::honig::Binary = "profileImage" => some, None,
+        }
         fixed {}
     }
     ::honig::typestate_builder! {
         MultipartFormWithMultipleFilesBody => super::MultipartFormWithMultipleFilesBody;
-        required {} optional { file(file) : Vec < ::honig::Binary > = "file" => some,
-        None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        ServerSentEventStreamsBodyItemEvent =>
-        super::ServerSentEventStreamsBodyItemEvent; required { data : R0 : String =
-        "data" } optional { event(event) :
-        types::ServerSentEventStreamsBodyItemEventEvent = "event" => some, None, id(id) :
-        String = "id" => some, None, retry(retry) :
-        types::ServerSentEventStreamsBodyItemEventRetry = "retry" => some, None } fixed
-        {}
-    }
-    ::honig::typestate_builder! {
-        ServerSentEventStreamsBodyItemVariant1 =>
-        super::ServerSentEventStreamsBodyItemVariant1; required { data : R0 :
-        types::ServerSentEventStreamsBodyItemVariant1Data = "data" } optional {
-        event(event) : types::ServerSentEventStreamsBodyItemVariant1Event = "event" =>
-        some, None, id(id) : String = "id" => some, None, retry(retry) :
-        types::ServerSentEventStreamsBodyItemVariant1Retry = "retry" => some, None }
+        required {}
+        optional {
+            file(file): Vec<::honig::Binary> = "file" => some, None,
+        }
         fixed {}
     }
     ::honig::typestate_builder! {
-        ServerSentEventStreamsBodyItemVariant2 =>
-        super::ServerSentEventStreamsBodyItemVariant2; required { data : R0 :
-        types::ServerSentEventStreamsBodyItemVariant2Data = "data" } optional {
-        event(event) : types::ServerSentEventStreamsBodyItemVariant2Event = "event" =>
-        some, None, id(id) : String = "id" => some, None, retry(retry) :
-        types::ServerSentEventStreamsBodyItemVariant2Retry = "retry" => some, None }
+        ServerSentEventStreamsBodyItemEvent => super::ServerSentEventStreamsBodyItemEvent;
+        required {
+            data: R0: String = "data",
+        }
+        optional {
+            event(event): types::ServerSentEventStreamsBodyItemEventEvent = "event" => some, None,
+            id(id): String = "id" => some, None,
+            retry(retry): types::ServerSentEventStreamsBodyItemEventRetry = "retry" => some, None,
+        }
         fixed {}
     }
     ::honig::typestate_builder! {
-        ServerSentEventStreamsBodyItemVariant2Data2Content =>
-        super::ServerSentEventStreamsBodyItemVariant2Data2Content; required { foo : R0 :
-        i64 = "foo" } optional {} fixed {}
+        ServerSentEventStreamsBodyItemVariant1 => super::ServerSentEventStreamsBodyItemVariant1;
+        required {
+            data: R0: types::ServerSentEventStreamsBodyItemVariant1Data = "data",
+        }
+        optional {
+            event(event): types::ServerSentEventStreamsBodyItemVariant1Event = "event" => some, None,
+            id(id): String = "id" => some, None,
+            retry(retry): types::ServerSentEventStreamsBodyItemVariant1Retry = "retry" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        Not4Object => super::Not4Object; required {} optional { event(event) :
-        types::Not4ObjectEvent = "event" => some, None } fixed { additional_properties :
-        std::collections::BTreeMap::new(), }
+        ServerSentEventStreamsBodyItemVariant2 => super::ServerSentEventStreamsBodyItemVariant2;
+        required {
+            data: R0: types::ServerSentEventStreamsBodyItemVariant2Data = "data",
+        }
+        optional {
+            event(event): types::ServerSentEventStreamsBodyItemVariant2Event = "event" => some, None,
+            id(id): String = "id" => some, None,
+            retry(retry): types::ServerSentEventStreamsBodyItemVariant2Retry = "retry" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        Not5Object => super::Not5Object; required {} optional { event(event) :
-        types::Not5ObjectEvent = "event" => some, None, data(data) :
-        types::Not5ObjectData = "data" => some, None } fixed { additional_properties :
-        std::collections::BTreeMap::new(), }
+        ServerSentEventStreamsBodyItemVariant2Data2Content => super::ServerSentEventStreamsBodyItemVariant2Data2Content;
+        required {
+            foo: R0: i64 = "foo",
+        }
+        optional {}
+        fixed {}
     }
     ::honig::typestate_builder! {
-        Not6Object => super::Not6Object; required {} optional { event(event) :
-        types::Not6ObjectEvent = "event" => some, None, data(data) :
-        types::Not6ObjectData = "data" => some, None } fixed { additional_properties :
-        std::collections::BTreeMap::new(), }
+        Not4Object => super::Not4Object;
+        required {}
+        optional {
+            event(event): types::Not4ObjectEvent = "event" => some, None,
+        }
+        fixed {
+            additional_properties: std::collections::BTreeMap::new(),
+        }
     }
     ::honig::typestate_builder! {
-        Not6ObjectDataContent => super::Not6ObjectDataContent; required { foo : R0 : i64
-        = "foo" } optional {} fixed { additional_properties :
-        std::collections::BTreeMap::new(), }
+        Not5Object => super::Not5Object;
+        required {}
+        optional {
+            event(event): types::Not5ObjectEvent = "event" => some, None,
+            data(data): types::Not5ObjectData = "data" => some, None,
+        }
+        fixed {
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+    ::honig::typestate_builder! {
+        Not6Object => super::Not6Object;
+        required {}
+        optional {
+            event(event): types::Not6ObjectEvent = "event" => some, None,
+            data(data): types::Not6ObjectData = "data" => some, None,
+        }
+        fixed {
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+    ::honig::typestate_builder! {
+        Not6ObjectDataContent => super::Not6ObjectDataContent;
+        required {
+            foo: R0: i64 = "foo",
+        }
+        optional {}
+        fixed {
+            additional_properties: std::collections::BTreeMap::new(),
+        }
     }
 }

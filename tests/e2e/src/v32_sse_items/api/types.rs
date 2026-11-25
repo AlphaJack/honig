@@ -31,12 +31,21 @@ impl TileUpdatesOkItem {
 /// of its field. `build` returns the first field that did not convert.
 pub mod builders {
     ::honig::typestate_builder! {
-        TileEvent => super::TileEvent; required { tile : R0 : String = "tile", rows : R1
-        : i64 = "rows" } optional {} fixed {}
+        TileEvent => super::TileEvent;
+        required {
+            tile: R0: String = "tile",
+            rows: R1: i64 = "rows",
+        }
+        optional {}
+        fixed {}
     }
     ::honig::typestate_builder! {
-        TileUpdatesOkItem => super::TileUpdatesOkItem; required {} optional { id(id) :
-        String = "id" => some, None, data(data) : std::collections::BTreeMap < String,
-        serde_json::Value > = "data" => some, None } fixed {}
+        TileUpdatesOkItem => super::TileUpdatesOkItem;
+        required {}
+        optional {
+            id(id): String = "id" => some, None,
+            data(data): std::collections::BTreeMap<String, serde_json::Value> = "data" => some, None,
+        }
+        fixed {}
     }
 }

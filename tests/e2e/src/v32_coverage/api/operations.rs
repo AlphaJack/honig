@@ -38,8 +38,9 @@ pub mod ping {
         NotExtended = 510, NetworkAuthenticationRequired = 511 }
     );
     ::honig::response_error!(
-        Response { Self::Default { status, .. } => format_args!("status {} (Default)",
-        status.as_u16()), }
+        Response {
+            Self::Default { status,.. } => format_args!("status {} (Default)", status.as_u16()),
+        }
     );
 }
 pub mod archive {
@@ -65,8 +66,10 @@ pub mod archive {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(
-        Response { Self::NoContent => "status 204 (NoContent)", Self::Conflict(..) =>
-        "status 409 (Conflict)", }
+        Response {
+            Self::NoContent => "status 204 (NoContent)",
+            Self::Conflict(..) => "status 409 (Conflict)",
+        }
     );
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -101,8 +104,10 @@ pub mod unarchive {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(
-        Response { Self::NoContent => "status 204 (NoContent)", Self::Conflict(..) =>
-        "status 409 (Conflict)", }
+        Response {
+            Self::NoContent => "status 204 (NoContent)",
+            Self::Conflict(..) => "status 409 (Conflict)",
+        }
     );
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -131,8 +136,12 @@ pub mod add_note {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : types::Note = "body" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                body: R0: types::Note = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq)]
@@ -182,10 +191,19 @@ pub mod find_box {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { width : R0 : i64 = "width", height : R1 :
-            i64 = "height", depth : R2 : i64 = "depth", weight : R3 : i64 = "weight",
-            color : R4 : i64 = "color", shelf : R5 : i64 = "shelf", row : R6 : i64 =
-            "row", bin : R7 : i64 = "bin" } optional {} fixed {}
+            Params => super::Params;
+            required {
+                width: R0: i64 = "width",
+                height: R1: i64 = "height",
+                depth: R2: i64 = "depth",
+                weight: R3: i64 = "weight",
+                color: R4: i64 = "color",
+                shelf: R5: i64 = "shelf",
+                row: R6: i64 = "row",
+                bin: R7: i64 = "bin",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

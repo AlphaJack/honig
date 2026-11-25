@@ -175,9 +175,15 @@ pub mod get_all_data {
     ::honig::default_from_new!(Params);
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { limit(limit) : i64 = "limit"
-            => value, 10i64, offset(offset) : i64 = "offset" => value, 0i64 } fixed {
-            media : super::Media::ALL[0] }
+            Params => super::Params;
+            required {}
+            optional {
+                limit(limit): i64 = "limit" => value, 10i64,
+                offset(offset): i64 = "offset" => value, 0i64,
+            }
+            fixed {
+                media: super::Media::ALL[0],
+            }
         }
     }
     #[derive(Debug, Clone, PartialEq)]
@@ -322,8 +328,14 @@ pub mod create_product {
     ::honig::default_from_new!(Params);
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { body(body) : super::Body =
-            "body" => some, None } fixed { media : super::Media::ALL[0] }
+            Params => super::Params;
+            required {}
+            optional {
+                body(body): super::Body = "body" => some, None,
+            }
+            fixed {
+                media: super::Media::ALL[0],
+            }
         }
     }
     #[derive(Debug, Clone, PartialEq)]
@@ -355,8 +367,10 @@ pub mod create_product {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(
-        Response { Self::Created { .. } => "status 201 (Created)", Self::BadRequest { ..
-        } => "status 400 (BadRequest)", Self::Forbidden(..) => "status 403 (Forbidden)",
+        Response {
+            Self::Created { .. } => "status 201 (Created)",
+            Self::BadRequest { .. } => "status 400 (BadRequest)",
+            Self::Forbidden(..) => "status 403 (Forbidden)",
         }
     );
     /// The body and headers of the success, in order: what `Response::into_result` gives.
@@ -485,8 +499,12 @@ pub mod query_products {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : types::ProductQuery = "body"
-            } optional {} fixed {}
+            Params => super::Params;
+            required {
+                body: R0: types::ProductQuery = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq)]
@@ -507,8 +525,10 @@ pub mod query_products {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(
-        Response { Self::Ok { .. } => "status 200 (Ok)", Self::BadRequest { .. } =>
-        "status 400 (BadRequest)", }
+        Response {
+            Self::Ok { .. } => "status 200 (Ok)",
+            Self::BadRequest { .. } => "status 400 (BadRequest)",
+        }
     );
     /// The body and headers of the success, in order: what `Response::into_result` gives.
     pub type Success = (types::QueryProductsOk, Option<::honig::UuidStr>);
@@ -543,8 +563,12 @@ pub mod search_products {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { filter(filter) :
-            types::ProductQuery = "filter" => some, None } fixed {}
+            Params => super::Params;
+            required {}
+            optional {
+                filter(filter): types::ProductQuery = "filter" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq)]
@@ -617,9 +641,16 @@ pub mod get_product {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { product_id : R0 : i64 = "productId" }
-            optional { if_none_match(if_none_match) : String = "If-None-Match" => some,
-            None } fixed { media : super::Media::ALL[0] }
+            Params => super::Params;
+            required {
+                product_id: R0: i64 = "productId",
+            }
+            optional {
+                if_none_match(if_none_match): String = "If-None-Match" => some, None,
+            }
+            fixed {
+                media: super::Media::ALL[0],
+            }
         }
     }
     #[derive(Debug, Clone, PartialEq)]
@@ -642,8 +673,10 @@ pub mod get_product {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(
-        Response { Self::Ok { .. } => "status 200 (Ok)", Self::NotFound(..) =>
-        "status 404 (NotFound)", }
+        Response {
+            Self::Ok { .. } => "status 200 (Ok)",
+            Self::NotFound(..) => "status 404 (NotFound)",
+        }
     );
     /// The body and headers of the success by name: what `Response::into_result` gives.
     #[derive(Debug, Clone, PartialEq)]
@@ -749,9 +782,17 @@ pub mod update_product {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { product_id : R0 : i64 = "productId" }
-            optional { if_match(if_match) : String = "If-Match" => some, None, body(body)
-            : super::Body = "body" => some, None } fixed { media : super::Media::ALL[0] }
+            Params => super::Params;
+            required {
+                product_id: R0: i64 = "productId",
+            }
+            optional {
+                if_match(if_match): String = "If-Match" => some, None,
+                body(body): super::Body = "body" => some, None,
+            }
+            fixed {
+                media: super::Media::ALL[0],
+            }
         }
     }
     #[derive(Debug, Clone, PartialEq)]
@@ -779,10 +820,13 @@ pub mod update_product {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(
-        Response { Self::Ok(..) => "status 200 (Ok)", Self::BadRequest { .. } =>
-        "status 400 (BadRequest)", Self::Forbidden(..) => "status 403 (Forbidden)",
-        Self::NotFound(..) => "status 404 (NotFound)", Self::PreconditionFailed =>
-        "status 412 (PreconditionFailed)", }
+        Response {
+            Self::Ok(..) => "status 200 (Ok)",
+            Self::BadRequest { .. } => "status 400 (BadRequest)",
+            Self::Forbidden(..) => "status 403 (Forbidden)",
+            Self::NotFound(..) => "status 404 (NotFound)",
+            Self::PreconditionFailed => "status 412 (PreconditionFailed)",
+        }
     );
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -852,8 +896,12 @@ pub mod delete_product {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { product_id : R0 : i64 = "productId" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                product_id: R0: i64 = "productId",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -866,8 +914,10 @@ pub mod delete_product {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(
-        Response { Self::NoContent => "status 204 (NoContent)", Self::NotFound(..) =>
-        "status 404 (NotFound)", }
+        Response {
+            Self::NoContent => "status 204 (NoContent)",
+            Self::NotFound(..) => "status 404 (NotFound)",
+        }
     );
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -922,8 +972,12 @@ pub mod copy_product {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { product_id : R0 : i64 = "productId",
-            destination : R1 : ::honig::UriReferenceStr = "Destination" } optional {}
+            Params => super::Params;
+            required {
+                product_id: R0: i64 = "productId",
+                destination: R1: ::honig::UriReferenceStr = "Destination",
+            }
+            optional {}
             fixed {}
         }
     }
@@ -941,8 +995,10 @@ pub mod copy_product {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(
-        Response { Self::Created { .. } => "status 201 (Created)", Self::NotFound(..) =>
-        "status 404 (NotFound)", }
+        Response {
+            Self::Created { .. } => "status 201 (Created)",
+            Self::NotFound(..) => "status 404 (NotFound)",
+        }
     );
     /// The body and headers of the success, in order: what `Response::into_result` gives.
     pub type Success = (Box<types::Product>, Option<::honig::url::Url>);
@@ -1040,9 +1096,16 @@ pub mod upload_image {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { product_id : R0 : i64 = "productId" }
-            optional { body(body) : types::UploadImageBody = "body" => some, None } fixed
-            { media : super::Media::ALL[0] }
+            Params => super::Params;
+            required {
+                product_id: R0: i64 = "productId",
+            }
+            optional {
+                body(body): types::UploadImageBody = "body" => some, None,
+            }
+            fixed {
+                media: super::Media::ALL[0],
+            }
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1069,9 +1132,12 @@ pub mod upload_image {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(
-        Response { Self::Ok { .. } => "status 200 (Ok)", Self::BadRequest { .. } =>
-        "status 400 (BadRequest)", Self::Forbidden(..) => "status 403 (Forbidden)",
-        Self::NotFound(..) => "status 404 (NotFound)", }
+        Response {
+            Self::Ok { .. } => "status 200 (Ok)",
+            Self::BadRequest { .. } => "status 400 (BadRequest)",
+            Self::Forbidden(..) => "status 403 (Forbidden)",
+            Self::NotFound(..) => "status 404 (NotFound)",
+        }
     );
     /// The body and headers of the success, in order: what `Response::into_result` gives.
     pub type Success = (OkBody, Option<::honig::UuidStr>, Option<String>);
@@ -1160,9 +1226,14 @@ pub mod stream_product_events {
     ::honig::default_from_new!(Params);
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { last_event_id(last_event_id)
-            : String = "Last-Event-ID" => some, None } fixed { media :
-            super::Media::ALL[0] }
+            Params => super::Params;
+            required {}
+            optional {
+                last_event_id(last_event_id): String = "Last-Event-ID" => some, None,
+            }
+            fixed {
+                media: super::Media::ALL[0],
+            }
         }
     }
     #[derive(Debug, Clone, PartialEq)]
@@ -1217,9 +1288,13 @@ pub mod upload_photos {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { product_id : R0 : i64 = "productId", body
-            : R1 : (types::PhotoBatchMeta, Vec < ::honig::Binary >,) = "body" } optional
-            {} fixed {}
+            Params => super::Params;
+            required {
+                product_id: R0: i64 = "productId",
+                body: R1: (types::PhotoBatchMeta, Vec<::honig::Binary>,) = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1242,8 +1317,10 @@ pub mod upload_photos {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(
-        Response { Self::Accepted { .. } => "status 202 (Accepted)", Self::BadRequest {
-        .. } => "status 400 (BadRequest)", Self::NotFound(..) => "status 404 (NotFound)",
+        Response {
+            Self::Accepted { .. } => "status 202 (Accepted)",
+            Self::BadRequest { .. } => "status 400 (BadRequest)",
+            Self::NotFound(..) => "status 404 (NotFound)",
         }
     );
     /// The body and headers of the success, in order: what `Response::into_result` gives.
@@ -1300,8 +1377,12 @@ pub mod create_item {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : types::ItemRequest = "body" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                body: R0: types::ItemRequest = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq)]
@@ -1385,8 +1466,14 @@ pub mod create_user {
     ::honig::default_from_new!(Params);
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { body(body) : super::Body =
-            "body" => some, None } fixed { media : super::Media::ALL[0] }
+            Params => super::Params;
+            required {}
+            optional {
+                body(body): super::Body = "body" => some, None,
+            }
+            fixed {
+                media: super::Media::ALL[0],
+            }
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1424,11 +1511,14 @@ pub mod create_user {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(
-        Response { Self::Created { .. } => "status 201 (Created)", Self::BadRequest { ..
-        } => "status 400 (BadRequest)", Self::Unauthorized(..) =>
-        "status 401 (Unauthorized)", Self::Forbidden(..) => "status 403 (Forbidden)",
-        Self::Conflict(..) => "status 409 (Conflict)", Self::UnprocessableEntity(..) =>
-        "status 422 (UnprocessableEntity)", }
+        Response {
+            Self::Created { .. } => "status 201 (Created)",
+            Self::BadRequest { .. } => "status 400 (BadRequest)",
+            Self::Unauthorized(..) => "status 401 (Unauthorized)",
+            Self::Forbidden(..) => "status 403 (Forbidden)",
+            Self::Conflict(..) => "status 409 (Conflict)",
+            Self::UnprocessableEntity(..) => "status 422 (UnprocessableEntity)",
+        }
     );
     /// The body and headers of the success, in order: what `Response::into_result` gives.
     pub type Success = (
@@ -1503,8 +1593,14 @@ pub mod get_token {
     ::honig::default_from_new!(Params);
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { body(body) : super::Body =
-            "body" => some, None } fixed { media : super::Media::ALL[0] }
+            Params => super::Params;
+            required {}
+            optional {
+                body(body): super::Body = "body" => some, None,
+            }
+            fixed {
+                media: super::Media::ALL[0],
+            }
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1554,10 +1650,13 @@ pub mod get_token {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(
-        Response { Self::Created { .. } => "status 201 (Created)", Self::BadRequest { ..
-        } => "status 400 (BadRequest)", Self::Unauthorized(..) =>
-        "status 401 (Unauthorized)", Self::Forbidden(..) => "status 403 (Forbidden)",
-        Self::TooManyRequests { .. } => "status 429 (TooManyRequests)", }
+        Response {
+            Self::Created { .. } => "status 201 (Created)",
+            Self::BadRequest { .. } => "status 400 (BadRequest)",
+            Self::Unauthorized(..) => "status 401 (Unauthorized)",
+            Self::Forbidden(..) => "status 403 (Forbidden)",
+            Self::TooManyRequests { .. } => "status 429 (TooManyRequests)",
+        }
     );
     /// The body and headers of the success by name: what `Response::into_result` gives.
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1659,8 +1758,11 @@ pub mod get_me {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(
-        Response { Self::Ok { .. } => "status 200 (Ok)", Self::Unauthorized(..) =>
-        "status 401 (Unauthorized)", Self::Forbidden(..) => "status 403 (Forbidden)", }
+        Response {
+            Self::Ok { .. } => "status 200 (Ok)",
+            Self::Unauthorized(..) => "status 401 (Unauthorized)",
+            Self::Forbidden(..) => "status 403 (Forbidden)",
+        }
     );
     /// The body and headers of the success by name: what `Response::into_result` gives.
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1733,8 +1835,12 @@ pub mod new_product_post {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { body(body) :
-            types::ProductRequest = "body" => some, None } fixed {}
+            Params => super::Params;
+            required {}
+            optional {
+                body(body): types::ProductRequest = "body" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1773,8 +1879,12 @@ pub mod create_product_product_created_post {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { body(body) :
-            types::ProductRequest = "body" => some, None } fixed {}
+            Params => super::Params;
+            required {}
+            optional {
+                body(body): types::ProductRequest = "body" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1787,8 +1897,10 @@ pub mod create_product_product_created_post {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(
-        Response { Self::Ok => "status 200 (Ok)", Self::NoContent =>
-        "status 204 (NoContent)", }
+        Response {
+            Self::Ok => "status 200 (Ok)",
+            Self::NoContent => "status 204 (NoContent)",
+        }
     );
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -1818,8 +1930,12 @@ pub mod create_product_product_creation_failed_post {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { body(body) :
-            types::ProductRequest = "body" => some, None } fixed {}
+            Params => super::Params;
+            required {}
+            optional {
+                body(body): types::ProductRequest = "body" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1858,8 +1974,12 @@ pub mod create_product_product_discontinued_post {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { body(body) :
-            types::ProductRequest = "body" => some, None } fixed {}
+            Params => super::Params;
+            required {}
+            optional {
+                body(body): types::ProductRequest = "body" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

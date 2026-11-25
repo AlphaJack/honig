@@ -379,53 +379,97 @@ impl ::honig::__private::XmlShape for XmlWithNullValuesOk {
 /// of its field. `build` returns the first field that did not convert.
 pub mod builders {
     ::honig::typestate_builder! {
-        Person => super::Person; required {} optional { id(id) : i32 = "id" => some,
-        None, name(name) : String = "name" => some, None } fixed {}
+        Person => super::Person;
+        required {}
+        optional {
+            id(id): i32 = "id" => some, None,
+            name(name): String = "name" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        Documentation => super::Documentation; required {} optional { content(content) :
-        String = "content" => some, None } fixed {}
+        Documentation => super::Documentation;
+        required {}
+        optional {
+            content(content): String = "content" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        NoXmlObjectOk => super::NoXmlObjectOk; required {} optional { products(products)
-        : String = "products" => some, None } fixed {}
+        NoXmlObjectOk => super::NoXmlObjectOk;
+        required {}
+        optional {
+            products(products): String = "products" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        NoXmlObjectArrayOk => super::NoXmlObjectArrayOk; required {} optional {
-        products(products) : Vec < String > = "products" => some, None } fixed {}
+        NoXmlObjectArrayOk => super::NoXmlObjectArrayOk;
+        required {}
+        optional {
+            products(products): Vec<String> = "products" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        XmlArrayItemNamesOk => super::XmlArrayItemNamesOk; required {} optional {
-        products(products) : Vec < String > = "products" => some, None } fixed {}
+        XmlArrayItemNamesOk => super::XmlArrayItemNamesOk;
+        required {}
+        optional {
+            products(products): Vec<String> = "products" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        XmlArrayNameWithoutWrapperOk => super::XmlArrayNameWithoutWrapperOk; required {}
-        optional { products(products) : Vec < String > = "products" => some, None } fixed
-        {}
+        XmlArrayNameWithoutWrapperOk => super::XmlArrayNameWithoutWrapperOk;
+        required {}
+        optional {
+            products(products): Vec<String> = "products" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        XmlArrayWrappedOk => super::XmlArrayWrappedOk; required {} optional {
-        products(products) : Vec < String > = "products" => some, None } fixed {}
+        XmlArrayWrappedOk => super::XmlArrayWrappedOk;
+        required {}
+        optional {
+            products(products): Vec<String> = "products" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        XmlArrayWrappedItemNamesOk => super::XmlArrayWrappedItemNamesOk; required {}
-        optional { products(products) : Vec < String > = "products" => some, None } fixed
-        {}
+        XmlArrayWrappedItemNamesOk => super::XmlArrayWrappedItemNamesOk;
+        required {}
+        optional {
+            products(products): Vec<String> = "products" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        XmlArrayWrappedRenamedOk => super::XmlArrayWrappedRenamedOk; required {} optional
-        { products(products) : Vec < String > = "products" => some, None } fixed {}
+        XmlArrayWrappedRenamedOk => super::XmlArrayWrappedRenamedOk;
+        required {}
+        optional {
+            products(products): Vec<String> = "products" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        ElementsWithAttributesAndTextOkItemObject =>
-        super::ElementsWithAttributesAndTextOkItemObject; required {} optional {
-        kind(kind) : String = "kind" => some, None, name(name) : String = "name" => some,
-        None } fixed {}
+        ElementsWithAttributesAndTextOkItemObject => super::ElementsWithAttributesAndTextOkItemObject;
+        required {}
+        optional {
+            kind(kind): String = "kind" => some, None,
+            name(name): String = "name" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        XmlWithNullValuesOk => super::XmlWithNullValuesOk; required { count : R0 : Option
-        < f64 > = "count", description : R1 : String = "description", related : R2 :
-        Option < std::collections::BTreeMap < String, serde_json::Value > > = "related" }
-        optional { rating(rating) : String = "rating" => some, None } fixed {}
+        XmlWithNullValuesOk => super::XmlWithNullValuesOk;
+        required {
+            count: R0: Option<f64> = "count",
+            description: R1: String = "description",
+            related: R2: Option<std::collections::BTreeMap<String, serde_json::Value>> = "related",
+        }
+        optional {
+            rating(rating): String = "rating" => some, None,
+        }
+        fixed {}
     }
 }

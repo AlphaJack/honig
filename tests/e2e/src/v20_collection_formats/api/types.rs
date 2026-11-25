@@ -68,20 +68,41 @@ impl TagBody {
 pub mod builders {
     use super as types;
     ::honig::typestate_builder! {
-        Key => super::Key; required { id : R0 : String = "id" } optional {
-        last_seen(last_seen) : ::honig::DateTimeStr = "lastSeen" => some, None,
-        owner(owner) : types::Owner = "owner" => some, None } fixed {}
+        Key => super::Key;
+        required {
+            id: R0: String = "id",
+        }
+        optional {
+            last_seen(last_seen): ::honig::DateTimeStr = "lastSeen" => some, None,
+            owner(owner): types::Owner = "owner" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        Owner => super::Owner; required {} optional { name(name) : String = "name" =>
-        some, None } fixed {}
+        Owner => super::Owner;
+        required {}
+        optional {
+            name(name): String = "name" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        UploadBody => super::UploadBody; required { file : R0 : ::honig::Binary = "file"
-        } optional { note(note) : String = "note" => some, None } fixed {}
+        UploadBody => super::UploadBody;
+        required {
+            file: R0: ::honig::Binary = "file",
+        }
+        optional {
+            note(note): String = "note" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        TagBody => super::TagBody; required {} optional { ids(ids) : Vec < i64 > = "ids"
-        => some, None, pipes(pipes) : Vec < String > = "pipes" => some, None } fixed {}
+        TagBody => super::TagBody;
+        required {}
+        optional {
+            ids(ids): Vec<i64> = "ids" => some, None,
+            pipes(pipes): Vec<String> = "pipes" => some, None,
+        }
+        fixed {}
     }
 }

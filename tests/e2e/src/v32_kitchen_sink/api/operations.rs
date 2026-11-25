@@ -68,8 +68,12 @@ pub mod submit_form {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : types::SubmitFormBody =
-            "body" } optional {} fixed {}
+            Params => super::Params;
+            required {
+                body: R0: types::SubmitFormBody = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -156,9 +160,15 @@ pub mod put_blob {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { id : R0 : String = "id", body : R1 :
-            ::honig::Blob = "body" } optional { legacy(legacy) : String = "legacy" =>
-            some, None } fixed {}
+            Params => super::Params;
+            required {
+                id: R0: String = "id",
+                body: R1: ::honig::Blob = "body",
+            }
+            optional {
+                legacy(legacy): String = "legacy" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -256,13 +266,20 @@ pub mod list_products {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { limit(limit) :
-            types::ListProductsLimit = "limit" => some, None, tags(tags) : Vec < String >
-            = "tags" => some, None, filter(filter) : std::collections::BTreeMap < String,
-            String > = "filter" => some, None, session(session) : String = "session" =>
-            some, None, x_rate(x_rate) : i64 = "X-Rate" => some, None, empty(empty) :
-            String = "empty" => some, None, x_trace(x_trace) : ::honig::UuidStr =
-            "X-Trace" => some, None } fixed { media : super::Media::ALL[0] }
+            Params => super::Params;
+            required {}
+            optional {
+                limit(limit): types::ListProductsLimit = "limit" => some, None,
+                tags(tags): Vec<String> = "tags" => some, None,
+                filter(filter): std::collections::BTreeMap<String, String> = "filter" => some, None,
+                session(session): String = "session" => some, None,
+                x_rate(x_rate): i64 = "X-Rate" => some, None,
+                empty(empty): String = "empty" => some, None,
+                x_trace(x_trace): ::honig::UuidStr = "X-Trace" => some, None,
+            }
+            fixed {
+                media: super::Media::ALL[0],
+            }
         }
     }
     #[derive(Debug, Clone, PartialEq)]
@@ -306,9 +323,11 @@ pub mod list_products {
         507, LoopDetected = 508, NotExtended = 510, NetworkAuthenticationRequired = 511 }
     );
     ::honig::response_error!(
-        Response { Self::Ok { .. } => "status 200 (Ok)", Self::Success { status, .. } =>
-        format_args!("status {} (Success)", status.as_u16()), Self::Default { status, ..
-        } => format_args!("status {} (Default)", status.as_u16()), }
+        Response {
+            Self::Ok { .. } => "status 200 (Ok)",
+            Self::Success { status,.. } => format_args!("status {} (Success)", status.as_u16()),
+            Self::Default { status,.. } => format_args!("status {} (Default)", status.as_u16()),
+        }
     );
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -386,9 +405,15 @@ pub mod create_product {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : super::Body = "body" }
-            optional { x_trace(x_trace) : ::honig::UuidStr = "X-Trace" => some, None,
-            meta_x_part(meta_x_part) : String = "X-Part" => some, None } fixed {}
+            Params => super::Params;
+            required {
+                body: R0: super::Body = "body",
+            }
+            optional {
+                x_trace(x_trace): ::honig::UuidStr = "X-Trace" => some, None,
+                meta_x_part(meta_x_part): String = "X-Part" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq)]
@@ -471,10 +496,13 @@ pub mod search_products {
     ::honig::default_from_new!(Params);
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { x_trace(x_trace) :
-            ::honig::UuidStr = "X-Trace" => some, None, body(body) :
-            std::collections::BTreeMap < String, serde_json::Value > = "body" => some,
-            None } fixed {}
+            Params => super::Params;
+            required {}
+            optional {
+                x_trace(x_trace): ::honig::UuidStr = "X-Trace" => some, None,
+                body(body): std::collections::BTreeMap<String, serde_json::Value> = "body" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq)]
@@ -529,8 +557,12 @@ pub mod copy_products {
     ::honig::default_from_new!(Params);
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { x_trace(x_trace) :
-            ::honig::UuidStr = "X-Trace" => some, None } fixed {}
+            Params => super::Params;
+            required {}
+            optional {
+                x_trace(x_trace): ::honig::UuidStr = "X-Trace" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -575,8 +607,12 @@ pub mod get_product {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { product_id : R0 : i64 = "productId" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                product_id: R0: i64 = "productId",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq)]
@@ -620,8 +656,12 @@ pub mod put_product {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { product_id : R0 : i64 = "productId" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                product_id: R0: i64 = "productId",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -665,8 +705,12 @@ pub mod delete_product {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { product_id : R0 : i64 = "productId" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                product_id: R0: i64 = "productId",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -710,8 +754,12 @@ pub mod options_product {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { product_id : R0 : i64 = "productId" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                product_id: R0: i64 = "productId",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -755,8 +803,12 @@ pub mod head_product {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { product_id : R0 : i64 = "productId" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                product_id: R0: i64 = "productId",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -800,8 +852,12 @@ pub mod patch_product {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { product_id : R0 : i64 = "productId" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                product_id: R0: i64 = "productId",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -845,8 +901,12 @@ pub mod trace_product {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { product_id : R0 : i64 = "productId" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                product_id: R0: i64 = "productId",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -893,8 +953,12 @@ pub mod search {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { q(q) : types::SearchQ = "q"
-            => some, None } fixed {}
+            Params => super::Params;
+            required {}
+            optional {
+                q(q): types::SearchQ = "q" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq)]
@@ -943,8 +1007,12 @@ pub mod new_product_post {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { body(body) :
-            types::ProductRequest = "body" => some, None } fixed {}
+            Params => super::Params;
+            required {}
+            optional {
+                body(body): types::ProductRequest = "body" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -991,8 +1059,12 @@ pub mod create_product_on_adopt_post {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { body(body) :
-            types::ProductRequest = "body" => some, None } fixed {}
+            Params => super::Params;
+            required {}
+            optional {
+                body(body): types::ProductRequest = "body" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

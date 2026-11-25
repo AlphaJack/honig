@@ -16,7 +16,13 @@ pub type Arr = Vec<String>;
 /// of its field. `build` returns the first field that did not convert.
 pub mod builders {
     ::honig::typestate_builder! {
-        Obj => super::Obj; required { r : R0 : i64 = "R", g : R1 : i64 = "G", b : R2 :
-        i64 = "B" } optional {} fixed {}
+        Obj => super::Obj;
+        required {
+            r: R0: i64 = "R",
+            g: R1: i64 = "G",
+            b: R2: i64 = "B",
+        }
+        optional {}
+        fixed {}
     }
 }

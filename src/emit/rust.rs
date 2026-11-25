@@ -8,6 +8,7 @@
 
 mod checks;
 mod http;
+pub(crate) mod macro_text;
 pub(crate) mod names;
 pub(crate) mod needs;
 mod space;

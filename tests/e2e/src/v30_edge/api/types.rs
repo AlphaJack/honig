@@ -557,75 +557,140 @@ pub struct OrderRequestCustomer(pub(super) OrderCustomer);
 pub mod builders {
     use super as types;
     ::honig::typestate_builder! {
-        Money => super::Money; required { amount_cents : R0 : i64 = "amountCents",
-        currency : R1 : types::MoneyCurrency = "currency" } optional {} fixed {}
+        Money => super::Money;
+        required {
+            amount_cents: R0: i64 = "amountCents",
+            currency: R1: types::MoneyCurrency = "currency",
+        }
+        optional {}
+        fixed {}
     }
     ::honig::typestate_builder! {
-        Customer => super::Customer; required { name : R0 : types::CustomerName = "name"
-        } optional { email(email) : String = "email" => nullable,
-        ::honig::Nullable::Absent } fixed { additional_properties :
-        std::collections::BTreeMap::new(), }
+        Customer => super::Customer;
+        required {
+            name: R0: types::CustomerName = "name",
+        }
+        optional {
+            email(email): String = "email" => nullable, ::honig::Nullable::Absent,
+        }
+        fixed {
+            additional_properties: std::collections::BTreeMap::new(),
+        }
     }
     ::honig::typestate_builder! {
-        Card => super::Card; required { last4 : R0 : types::CardLast4 = "last4" }
-        optional {} fixed {}
+        Card => super::Card;
+        required {
+            last4: R0: types::CardLast4 = "last4",
+        }
+        optional {}
+        fixed {}
     }
     ::honig::typestate_builder! {
         Sepa => super::Sepa; required { iban : R0 : String = "iban" } optional {} fixed
         {}
     }
     ::honig::typestate_builder! {
-        Car => super::Car; required { kind : R0 : String = "kind", seats : R1 : i64 =
-        "seats" } optional {} fixed {}
+        Car => super::Car;
+        required {
+            kind: R0: String = "kind",
+            seats: R1: i64 = "seats",
+        }
+        optional {}
+        fixed {}
     }
     ::honig::typestate_builder! {
-        Van => super::Van; required { kind : R0 : String = "kind", cargo_litres : R1 :
-        i64 = "cargoLitres" } optional {} fixed {}
+        Van => super::Van;
+        required {
+            kind: R0: String = "kind",
+            cargo_litres: R1: i64 = "cargoLitres",
+        }
+        optional {}
+        fixed {}
     }
     ::honig::typestate_builder! {
-        Order => super::Order; required { status : R0 : types::Status = "status", total :
-        R1 : types::Money = "total", vehicle : R2 : types::Vehicle = "vehicle" } optional
-        { id(id) : ::honig::UuidStr = "id" => some, None, customer(customer) :
-        types::OrderCustomerChecked = "customer" => nullable, ::honig::Nullable::Absent,
-        notes(notes) : String = "notes" => nullable, ::honig::Nullable::Absent,
-        created_at(created_at) : ::honig::DateTimeStr = "createdAt" => some, None,
-        labels(labels) : std::collections::BTreeMap < String, String > = "labels" =>
-        some, None, payment(payment) : types::OrderPayment = "payment" => some, None,
-        discount(discount) : types::OrderDiscount = "discount" => some, None } fixed {}
+        Order => super::Order;
+        required {
+            status: R0: types::Status = "status",
+            total: R1: types::Money = "total",
+            vehicle: R2: types::Vehicle = "vehicle",
+        }
+        optional {
+            id(id): ::honig::UuidStr = "id" => some, None,
+            customer(customer): types::OrderCustomerChecked = "customer" => nullable, ::honig::Nullable::Absent,
+            notes(notes): String = "notes" => nullable, ::honig::Nullable::Absent,
+            created_at(created_at): ::honig::DateTimeStr = "createdAt" => some, None,
+            labels(labels): std::collections::BTreeMap<String, String> = "labels" => some, None,
+            payment(payment): types::OrderPayment = "payment" => some, None,
+            discount(discount): types::OrderDiscount = "discount" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        OrderPage => super::OrderPage; required { items : R0 : Vec < types::Order > =
-        "items" } optional { total(total) : i64 = "total" => some, None } fixed {}
+        OrderPage => super::OrderPage;
+        required {
+            items: R0: Vec<types::Order> = "items",
+        }
+        optional {
+            total(total): i64 = "total" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        Problem => super::Problem; required { title : R0 : String = "title", status : R1
-        : i64 = "status" } optional { type_(type_) : String = "type" => value,
-        super::Problem::default_type_(), detail(detail) : String = "detail" => nullable,
-        ::honig::Nullable::Absent } fixed {}
+        Problem => super::Problem;
+        required {
+            title: R0: String = "title",
+            status: R1: i64 = "status",
+        }
+        optional {
+            type_(type_): String = "type" => value, super::Problem::default_type_(),
+            detail(detail): String = "detail" => nullable, ::honig::Nullable::Absent,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        UploadDocumentBody => super::UploadDocumentBody; required { file : R0 :
-        ::honig::Binary = "file", kind : R1 : types::UploadDocumentBodyKind = "kind" }
-        optional {} fixed {}
+        UploadDocumentBody => super::UploadDocumentBody;
+        required {
+            file: R0: ::honig::Binary = "file",
+            kind: R1: types::UploadDocumentBodyKind = "kind",
+        }
+        optional {}
+        fixed {}
     }
     ::honig::typestate_builder! {
-        CookieFormFoColor => super::CookieFormFoColor; required { r : R0 : i64 = "R", g :
-        R1 : i64 = "G", b : R2 : i64 = "B" } optional {} fixed {}
+        CookieFormFoColor => super::CookieFormFoColor;
+        required {
+            r: R0: i64 = "R",
+            g: R1: i64 = "G",
+            b: R2: i64 = "B",
+        }
+        optional {}
+        fixed {}
     }
     ::honig::typestate_builder! {
-        OrderRequest => super::OrderRequest; required { status : R0 : types::Status =
-        "status", total : R1 : types::Money = "total", vehicle : R2 : types::Vehicle =
-        "vehicle" } optional { customer(customer) : types::OrderRequestCustomer =
-        "customer" => nullable, ::honig::Nullable::Absent, notes(notes) : String =
-        "notes" => nullable, ::honig::Nullable::Absent, secret(secret) : String =
-        "secret" => some, None, labels(labels) : std::collections::BTreeMap < String,
-        String > = "labels" => some, None, payment(payment) : types::OrderPayment =
-        "payment" => some, None, discount(discount) : types::OrderDiscount = "discount"
-        => some, None } fixed {}
+        OrderRequest => super::OrderRequest;
+        required {
+            status: R0: types::Status = "status",
+            total: R1: types::Money = "total",
+            vehicle: R2: types::Vehicle = "vehicle",
+        }
+        optional {
+            customer(customer): types::OrderRequestCustomer = "customer" => nullable, ::honig::Nullable::Absent,
+            notes(notes): String = "notes" => nullable, ::honig::Nullable::Absent,
+            secret(secret): String = "secret" => some, None,
+            labels(labels): std::collections::BTreeMap<String, String> = "labels" => some, None,
+            payment(payment): types::OrderPayment = "payment" => some, None,
+            discount(discount): types::OrderDiscount = "discount" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        OrderPageRequest => super::OrderPageRequest; required { items : R0 : Vec <
-        types::OrderRequest > = "items" } optional { total(total) : i64 = "total" =>
-        some, None } fixed {}
+        OrderPageRequest => super::OrderPageRequest;
+        required {
+            items: R0: Vec<types::OrderRequest> = "items",
+        }
+        optional {
+            total(total): i64 = "total" => some, None,
+        }
+        fixed {}
     }
 }

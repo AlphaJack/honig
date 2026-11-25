@@ -2401,287 +2401,515 @@ impl TryFrom<Vec<serde_json::Value>> for PaginatedResourceData {
 pub mod builders {
     use super as types;
     ::honig::typestate_builder! {
-        User => super::User; required {} optional { id(id) : i64 = "id" => some, None,
-        name(name) : String = "name" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        Credentials => super::Credentials; required { email : R0 : ::honig::EmailStr =
-        "email" } optional {} fixed {}
-    }
-    ::honig::typestate_builder! {
-        Token => super::Token; required {} optional { token(token) : String = "token" =>
-        some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        Product => super::Product; required { id : R0 : i64 = "id", name : R1 : String =
-        "name" } optional { description(description) : String = "description" =>
-        nullable, ::honig::Nullable::Absent, type_(type_) : types::ProductType = "type"
-        => some, None, rating(rating) : types::ProductRating = "rating" => some, None,
-        dimensions(dimensions) : types::ProductDimensions = "dimensions" => some, None,
-        materials(materials) : Vec < types::ProductMaterialsItem > = "materials" => some,
-        None, listed_at(listed_at) : ::honig::DateTimeStr = "listedAt" => some, None,
-        image(image) : String = "image" => nullable, ::honig::Nullable::Absent,
-        variants(variants) : Vec < types::Variant > = "variants" => some, None,
-        creator(creator) : types::User = "creator" => some, None, tags(tags) : Vec <
-        String > = "tags" => some, None, last_updated(last_updated) :
-        ::honig::DateTimeStr = "lastUpdated" => some, None,
-        success_callback_url(success_callback_url) : ::honig::url::Url =
-        "successCallbackUrl" => some, None, failure_callback_url(failure_callback_url) :
-        ::honig::url::Url = "failureCallbackUrl" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        Variant => super::Variant; required { name : R0 : String = "name" } optional {
-        id(id) : i64 = "id" => some, None, description(description) : String =
-        "description" => nullable, ::honig::Nullable::Absent, length(length) : f32 =
-        "length" => some, None, type_(type_) : types::VariantType = "type" => some, None,
-        shipping(shipping) : types::VariantShipping = "shipping" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        ProductQuery => super::ProductQuery; required {} optional { name(name) : String =
-        "name" => some, None, type_(type_) : Vec < types::ProductQueryTypeItem > = "type"
-        => some, None, min_rating(min_rating) : types::ProductQueryMinRating =
-        "minRating" => some, None, sort(sort) : types::ProductQuerySort = "sort" => some,
-        None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        ProductEvent => super::ProductEvent; required { event : R0 :
-        types::ProductEventEvent = "event", product : R1 : types::Product = "product" }
-        optional { id(id) : ::honig::UuidStr = "id" => some, None, note(note) :
-        types::ShopMessage = "note" => some, None, occurred_at(occurred_at) :
-        ::honig::DateTimeStr = "occurredAt" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        ShopMessage => super::ShopMessage; required {} optional { lang(lang) : String =
-        "lang" => some, None, value(value) : String = "value" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        PhotoBatchMeta => super::PhotoBatchMeta; required { photographer : R0 : String =
-        "photographer" } optional { taken_at(taken_at) : ::honig::DateTimeStr = "takenAt"
-        => some, None, count(count) : i64 = "count" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        PaginatedResource => super::PaginatedResource; required {} optional { data(data)
-        : types::PaginatedResourceData = "data" => some, None, meta(meta) :
-        types::PaginatedResourceMeta = "meta" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        ImageUploadedMessage => super::ImageUploadedMessage; required {} optional {
-        message(message) : String = "message" => some, None, image_url(image_url) :
-        String = "imageUrl" => some, None, uploaded_at(uploaded_at) :
-        ::honig::DateTimeStr = "uploadedAt" => some, None, file_size(file_size) : i64 =
-        "fileSize" => some, None, mime_type(mime_type) : String = "mimeType" => some,
-        None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        BadRequestError => super::BadRequestError; required {} optional { type_(type_) :
-        String = "type" => some, None, title(title) : String = "title" => some, None,
-        status(status) : i64 = "status" => some, None, detail(detail) : String = "detail"
-        => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        ForbiddenError => super::ForbiddenError; required {} optional { type_(type_) :
-        String = "type" => some, None, title(title) : String = "title" => some, None,
-        status(status) : i64 = "status" => some, None, detail(detail) : String = "detail"
-        => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        NotFoundError => super::NotFoundError; required {} optional { type_(type_) :
-        String = "type" => some, None, title(title) : String = "title" => some, None,
-        status(status) : i64 = "status" => some, None, detail(detail) : String = "detail"
-        => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        UnauthorizedError => super::UnauthorizedError; required {} optional {
-        type_(type_) : String = "type" => some, None, title(title) : String = "title" =>
-        some, None, status(status) : i64 = "status" => some, None, detail(detail) :
-        String = "detail" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        Conflict => super::Conflict; required {} optional { type_(type_) : String =
-        "type" => some, None, title(title) : String = "title" => some, None,
-        status(status) : i64 = "status" => some, None, detail(detail) : String = "detail"
-        => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        UnprocessableEntity => super::UnprocessableEntity; required {} optional {
-        type_(type_) : String = "type" => some, None, title(title) : String = "title" =>
-        some, None, status(status) : i64 = "status" => some, None, detail(detail) :
-        String = "detail" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        TooManyRequestsError => super::TooManyRequestsError; required {} optional {
-        type_(type_) : String = "type" => some, None, title(title) : String = "title" =>
-        some, None, status(status) : i64 = "status" => some, None, detail(detail) :
-        String = "detail" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        ProductDimensions => super::ProductDimensions; required {} optional {
-        weight(weight) : types::ProductDimensionsWeight = "weight" => some, None,
-        width(width) : types::ProductDimensionsWidth = "width" => some, None,
-        height(height) : f32 = "height" => some, None, price(price) :
-        types::ProductDimensionsPrice = "price" => some, None } fixed {
-        additional_properties : std::collections::BTreeMap::new(), }
-    }
-    ::honig::typestate_builder! {
-        ProductDimensionsPrice => super::ProductDimensionsPrice; required {} optional {
-        min(min) : f32 = "min" => some, None, max(max) : f32 = "max" => some, None,
-        average(average) : f32 = "average" => some, None } fixed { additional_properties
-        : std::collections::BTreeMap::new(), }
-    }
-    ::honig::typestate_builder! {
-        ProductMaterialsItem => super::ProductMaterialsItem; required {} optional {
-        material(material) : String = "material" => some, None, percentage(percentage) :
-        types::ProductMaterialsItemPercentage = "percentage" => some, None } fixed {
-        additional_properties : std::collections::BTreeMap::new(), }
-    }
-    ::honig::typestate_builder! {
-        VariantShipping => super::VariantShipping; required {} optional {
-        product(product) : types::Product = "product" => some, None,
-        delivery_days(delivery_days) : f32 = "deliveryDays" => some, None,
-        distance(distance) : f32 = "distance" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        PaginatedResourceMeta => super::PaginatedResourceMeta; required {} optional {
-        limit(limit) : i64 = "limit" => some, None, offset(offset) : i64 = "offset" =>
-        some, None, total(total) : i64 = "total" => some, None, next(next) : String =
-        "next" => nullable, ::honig::Nullable::Absent } fixed {}
-    }
-    ::honig::typestate_builder! {
-        GetAllDataOk => super::GetAllDataOk; required {} optional { data(data) : Vec <
-        types::Product > = "data" => some, None, meta(meta) : types::GetAllDataOkMeta =
-        "meta" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        GetAllDataOkMeta => super::GetAllDataOkMeta; required {} optional { limit(limit)
-        : i64 = "limit" => some, None, offset(offset) : i64 = "offset" => some, None,
-        total(total) : i64 = "total" => some, None, next(next) : String = "next" =>
-        nullable, ::honig::Nullable::Absent } fixed {}
-    }
-    ::honig::typestate_builder! {
-        GetAllDataOk2 => super::GetAllDataOk2; required {} optional { data(data) : Vec <
-        types::Product > = "data" => some, None, meta(meta) : types::GetAllDataOk2Meta =
-        "meta" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        GetAllDataOk2Meta => super::GetAllDataOk2Meta; required {} optional {
-        limit(limit) : i64 = "limit" => some, None, offset(offset) : i64 = "offset" =>
-        some, None, total(total) : i64 = "total" => some, None, next(next) : String =
-        "next" => nullable, ::honig::Nullable::Absent } fixed {}
-    }
-    ::honig::typestate_builder! {
-        QueryProductsOk => super::QueryProductsOk; required {} optional { data(data) :
-        Vec < types::Product > = "data" => some, None, meta(meta) :
-        types::QueryProductsOkMeta = "meta" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        QueryProductsOkMeta => super::QueryProductsOkMeta; required {} optional {
-        limit(limit) : i64 = "limit" => some, None, offset(offset) : i64 = "offset" =>
-        some, None, total(total) : i64 = "total" => some, None, next(next) : String =
-        "next" => nullable, ::honig::Nullable::Absent } fixed {}
-    }
-    ::honig::typestate_builder! {
-        SearchProductsOk => super::SearchProductsOk; required {} optional { data(data) :
-        Vec < types::Product > = "data" => some, None, meta(meta) :
-        types::SearchProductsOkMeta = "meta" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        SearchProductsOkMeta => super::SearchProductsOkMeta; required {} optional {
-        limit(limit) : i64 = "limit" => some, None, offset(offset) : i64 = "offset" =>
-        some, None, total(total) : i64 = "total" => some, None, next(next) : String =
-        "next" => nullable, ::honig::Nullable::Absent } fixed {}
-    }
-    ::honig::typestate_builder! {
-        UploadImageBody => super::UploadImageBody; required {} optional { image(image) :
-        ::honig::Binary = "image" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        UploadPhotosAccepted => super::UploadPhotosAccepted; required {} optional {
-        accepted(accepted) : i64 = "accepted" => some, None, batch_id(batch_id) :
-        ::honig::UuidStr = "batchId" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        CreateUserBody => super::CreateUserBody; required { email : R0 :
-        ::honig::EmailStr = "email" } optional { id(id) : i64 = "id" => some, None,
-        name(name) : String = "name" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        CreateUserBody2 => super::CreateUserBody2; required { email : R0 :
-        ::honig::EmailStr = "email" } optional { id(id) : i64 = "id" => some, None,
-        name(name) : String = "name" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        UserRequest => super::UserRequest; required {} optional { name(name) : String =
-        "name" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        CredentialsRequest => super::CredentialsRequest; required { email : R0 :
-        ::honig::EmailStr = "email", password : R1 : String = "password" } optional {}
+        User => super::User;
+        required {}
+        optional {
+            id(id): i64 = "id" => some, None,
+            name(name): String = "name" => some, None,
+        }
         fixed {}
     }
     ::honig::typestate_builder! {
-        ProductRequest => super::ProductRequest; required { name : R0 : String = "name" }
-        optional { description(description) : String = "description" => nullable,
-        ::honig::Nullable::Absent, type_(type_) : types::ProductType = "type" => some,
-        None, rating(rating) : types::ProductRating = "rating" => some, None,
-        dimensions(dimensions) : types::ProductDimensions = "dimensions" => some, None,
-        materials(materials) : Vec < types::ProductMaterialsItem > = "materials" => some,
-        None, listed_at(listed_at) : ::honig::DateTimeStr = "listedAt" => some, None,
-        image(image) : String = "image" => nullable, ::honig::Nullable::Absent,
-        variants(variants) : Vec < types::VariantRequest > = "variants" => some, None,
-        creator(creator) : types::UserRequest = "creator" => some, None, tags(tags) : Vec
-        < String > = "tags" => some, None, success_callback_url(success_callback_url) :
-        ::honig::url::Url = "successCallbackUrl" => some, None,
-        failure_callback_url(failure_callback_url) : ::honig::url::Url =
-        "failureCallbackUrl" => some, None } fixed {}
+        Credentials => super::Credentials;
+        required {
+            email: R0: ::honig::EmailStr = "email",
+        }
+        optional {}
+        fixed {}
     }
     ::honig::typestate_builder! {
-        VariantRequest => super::VariantRequest; required { name : R0 : String = "name" }
-        optional { description(description) : String = "description" => nullable,
-        ::honig::Nullable::Absent, length(length) : f32 = "length" => some, None,
-        type_(type_) : types::VariantType = "type" => some, None, shipping(shipping) :
-        types::VariantShippingRequest = "shipping" => some, None } fixed {}
+        Token => super::Token;
+        required {}
+        optional {
+            token(token): String = "token" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        ProductEventRequest => super::ProductEventRequest; required { event : R0 :
-        types::ProductEventEvent = "event", product : R1 : types::ProductRequest =
-        "product" } optional { id(id) : ::honig::UuidStr = "id" => some, None, note(note)
-        : types::ShopMessage = "note" => some, None, occurred_at(occurred_at) :
-        ::honig::DateTimeStr = "occurredAt" => some, None } fixed {}
+        Product => super::Product;
+        required {
+            id: R0: i64 = "id",
+            name: R1: String = "name",
+        }
+        optional {
+            description(description): String = "description" => nullable, ::honig::Nullable::Absent,
+            type_(type_): types::ProductType = "type" => some, None,
+            rating(rating): types::ProductRating = "rating" => some, None,
+            dimensions(dimensions): types::ProductDimensions = "dimensions" => some, None,
+            materials(materials): Vec<types::ProductMaterialsItem> = "materials" => some, None,
+            listed_at(listed_at): ::honig::DateTimeStr = "listedAt" => some, None,
+            image(image): String = "image" => nullable, ::honig::Nullable::Absent,
+            variants(variants): Vec<types::Variant> = "variants" => some, None,
+            creator(creator): types::User = "creator" => some, None,
+            tags(tags): Vec<String> = "tags" => some, None,
+            last_updated(last_updated): ::honig::DateTimeStr = "lastUpdated" => some, None,
+            success_callback_url(success_callback_url): ::honig::url::Url = "successCallbackUrl" => some, None,
+            failure_callback_url(failure_callback_url): ::honig::url::Url = "failureCallbackUrl" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        VariantShippingRequest => super::VariantShippingRequest; required {} optional {
-        product(product) : types::ProductRequest = "product" => some, None,
-        delivery_days(delivery_days) : f32 = "deliveryDays" => some, None,
-        distance(distance) : f32 = "distance" => some, None } fixed {}
+        Variant => super::Variant;
+        required {
+            name: R0: String = "name",
+        }
+        optional {
+            id(id): i64 = "id" => some, None,
+            description(description): String = "description" => nullable, ::honig::Nullable::Absent,
+            length(length): f32 = "length" => some, None,
+            type_(type_): types::VariantType = "type" => some, None,
+            shipping(shipping): types::VariantShipping = "shipping" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        GetAllDataOkRequest => super::GetAllDataOkRequest; required {} optional {
-        data(data) : Vec < types::ProductRequest > = "data" => some, None, meta(meta) :
-        types::GetAllDataOkMeta = "meta" => some, None } fixed {}
+        ProductQuery => super::ProductQuery;
+        required {}
+        optional {
+            name(name): String = "name" => some, None,
+            type_(type_): Vec<types::ProductQueryTypeItem> = "type" => some, None,
+            min_rating(min_rating): types::ProductQueryMinRating = "minRating" => some, None,
+            sort(sort): types::ProductQuerySort = "sort" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        GetAllDataOk2Request => super::GetAllDataOk2Request; required {} optional {
-        data(data) : Vec < types::ProductRequest > = "data" => some, None, meta(meta) :
-        types::GetAllDataOk2Meta = "meta" => some, None } fixed {}
+        ProductEvent => super::ProductEvent;
+        required {
+            event: R0: types::ProductEventEvent = "event",
+            product: R1: types::Product = "product",
+        }
+        optional {
+            id(id): ::honig::UuidStr = "id" => some, None,
+            note(note): types::ShopMessage = "note" => some, None,
+            occurred_at(occurred_at): ::honig::DateTimeStr = "occurredAt" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        QueryProductsOkRequest => super::QueryProductsOkRequest; required {} optional {
-        data(data) : Vec < types::ProductRequest > = "data" => some, None, meta(meta) :
-        types::QueryProductsOkMeta = "meta" => some, None } fixed {}
+        ShopMessage => super::ShopMessage;
+        required {}
+        optional {
+            lang(lang): String = "lang" => some, None,
+            value(value): String = "value" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        SearchProductsOkRequest => super::SearchProductsOkRequest; required {} optional {
-        data(data) : Vec < types::ProductRequest > = "data" => some, None, meta(meta) :
-        types::SearchProductsOkMeta = "meta" => some, None } fixed {}
+        PhotoBatchMeta => super::PhotoBatchMeta;
+        required {
+            photographer: R0: String = "photographer",
+        }
+        optional {
+            taken_at(taken_at): ::honig::DateTimeStr = "takenAt" => some, None,
+            count(count): i64 = "count" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        CreateUserBodyRequest => super::CreateUserBodyRequest; required { email : R0 :
-        ::honig::EmailStr = "email", password : R1 : String = "password" } optional {
-        name(name) : String = "name" => some, None } fixed {}
+        PaginatedResource => super::PaginatedResource;
+        required {}
+        optional {
+            data(data): types::PaginatedResourceData = "data" => some, None,
+            meta(meta): types::PaginatedResourceMeta = "meta" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        CreateUserBody2Request => super::CreateUserBody2Request; required { email : R0 :
-        ::honig::EmailStr = "email", password : R1 : String = "password" } optional {
-        name(name) : String = "name" => some, None } fixed {}
+        ImageUploadedMessage => super::ImageUploadedMessage;
+        required {}
+        optional {
+            message(message): String = "message" => some, None,
+            image_url(image_url): String = "imageUrl" => some, None,
+            uploaded_at(uploaded_at): ::honig::DateTimeStr = "uploadedAt" => some, None,
+            file_size(file_size): i64 = "fileSize" => some, None,
+            mime_type(mime_type): String = "mimeType" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        BadRequestError => super::BadRequestError;
+        required {}
+        optional {
+            type_(type_): String = "type" => some, None,
+            title(title): String = "title" => some, None,
+            status(status): i64 = "status" => some, None,
+            detail(detail): String = "detail" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        ForbiddenError => super::ForbiddenError;
+        required {}
+        optional {
+            type_(type_): String = "type" => some, None,
+            title(title): String = "title" => some, None,
+            status(status): i64 = "status" => some, None,
+            detail(detail): String = "detail" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        NotFoundError => super::NotFoundError;
+        required {}
+        optional {
+            type_(type_): String = "type" => some, None,
+            title(title): String = "title" => some, None,
+            status(status): i64 = "status" => some, None,
+            detail(detail): String = "detail" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        UnauthorizedError => super::UnauthorizedError;
+        required {}
+        optional {
+            type_(type_): String = "type" => some, None,
+            title(title): String = "title" => some, None,
+            status(status): i64 = "status" => some, None,
+            detail(detail): String = "detail" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        Conflict => super::Conflict;
+        required {}
+        optional {
+            type_(type_): String = "type" => some, None,
+            title(title): String = "title" => some, None,
+            status(status): i64 = "status" => some, None,
+            detail(detail): String = "detail" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        UnprocessableEntity => super::UnprocessableEntity;
+        required {}
+        optional {
+            type_(type_): String = "type" => some, None,
+            title(title): String = "title" => some, None,
+            status(status): i64 = "status" => some, None,
+            detail(detail): String = "detail" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        TooManyRequestsError => super::TooManyRequestsError;
+        required {}
+        optional {
+            type_(type_): String = "type" => some, None,
+            title(title): String = "title" => some, None,
+            status(status): i64 = "status" => some, None,
+            detail(detail): String = "detail" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        ProductDimensions => super::ProductDimensions;
+        required {}
+        optional {
+            weight(weight): types::ProductDimensionsWeight = "weight" => some, None,
+            width(width): types::ProductDimensionsWidth = "width" => some, None,
+            height(height): f32 = "height" => some, None,
+            price(price): types::ProductDimensionsPrice = "price" => some, None,
+        }
+        fixed {
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+    ::honig::typestate_builder! {
+        ProductDimensionsPrice => super::ProductDimensionsPrice;
+        required {}
+        optional {
+            min(min): f32 = "min" => some, None,
+            max(max): f32 = "max" => some, None,
+            average(average): f32 = "average" => some, None,
+        }
+        fixed {
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+    ::honig::typestate_builder! {
+        ProductMaterialsItem => super::ProductMaterialsItem;
+        required {}
+        optional {
+            material(material): String = "material" => some, None,
+            percentage(percentage): types::ProductMaterialsItemPercentage = "percentage" => some, None,
+        }
+        fixed {
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+    ::honig::typestate_builder! {
+        VariantShipping => super::VariantShipping;
+        required {}
+        optional {
+            product(product): types::Product = "product" => some, None,
+            delivery_days(delivery_days): f32 = "deliveryDays" => some, None,
+            distance(distance): f32 = "distance" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        PaginatedResourceMeta => super::PaginatedResourceMeta;
+        required {}
+        optional {
+            limit(limit): i64 = "limit" => some, None,
+            offset(offset): i64 = "offset" => some, None,
+            total(total): i64 = "total" => some, None,
+            next(next): String = "next" => nullable, ::honig::Nullable::Absent,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        GetAllDataOk => super::GetAllDataOk;
+        required {}
+        optional {
+            data(data): Vec<types::Product> = "data" => some, None,
+            meta(meta): types::GetAllDataOkMeta = "meta" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        GetAllDataOkMeta => super::GetAllDataOkMeta;
+        required {}
+        optional {
+            limit(limit): i64 = "limit" => some, None,
+            offset(offset): i64 = "offset" => some, None,
+            total(total): i64 = "total" => some, None,
+            next(next): String = "next" => nullable, ::honig::Nullable::Absent,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        GetAllDataOk2 => super::GetAllDataOk2;
+        required {}
+        optional {
+            data(data): Vec<types::Product> = "data" => some, None,
+            meta(meta): types::GetAllDataOk2Meta = "meta" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        GetAllDataOk2Meta => super::GetAllDataOk2Meta;
+        required {}
+        optional {
+            limit(limit): i64 = "limit" => some, None,
+            offset(offset): i64 = "offset" => some, None,
+            total(total): i64 = "total" => some, None,
+            next(next): String = "next" => nullable, ::honig::Nullable::Absent,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        QueryProductsOk => super::QueryProductsOk;
+        required {}
+        optional {
+            data(data): Vec<types::Product> = "data" => some, None,
+            meta(meta): types::QueryProductsOkMeta = "meta" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        QueryProductsOkMeta => super::QueryProductsOkMeta;
+        required {}
+        optional {
+            limit(limit): i64 = "limit" => some, None,
+            offset(offset): i64 = "offset" => some, None,
+            total(total): i64 = "total" => some, None,
+            next(next): String = "next" => nullable, ::honig::Nullable::Absent,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        SearchProductsOk => super::SearchProductsOk;
+        required {}
+        optional {
+            data(data): Vec<types::Product> = "data" => some, None,
+            meta(meta): types::SearchProductsOkMeta = "meta" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        SearchProductsOkMeta => super::SearchProductsOkMeta;
+        required {}
+        optional {
+            limit(limit): i64 = "limit" => some, None,
+            offset(offset): i64 = "offset" => some, None,
+            total(total): i64 = "total" => some, None,
+            next(next): String = "next" => nullable, ::honig::Nullable::Absent,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        UploadImageBody => super::UploadImageBody;
+        required {}
+        optional {
+            image(image): ::honig::Binary = "image" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        UploadPhotosAccepted => super::UploadPhotosAccepted;
+        required {}
+        optional {
+            accepted(accepted): i64 = "accepted" => some, None,
+            batch_id(batch_id): ::honig::UuidStr = "batchId" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        CreateUserBody => super::CreateUserBody;
+        required {
+            email: R0: ::honig::EmailStr = "email",
+        }
+        optional {
+            id(id): i64 = "id" => some, None,
+            name(name): String = "name" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        CreateUserBody2 => super::CreateUserBody2;
+        required {
+            email: R0: ::honig::EmailStr = "email",
+        }
+        optional {
+            id(id): i64 = "id" => some, None,
+            name(name): String = "name" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        UserRequest => super::UserRequest;
+        required {}
+        optional {
+            name(name): String = "name" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        CredentialsRequest => super::CredentialsRequest;
+        required {
+            email: R0: ::honig::EmailStr = "email",
+            password: R1: String = "password",
+        }
+        optional {}
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        ProductRequest => super::ProductRequest;
+        required {
+            name: R0: String = "name",
+        }
+        optional {
+            description(description): String = "description" => nullable, ::honig::Nullable::Absent,
+            type_(type_): types::ProductType = "type" => some, None,
+            rating(rating): types::ProductRating = "rating" => some, None,
+            dimensions(dimensions): types::ProductDimensions = "dimensions" => some, None,
+            materials(materials): Vec<types::ProductMaterialsItem> = "materials" => some, None,
+            listed_at(listed_at): ::honig::DateTimeStr = "listedAt" => some, None,
+            image(image): String = "image" => nullable, ::honig::Nullable::Absent,
+            variants(variants): Vec<types::VariantRequest> = "variants" => some, None,
+            creator(creator): types::UserRequest = "creator" => some, None,
+            tags(tags): Vec<String> = "tags" => some, None,
+            success_callback_url(success_callback_url): ::honig::url::Url = "successCallbackUrl" => some, None,
+            failure_callback_url(failure_callback_url): ::honig::url::Url = "failureCallbackUrl" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        VariantRequest => super::VariantRequest;
+        required {
+            name: R0: String = "name",
+        }
+        optional {
+            description(description): String = "description" => nullable, ::honig::Nullable::Absent,
+            length(length): f32 = "length" => some, None,
+            type_(type_): types::VariantType = "type" => some, None,
+            shipping(shipping): types::VariantShippingRequest = "shipping" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        ProductEventRequest => super::ProductEventRequest;
+        required {
+            event: R0: types::ProductEventEvent = "event",
+            product: R1: types::ProductRequest = "product",
+        }
+        optional {
+            id(id): ::honig::UuidStr = "id" => some, None,
+            note(note): types::ShopMessage = "note" => some, None,
+            occurred_at(occurred_at): ::honig::DateTimeStr = "occurredAt" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        VariantShippingRequest => super::VariantShippingRequest;
+        required {}
+        optional {
+            product(product): types::ProductRequest = "product" => some, None,
+            delivery_days(delivery_days): f32 = "deliveryDays" => some, None,
+            distance(distance): f32 = "distance" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        GetAllDataOkRequest => super::GetAllDataOkRequest;
+        required {}
+        optional {
+            data(data): Vec<types::ProductRequest> = "data" => some, None,
+            meta(meta): types::GetAllDataOkMeta = "meta" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        GetAllDataOk2Request => super::GetAllDataOk2Request;
+        required {}
+        optional {
+            data(data): Vec<types::ProductRequest> = "data" => some, None,
+            meta(meta): types::GetAllDataOk2Meta = "meta" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        QueryProductsOkRequest => super::QueryProductsOkRequest;
+        required {}
+        optional {
+            data(data): Vec<types::ProductRequest> = "data" => some, None,
+            meta(meta): types::QueryProductsOkMeta = "meta" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        SearchProductsOkRequest => super::SearchProductsOkRequest;
+        required {}
+        optional {
+            data(data): Vec<types::ProductRequest> = "data" => some, None,
+            meta(meta): types::SearchProductsOkMeta = "meta" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        CreateUserBodyRequest => super::CreateUserBodyRequest;
+        required {
+            email: R0: ::honig::EmailStr = "email",
+            password: R1: String = "password",
+        }
+        optional {
+            name(name): String = "name" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        CreateUserBody2Request => super::CreateUserBody2Request;
+        required {
+            email: R0: ::honig::EmailStr = "email",
+            password: R1: String = "password",
+        }
+        optional {
+            name(name): String = "name" => some, None,
+        }
+        fixed {}
     }
 }

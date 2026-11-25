@@ -16,8 +16,12 @@ pub mod plan {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : types::Route = "body" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                body: R0: types::Route = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq)]

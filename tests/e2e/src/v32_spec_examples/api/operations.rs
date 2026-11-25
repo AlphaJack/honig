@@ -17,8 +17,12 @@ pub mod form_with_xml {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { body(body) : types::FormData
-            = "body" => some, None } fixed {}
+            Params => super::Params;
+            required {}
+            optional {
+                body(body): types::FormData = "body" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -71,13 +75,19 @@ pub mod parameter_examples {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { username : R0 : String = "username",
-            x_token : R1 : Vec < i64 > = "X-Token" } optional { cookie(cookie) :
-            types::ParameterExamplesCookie = "cookie" => some, None, greeting(greeting) :
-            String = "greeting" => some, None, thing(thing) : Vec < String > = "thing" =>
-            some, None, free_form(free_form) : std::collections::BTreeMap < String, i64 >
-            = "freeForm" => some, None, coordinates(coordinates) :
-            types::ParameterExamplesCoordinates = "coordinates" => some, None } fixed {}
+            Params => super::Params;
+            required {
+                username: R0: String = "username",
+                x_token: R1: Vec<i64> = "X-Token",
+            }
+            optional {
+                cookie(cookie): types::ParameterExamplesCookie = "cookie" => some, None,
+                greeting(greeting): String = "greeting" => some, None,
+                thing(thing): Vec<String> = "thing" => some, None,
+                free_form(free_form): std::collections::BTreeMap<String, i64> = "freeForm" => some, None,
+                coordinates(coordinates): types::ParameterExamplesCoordinates = "coordinates" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -115,8 +125,12 @@ pub mod querystring_form {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { metadata(metadata) :
-            types::QuerystringFormMetadata = "metadata" => some, None } fixed {}
+            Params => super::Params;
+            required {}
+            optional {
+                metadata(metadata): types::QuerystringFormMetadata = "metadata" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -154,8 +168,12 @@ pub mod querystring_json {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { json(json) :
-            types::QuerystringJsonJson = "json" => some, None } fixed {}
+            Params => super::Params;
+            required {}
+            optional {
+                json(json): types::QuerystringJsonJson = "json" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -193,8 +211,12 @@ pub mod basic_multipart_form {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { body(body) :
-            types::BasicMultipartFormBody = "body" => some, None } fixed {}
+            Params => super::Params;
+            required {}
+            optional {
+                body(body): types::BasicMultipartFormBody = "body" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -239,11 +261,15 @@ pub mod multipart_form_with_encoding_objects {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional {
-            profile_image_x_rate_limit_limit(profile_image_x_rate_limit_limit) : i64 =
-            "X-Rate-Limit-Limit" => some, None, body(body) :
-            types::MultipartFormWithEncodingObjectsBody = "body" => some, None } fixed {
-            part_types : ::honig::PartTypes::new() }
+            Params => super::Params;
+            required {}
+            optional {
+                profile_image_x_rate_limit_limit(profile_image_x_rate_limit_limit): i64 = "X-Rate-Limit-Limit" => some, None,
+                body(body): types::MultipartFormWithEncodingObjectsBody = "body" => some, None,
+            }
+            fixed {
+                part_types: ::honig::PartTypes::new(),
+            }
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -281,8 +307,12 @@ pub mod multipart_form_with_multiple_files {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { body(body) :
-            types::MultipartFormWithMultipleFilesBody = "body" => some, None } fixed {}
+            Params => super::Params;
+            required {}
+            optional {
+                body(body): types::MultipartFormWithMultipleFilesBody = "body" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -318,8 +348,12 @@ pub mod ordered_unnamed_multipart {
     ::honig::default_from_new!(Params);
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { body(body) : Vec <
-            serde_json::Value > = "body" => some, None } fixed {}
+            Params => super::Params;
+            required {}
+            optional {
+                body(body): Vec<serde_json::Value> = "body" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -363,9 +397,14 @@ pub mod ordered_multipart_with_required_header {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { body(body) : (String, Vec <
-            types::OrderedMultipartWithRequiredHeaderBodyItem >,) = "body" => some, None
-            } fixed { part_types : ::honig::PartTypes::new() }
+            Params => super::Params;
+            required {}
+            optional {
+                body(body): (String, Vec<types::OrderedMultipartWithRequiredHeaderBodyItem>,) = "body" => some, None,
+            }
+            fixed {
+                part_types: ::honig::PartTypes::new(),
+            }
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -401,8 +440,12 @@ pub mod nested_multipart_mixed {
     ::honig::default_from_new!(Params);
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { body(body) : Vec <
-            serde_json::Value > = "body" => some, None } fixed {}
+            Params => super::Params;
+            required {}
+            optional {
+                body(body): Vec<serde_json::Value> = "body" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -498,8 +541,12 @@ pub mod querystring_jsonpath {
     ::honig::default_from_new!(Params);
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { selector(selector) : String =
-            "selector" => some, None } fixed {}
+            Params => super::Params;
+            required {}
+            optional {
+                selector(selector): String = "selector" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -775,8 +822,12 @@ pub mod server_sent_event_streams {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : ::honig::Items <
-            types::ServerSentEventStreamsBodyItem > = "body" } optional {} fixed {}
+            Params => super::Params;
+            required {
+                body: R0: ::honig::Items<types::ServerSentEventStreamsBodyItem> = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

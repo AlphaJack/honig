@@ -31,9 +31,13 @@ pub mod list_products {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { limit(limit) :
-            types::ListProductsLimit = "limit" => some, None, tags(tags) : Vec < String >
-            = "tags" => some, None } fixed {}
+            Params => super::Params;
+            required {}
+            optional {
+                limit(limit): types::ListProductsLimit = "limit" => some, None,
+                tags(tags): Vec<String> = "tags" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -66,8 +70,10 @@ pub mod list_products {
         NotExtended = 510, NetworkAuthenticationRequired = 511 }
     );
     ::honig::response_error!(
-        Response { Self::Ok { .. } => "status 200 (Ok)", Self::Default { status, .. } =>
-        format_args!("status {} (Default)", status.as_u16()), }
+        Response {
+            Self::Ok { .. } => "status 200 (Ok)",
+            Self::Default { status,.. } => format_args!("status {} (Default)", status.as_u16()),
+        }
     );
     /// The body and headers of the success, in order: what `Response::into_result` gives.
     pub type Success = (Vec<types::Product>, Option<String>);
@@ -103,8 +109,12 @@ pub mod create_product {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : types::Product = "body" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                body: R0: types::Product = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -137,8 +147,10 @@ pub mod create_product {
         NotExtended = 510, NetworkAuthenticationRequired = 511 }
     );
     ::honig::response_error!(
-        Response { Self::Created(..) => "status 201 (Created)", Self::Default { status,
-        .. } => format_args!("status {} (Default)", status.as_u16()), }
+        Response {
+            Self::Created(..) => "status 201 (Created)",
+            Self::Default { status,.. } => format_args!("status {} (Default)", status.as_u16()),
+        }
     );
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -171,8 +183,12 @@ pub mod get_product {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { product_id : R0 : i64 = "productId" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                product_id: R0: i64 = "productId",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -185,8 +201,10 @@ pub mod get_product {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(
-        Response { Self::Ok(..) => "status 200 (Ok)", Self::NotFound(..) =>
-        "status 404 (NotFound)", }
+        Response {
+            Self::Ok(..) => "status 200 (Ok)",
+            Self::NotFound(..) => "status 404 (NotFound)",
+        }
     );
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.

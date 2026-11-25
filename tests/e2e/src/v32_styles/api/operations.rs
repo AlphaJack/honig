@@ -16,8 +16,12 @@ pub mod matrix_fs {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { color : R0 : types::Str = "color" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                color: R0: types::Str = "color",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -54,8 +58,12 @@ pub mod matrix_fa {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { color : R0 : types::Arr = "color" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                color: R0: types::Arr = "color",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -92,8 +100,12 @@ pub mod matrix_fo {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { color : R0 : types::Obj = "color" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                color: R0: types::Obj = "color",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -130,8 +142,12 @@ pub mod matrix_ta {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { color : R0 : types::Arr = "color" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                color: R0: types::Arr = "color",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -168,8 +184,12 @@ pub mod matrix_to {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { color : R0 : types::Obj = "color" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                color: R0: types::Obj = "color",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -206,8 +226,12 @@ pub mod label_fs {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { color : R0 : types::Str = "color" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                color: R0: types::Str = "color",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -244,8 +268,12 @@ pub mod label_fa {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { color : R0 : types::Arr = "color" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                color: R0: types::Arr = "color",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -282,8 +310,12 @@ pub mod label_fo {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { color : R0 : types::Obj = "color" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                color: R0: types::Obj = "color",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -320,8 +352,12 @@ pub mod label_ta {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { color : R0 : types::Arr = "color" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                color: R0: types::Arr = "color",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -358,8 +394,12 @@ pub mod label_to {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { color : R0 : types::Obj = "color" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                color: R0: types::Obj = "color",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -396,8 +436,12 @@ pub mod simple_fa {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { color : R0 : types::Arr = "color" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                color: R0: types::Arr = "color",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -434,8 +478,12 @@ pub mod simple_fo {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { color : R0 : types::Obj = "color" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                color: R0: types::Obj = "color",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -472,8 +520,12 @@ pub mod simple_ta {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { color : R0 : types::Arr = "color" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                color: R0: types::Arr = "color",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -510,8 +562,12 @@ pub mod simple_to {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { color : R0 : types::Obj = "color" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                color: R0: types::Obj = "color",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -548,8 +604,12 @@ pub mod form_fa {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { color : R0 : types::Arr = "color" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                color: R0: types::Arr = "color",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -586,8 +646,12 @@ pub mod form_fo {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { color : R0 : types::Obj = "color" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                color: R0: types::Obj = "color",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -624,8 +688,12 @@ pub mod form_ta {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { color : R0 : types::Arr = "color" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                color: R0: types::Arr = "color",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -662,8 +730,12 @@ pub mod form_to {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { color : R0 : types::Obj = "color" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                color: R0: types::Obj = "color",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -700,8 +772,12 @@ pub mod space_fa {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { color : R0 : types::Arr = "color" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                color: R0: types::Arr = "color",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -738,8 +814,12 @@ pub mod space_fo {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { color : R0 : types::Obj = "color" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                color: R0: types::Obj = "color",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -776,8 +856,12 @@ pub mod pipe_fa {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { color : R0 : types::Arr = "color" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                color: R0: types::Arr = "color",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -814,8 +898,12 @@ pub mod pipe_fo {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { color : R0 : types::Obj = "color" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                color: R0: types::Obj = "color",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -852,8 +940,12 @@ pub mod deep_o {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { color : R0 : types::Obj = "color" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                color: R0: types::Obj = "color",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -890,8 +982,12 @@ pub mod header_fa {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { color : R0 : types::Arr = "color" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                color: R0: types::Arr = "color",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -928,8 +1024,12 @@ pub mod header_fo {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { color : R0 : types::Obj = "color" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                color: R0: types::Obj = "color",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -966,8 +1066,12 @@ pub mod header_ta {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { color : R0 : types::Arr = "color" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                color: R0: types::Arr = "color",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1004,8 +1108,12 @@ pub mod header_to {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { color : R0 : types::Obj = "color" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                color: R0: types::Obj = "color",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1042,8 +1150,12 @@ pub mod cookie_ta {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { color : R0 : types::Arr = "color" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                color: R0: types::Arr = "color",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1080,8 +1192,12 @@ pub mod cookie_to {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { color : R0 : types::Obj = "color" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                color: R0: types::Obj = "color",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

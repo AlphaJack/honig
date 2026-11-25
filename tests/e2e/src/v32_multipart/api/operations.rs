@@ -25,10 +25,15 @@ pub mod upload {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { image_x_checksum : R0 :
-            types::UploadImageXChecksum = "X-Checksum", body : R1 : types::UploadBody =
-            "body" } optional { meta_x_revision(meta_x_revision) : i64 = "X-Revision" =>
-            some, None } fixed {}
+            Params => super::Params;
+            required {
+                image_x_checksum: R0: types::UploadImageXChecksum = "X-Checksum",
+                body: R1: types::UploadBody = "body",
+            }
+            optional {
+                meta_x_revision(meta_x_revision): i64 = "X-Revision" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -70,8 +75,14 @@ pub mod put_icon {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : types::PutIconBody = "body" }
-            optional {} fixed { part_types : ::honig::PartTypes::new() }
+            Params => super::Params;
+            required {
+                body: R0: types::PutIconBody = "body",
+            }
+            optional {}
+            fixed {
+                part_types: ::honig::PartTypes::new(),
+            }
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -109,8 +120,12 @@ pub mod upload_scan {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : types::UploadScanBody =
-            "body" } optional {} fixed {}
+            Params => super::Params;
+            required {
+                body: R0: types::UploadScanBody = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -147,9 +162,12 @@ pub mod deploy {
     ::honig::default_from_new!(Params);
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { body(body) :
-            std::collections::BTreeMap < String, serde_json::Value > = "body" => some,
-            None } fixed {}
+            Params => super::Params;
+            required {}
+            optional {
+                body(body): std::collections::BTreeMap<String, serde_json::Value> = "body" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

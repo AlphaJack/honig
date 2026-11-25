@@ -77,8 +77,12 @@ pub mod xml_attribute_prefix_and_namespace {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { body(body) : types::Person =
-            "body" => some, None } fixed {}
+            Params => super::Params;
+            required {}
+            optional {
+                body(body): types::Person = "body" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

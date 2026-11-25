@@ -333,51 +333,7 @@ pub(crate) fn print(file: &str, tokens: TokenStream, binary: bool) -> Result<Str
     if binary {
         CrateOnly.visit_file_mut(&mut file);
     }
-    Ok(unparse(file))
-}
-
-/// Returns `file` printed by `prettyplease`, with the body of each top-level `macro_rules!` printed as the items it
-/// expands to. `prettyplease` prints a macro body as raw tokens, one space between each: a body of trait impls would
-/// look like one long line. A body that is not items stays as raw tokens.
-pub(crate) fn unparse(mut file: syn::File) -> String {
-    let mut bodies = Vec::new();
-    for item in &mut file.items {
-        let syn::Item::Macro(m) = item else { continue };
-        let Some(text) = items_macro_text(m) else { continue };
-        let marker = format_ident!("__HONIG_MACRO_{}", bodies.len());
-        let attrs = &m.attrs;
-        let Ok(placeholder) = syn::parse2::<syn::Item>(quote!(#(#attrs)* const #marker: () = ();)) else { continue };
-        *item = placeholder;
-        bodies.push((format!("const {marker}: () = ();"), text));
-    }
-    let mut out = prettyplease::unparse(&file);
-    for (marker, text) in bodies {
-        out = out.replacen(&marker, text.trim_end(), 1);
-    }
-    out
-}
-
-/// Is `path` that of a honig macro, `::honig::<name>`?
-fn honig_macro(path: &syn::Path) -> bool {
-    path.leading_colon.is_some()
-        && path.segments.len() == 2
-        && path.segments.first().is_some_and(|s| s.ident == "honig")
-}
-
-/// Returns a call of a honig macro whose body is items, `::honig::object! { .. }`, with the body printed as those
-/// items. `None` for any other macro or a body that does not parse as items.
-fn items_macro_text(m: &syn::ItemMacro) -> Option<String> {
-    let path = &m.mac.path;
-    if !honig_macro(path) || !matches!(m.mac.delimiter, syn::MacroDelimiter::Brace(_)) {
-        return None;
-    }
-    let items: syn::File = syn::parse2(m.mac.tokens.clone()).ok()?;
-    let name = path.segments.last()?.ident.to_string();
-    let body: String = prettyplease::unparse(&items)
-        .lines()
-        .map(|l| if l.is_empty() { "\n".to_owned() } else { format!("    {l}\n") })
-        .collect();
-    Some(format!("::honig::{name}! {{\n{body}}}\n"))
+    Ok(super::macro_text::unparse(file))
 }
 
 /// Every `pub` becomes `pub(crate)`.
@@ -475,7 +431,7 @@ impl syn::visit_mut::VisitMut for SelfInOwnFields {
 
     fn visit_item_macro_mut(&mut self, m: &mut syn::ItemMacro) {
         let path = &m.mac.path;
-        if honig_macro(path)
+        if super::macro_text::honig_macro(path)
             && path.segments.last().is_some_and(|s| s.ident == "object")
             && let Ok(mut s) = syn::parse2::<syn::ItemStruct>(m.mac.tokens.clone())
         {

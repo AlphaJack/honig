@@ -17,8 +17,13 @@ pub mod put_file {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { name : R0 : String = "name", body : R1 :
-            ::honig::Blob = "body" } optional {} fixed {}
+            Params => super::Params;
+            required {
+                name: R0: String = "name",
+                body: R1: ::honig::Blob = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

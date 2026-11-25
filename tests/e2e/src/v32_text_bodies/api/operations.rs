@@ -16,8 +16,12 @@ pub mod add_note {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : types::AddNoteBody = "body" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                body: R0: types::AddNoteBody = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -60,8 +64,12 @@ pub mod set_mood {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : types::SetMoodBody = "body" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                body: R0: types::SetMoodBody = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

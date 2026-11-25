@@ -49,13 +49,16 @@ pub mod list_orders {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { status(status) : Vec <
-            types::Status > = "status" => some, None, created_after(created_after) :
-            ::honig::DateTimeStr = "createdAfter" => some, None, limit(limit) :
-            types::ListOrdersLimit = "limit" => value, types::ListOrdersLimit { 0 : 20i32
-            }, sort(sort) : types::ListOrdersSort = "sort" => value,
-            types::ListOrdersSort::Newest, cursor(cursor) : types::ListOrdersCursor =
-            "cursor" => some, None } fixed {}
+            Params => super::Params;
+            required {}
+            optional {
+                status(status): Vec<types::Status> = "status" => some, None,
+                created_after(created_after): ::honig::DateTimeStr = "createdAfter" => some, None,
+                limit(limit): types::ListOrdersLimit = "limit" => value, types::ListOrdersLimit { 0: 20i32 },
+                sort(sort): types::ListOrdersSort = "sort" => value, types::ListOrdersSort::Newest,
+                cursor(cursor): types::ListOrdersCursor = "cursor" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -80,8 +83,10 @@ pub mod list_orders {
         431, UnavailableForLegalReasons = 451 }
     );
     ::honig::response_error!(
-        Response { Self::Ok { .. } => "status 200 (Ok)", Self::ClientError { status, .. }
-        => format_args!("status {} (ClientError)", status.as_u16()), }
+        Response {
+            Self::Ok { .. } => "status 200 (Ok)",
+            Self::ClientError { status,.. } => format_args!("status {} (ClientError)", status.as_u16()),
+        }
     );
     /// The body and headers of the success, in order: what `Response::into_result` gives.
     pub type Success = (types::OrderPage, Option<String>);
@@ -119,8 +124,12 @@ pub mod create_order {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : types::OrderRequest = "body"
-            } optional {} fixed {}
+            Params => super::Params;
+            required {
+                body: R0: types::OrderRequest = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -154,10 +163,11 @@ pub mod create_order {
         507, LoopDetected = 508, NotExtended = 510, NetworkAuthenticationRequired = 511 }
     );
     ::honig::response_error!(
-        Response { Self::Created(..) => "status 201 (Created)",
-        Self::UnprocessableEntity(..) => "status 422 (UnprocessableEntity)",
-        Self::Default { status, .. } => format_args!("status {} (Default)", status
-        .as_u16()), }
+        Response {
+            Self::Created(..) => "status 201 (Created)",
+            Self::UnprocessableEntity(..) => "status 422 (UnprocessableEntity)",
+            Self::Default { status,.. } => format_args!("status {} (Default)", status.as_u16()),
+        }
     );
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -194,8 +204,12 @@ pub mod get_order {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { order_id : R0 : ::honig::UuidStr =
-            "orderId" } optional {} fixed {}
+            Params => super::Params;
+            required {
+                order_id: R0: ::honig::UuidStr = "orderId",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -229,9 +243,11 @@ pub mod get_order {
         507, LoopDetected = 508, NotExtended = 510, NetworkAuthenticationRequired = 511 }
     );
     ::honig::response_error!(
-        Response { Self::Ok { .. } => "status 200 (Ok)", Self::NotFound(..) =>
-        "status 404 (NotFound)", Self::Default { status, .. } =>
-        format_args!("status {} (Default)", status.as_u16()), }
+        Response {
+            Self::Ok { .. } => "status 200 (Ok)",
+            Self::NotFound(..) => "status 404 (NotFound)",
+            Self::Default { status,.. } => format_args!("status {} (Default)", status.as_u16()),
+        }
     );
     /// The body and headers of the success, in order: what `Response::into_result` gives.
     pub type Success = (Box<types::Order>, String);
@@ -292,9 +308,13 @@ pub mod upload_document {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { order_id : R0 : ::honig::UuidStr =
-            "orderId", body : R1 : types::UploadDocumentBody = "body" } optional {} fixed
-            {}
+            Params => super::Params;
+            required {
+                order_id: R0: ::honig::UuidStr = "orderId",
+                body: R1: types::UploadDocumentBody = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -336,8 +356,12 @@ pub mod cookie_form_fa {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { color : R0 : Vec < String > = "color" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                color: R0: Vec<String> = "color",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -374,8 +398,12 @@ pub mod cookie_form_fo {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { color : R0 : types::CookieFormFoColor =
-            "color" } optional {} fixed {}
+            Params => super::Params;
+            required {
+                color: R0: types::CookieFormFoColor = "color",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

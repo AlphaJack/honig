@@ -235,28 +235,61 @@ impl ::honig::__private::XmlShape for Meta {
 pub mod builders {
     use super as types;
     ::honig::typestate_builder! {
-        Book => super::Book; required { id : R0 : i64 = "id", title : R1 : String =
-        "title", authors : R2 : Vec < types::Author > = "authors" } optional { lang(lang)
-        : String = "lang" => some, None, subtitle(subtitle) : String = "subtitle" =>
-        nullable, ::honig::Nullable::Absent, tags(tags) : Vec < String > = "tags" =>
-        some, None, price(price) : types::Price = "price" => some, None, sequel(sequel) :
-        Box < types::Book > = "sequel" => some, None, blurb(blurb) : types::Blurb =
-        "blurb" => some, None, meta(meta) : types::Meta = "meta" => some, None } fixed {}
+        Book => super::Book;
+        required {
+            id: R0: i64 = "id",
+            title: R1: String = "title",
+            authors: R2: Vec<types::Author> = "authors",
+        }
+        optional {
+            lang(lang): String = "lang" => some, None,
+            subtitle(subtitle): String = "subtitle" => nullable, ::honig::Nullable::Absent,
+            tags(tags): Vec<String> = "tags" => some, None,
+            price(price): types::Price = "price" => some, None,
+            sequel(sequel): Box<types::Book> = "sequel" => some, None,
+            blurb(blurb): types::Blurb = "blurb" => some, None,
+            meta(meta): types::Meta = "meta" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        Author => super::Author; required { name : R0 : String = "name" } optional {
-        born(born) : i64 = "born" => some, None } fixed {}
+        Author => super::Author;
+        required {
+            name: R0: String = "name",
+        }
+        optional {
+            born(born): i64 = "born" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        Price => super::Price; required { amount : R0 : String = "amount" } optional {
-        currency(currency) : String = "currency" => some, None } fixed {}
+        Price => super::Price;
+        required {
+            amount: R0: String = "amount",
+        }
+        optional {
+            currency(currency): String = "currency" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        Blurb => super::Blurb; required { text : R0 : String = "text" } optional {
-        format(format) : String = "format" => some, None } fixed {}
+        Blurb => super::Blurb;
+        required {
+            text: R0: String = "text",
+        }
+        optional {
+            format(format): String = "format" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        Meta => super::Meta; required { isbn : R0 : String = "isbn" } optional {
-        pages(pages) : i64 = "pages" => some, None } fixed {}
+        Meta => super::Meta;
+        required {
+            isbn: R0: String = "isbn",
+        }
+        optional {
+            pages(pages): i64 = "pages" => some, None,
+        }
+        fixed {}
     }
 }

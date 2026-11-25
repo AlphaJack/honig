@@ -28,8 +28,10 @@ pub mod get_export {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(
-        Response { Self::Ok(..) => "status 200 (Ok)", Self::NotFound =>
-        "status 404 (NotFound)", }
+        Response {
+            Self::Ok(..) => "status 200 (Ok)",
+            Self::NotFound => "status 404 (NotFound)",
+        }
     );
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -106,8 +108,10 @@ pub mod get_manifest {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(
-        Response { Self::Ok { .. } => "status 200 (Ok)", Self::NotFound =>
-        "status 404 (NotFound)", }
+        Response {
+            Self::Ok { .. } => "status 200 (Ok)",
+            Self::NotFound => "status 404 (NotFound)",
+        }
     );
     /// The body and headers of the success by name: what `Response::into_result` gives.
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -149,9 +153,15 @@ pub mod replace_manifest {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { id : R0 : String = "id", body : R1 : Vec
-            < String > = "body" } optional { if_match(if_match) : String = "If-Match" =>
-            some, None } fixed {}
+            Params => super::Params;
+            required {
+                id: R0: String = "id",
+                body: R1: Vec<String> = "body",
+            }
+            optional {
+                if_match(if_match): String = "If-Match" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -164,8 +174,10 @@ pub mod replace_manifest {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(
-        Response { Self::NoContent => "status 204 (NoContent)", Self::PreconditionFailed
-        => "status 412 (PreconditionFailed)", }
+        Response {
+            Self::NoContent => "status 204 (NoContent)",
+            Self::PreconditionFailed => "status 412 (PreconditionFailed)",
+        }
     );
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.

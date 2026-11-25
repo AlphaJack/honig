@@ -23,10 +23,16 @@ pub mod get_item {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { id : R0 : String = "id" } optional {
-            tag(tag) : Vec < String > = "tag" => some, None, x_trace(x_trace) : String =
-            "X-Trace" => some, None, session(session) : String = "session" => some, None
-            } fixed {}
+            Params => super::Params;
+            required {
+                id: R0: String = "id",
+            }
+            optional {
+                tag(tag): Vec<String> = "tag" => some, None,
+                x_trace(x_trace): String = "X-Trace" => some, None,
+                session(session): String = "session" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -62,8 +68,13 @@ pub mod put_blob {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { id : R0 : String = "id", body : R1 :
-            ::honig::Blob = "body" } optional {} fixed {}
+            Params => super::Params;
+            required {
+                id: R0: String = "id",
+                body: R1: ::honig::Blob = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
