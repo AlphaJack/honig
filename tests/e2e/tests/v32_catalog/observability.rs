@@ -7,15 +7,17 @@ use e2e::v32_catalog::api::{self, operations as ops};
 use super::Catalog;
 
 // ANCHOR: events
-/// The wide event of each request as one JSON line to wherever your logs go. Here it is a list that a test inspects.
+/// The wide event of each request as one JSON line to wherever your logs go. A layer outside the server reads it from
+/// the extensions of the response. Here the lines go to a list that a test inspects.
 fn logged(lines: Arc<Mutex<Vec<String>>>) -> api::Client<impl api::Transport> {
-    let service = api::Server::new(Catalog::default())
-        .on_event(move |event: &api::RequestEvent| {
-            if let Ok(mut lines) = lines.lock() {
+    let service = tower::ServiceBuilder::new()
+        .map_response(move |resp: api::Response| {
+            if let (Some(event), Ok(mut lines)) = (resp.extensions().get::<api::RequestEvent>(), lines.lock()) {
                 lines.push(event.to_json());
             }
+            resp
         })
-        .into_service();
+        .service(api::Server::new(Catalog::default()).into_service());
     api::Client::new(service).with_api_key("secret")
 }
 // ANCHOR_END: events
@@ -82,15 +84,15 @@ fn a_request_continues_the_callers_trace() {
 /// An axum router whose undeclared paths reach the server too. They then get its 404 in the error schema and a wide
 /// event. Leave the fallback out to give those paths to routes of your own.
 fn with_fallback(lines: Arc<Mutex<Vec<String>>>) -> axum::Router {
-    let server = || {
-        let lines = Arc::clone(&lines);
-        api::Server::new(Catalog::default()).on_event(move |event: &api::RequestEvent| {
-            if let Ok(mut lines) = lines.lock() {
+    let server = || api::Server::new(Catalog::default());
+    server().into_axum().fallback_service(server().into_service()).layer(tower::util::MapResponseLayer::new(
+        move |resp: axum::response::Response| {
+            if let (Some(event), Ok(mut lines)) = (resp.extensions().get::<api::RequestEvent>(), lines.lock()) {
                 lines.push(event.to_json());
             }
-        })
-    };
-    server().into_axum().fallback_service(server().into_service())
+            resp
+        },
+    ))
 }
 // ANCHOR_END: axum-fallback
 
@@ -112,26 +114,58 @@ fn an_undeclared_path_under_axum_logs_an_event_through_the_fallback() {
 /// The event records why the request was refused. A layer's 401 is `unauthorized`.
 #[tokio::test]
 async fn the_event_holds_the_reason_of_a_refusal() {
-    let seen = Arc::new(Mutex::new(vec![]));
+    let seen = Arc::new(Mutex::new(None));
     let record = Arc::clone(&seen);
-    let service = api::Server::new(Catalog::default())
+    let server = api::Server::new(Catalog::default())
         .operation_layer(tower::filter::AsyncFilterLayer::new(|_: api::Request| {
             std::future::ready(Err::<api::Request, _>(api::ApiError::new(
                 api::http::StatusCode::UNAUTHORIZED,
                 "expired session",
             )))
         }))
-        .on_event(move |event: &api::RequestEvent| {
-            if let Ok(mut seen) = record.lock() {
-                seen.push((event.snapshot().error, event.to_json()));
-            }
-        })
         .into_service();
+    let service = tower::ServiceBuilder::new()
+        .map_response(move |resp: api::Response| {
+            *record.lock().unwrap() = resp.extensions().get::<api::RequestEvent>().cloned();
+            resp
+        })
+        .service(server);
     let client = api::Client::new(service).with_api_key("secret");
     client.get_product(ops::get_product::Params::new(7)).await.unwrap_err();
-    let seen = seen.lock().unwrap();
-    let (error, json) = &seen[0];
-    assert!(matches!(error, Some(api::Reason::Denied(e)) if e.message == "expired session"), "{error:?}");
-    let event: serde_json::Value = serde_json::from_str(json).unwrap();
-    assert_eq!(event["error"], "unauthorized");
+    let event = seen.lock().unwrap().take().unwrap();
+    let error = event.snapshot().error;
+    assert!(matches!(&error, Some(api::Reason::Denied(e)) if e.message == "expired session"), "{error:?}");
+    assert_eq!(event.fields()["error"], "unauthorized");
+}
+
+/// A `TraceLayer` of tower-http reads the wide event from the response: the operation, the route and why the server
+/// refused the request.
+#[tokio::test]
+async fn a_trace_layer_reads_the_event_of_a_refusal() {
+    use tower::ServiceExt as _;
+    let seen = Arc::new(Mutex::new(vec![]));
+    let record = Arc::clone(&seen);
+    let trace = tower_http::trace::TraceLayer::new_for_http().on_response(
+        move |resp: &axum::response::Response, _: std::time::Duration, _: &tracing::Span| {
+            let event = resp.extensions().get::<api::RequestEvent>().map(api::RequestEvent::fields);
+            record
+                .lock()
+                .unwrap()
+                .push(event.map(|f| (f["operation"].clone(), f["route"].clone(), f["error"].clone())));
+        },
+    );
+    let server = || api::Server::new(Catalog::default());
+    let app = server().into_axum().fallback_service(server().into_service()).layer(trace);
+    for path in ["/v1/products/7", "/nowhere"] {
+        let req = axum::http::Request::get(path).body(axum::body::Body::empty()).unwrap();
+        app.clone().oneshot(req).await.unwrap();
+    }
+    let json = serde_json::Value::from;
+    assert_eq!(
+        *seen.lock().unwrap(),
+        [
+            Some((json("get_product"), json("/products/{productId}"), json("unauthorized"))),
+            Some((json(""), json(""), json("not_found"))),
+        ]
+    );
 }

@@ -233,14 +233,6 @@ impl<O: Operations, L> Server<O, L> {
         self
     }
 
-    /// Sets the sink that receives the wide event ([`RequestEvent`]) of each request once the response is ready. By
-    /// default the event is logged with `tracing` when the server lists the `tracing` adapter, and dropped otherwise.
-    #[must_use]
-    pub fn on_event(mut self, sink: impl Fn(&RequestEvent<O::Operation>) + Send + Sync + 'static) -> Self {
-        self.config.on_event = Arc::new(sink);
-        self
-    }
-
     /// Returns the error responses of the description for a layer outside the server. Such a layer is a timeout, a body
     /// limit or an IP flood guard. It then answers in the same error schema as the operations.
     #[must_use]
@@ -422,7 +414,7 @@ where
     }
 }
 
-/// Returns route, check credentials and run the layers and the operation. Then give the wide event to `on_event`.
+/// Returns route, check credentials and run the layers and the operation, with the wide event in the extensions.
 async fn respond<O, S>(shared: Arc<Shared<O>>, mut stack: S, head: http::request::Parts, body: Body) -> Response
 where
     O: Operations,
@@ -488,13 +480,10 @@ where
     };
     // Every 401 carries a challenge (RFC 9110 section 15.5.2): a refusal of the server, of a layer or of a handler.
     challenge(&mut resp, op.security);
-    let resp = for_method(method, resp);
-    event.finish(&resp, started);
-    (config.on_event)(&event);
-    resp
+    event.finish(for_method(method, resp), started)
 }
 
-/// Returns the answer to a request that its credentials did not let through, and gives its event to `on_event`.
+/// Returns the answer to a request that its credentials did not let through, with its event in the extensions.
 fn refused<Id: crate::Operation>(
     config: &Config<Id>,
     operation: Id,
@@ -508,10 +497,7 @@ fn refused<Id: crate::Operation>(
     event.fail(&reason);
     let mut resp = config.reject(op.errors, Some(operation), reason, headers);
     challenge(&mut resp, op.security);
-    let resp = for_method(method, resp);
-    event.finish(&resp, started);
-    (config.on_event)(&event);
-    resp
+    event.finish(for_method(method, resp), started)
 }
 
 /// Returns who is calling: the first alternative of `requirements` whose every scheme the `Api` accepts and whose

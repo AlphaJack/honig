@@ -250,9 +250,8 @@ fn pattern_fields_are_checked_types() {
     assert_eq!(r.status().as_u16(), 400, "the X-Team header has a pattern too");
 }
 
-/// Records every wide event; the handler adds its own field.
-#[derive(Default)]
-struct Recording(std::sync::Mutex<Vec<serde_json::Map<String, serde_json::Value>>>);
+/// The handler adds its own field to the wide event.
+struct Recording;
 
 impl api::Api for Recording {
     fn get_mode(
@@ -314,11 +313,8 @@ impl api::Api for Recording {
 
 #[test]
 fn one_wide_event_per_request() {
-    let api = std::sync::Arc::new(Recording::default());
-    let sink = std::sync::Arc::clone(&api);
-    let service = api::Server::new(std::sync::Arc::clone(&api))
-        .on_event(move |event| sink.0.lock().unwrap().push(event.fields()))
-        .into_service();
+    let service = api::Server::new(Recording).into_service();
+    let mut events = vec![];
     for body in
         [json!({"name": "Ann", "role": "user"}), json!({"name": "Ann", "role": "user", "age": 150, "score": 1.2})]
     {
@@ -326,9 +322,9 @@ fn one_wide_event_per_request() {
         req.headers_mut()
             .insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::from_static("application/json"));
         *req.body_mut() = honig::Body::from(serde_json::to_vec(&body).unwrap());
-        api::block_on(service.handle(req));
+        let resp = api::block_on(service.handle(req));
+        events.extend(resp.extensions().get::<api::RequestEvent>().map(api::RequestEvent::fields));
     }
-    let events = api.0.lock().unwrap();
     assert_eq!(events.len(), 2);
     let ok = &events[0];
     assert_eq!(ok["operation"], "create_user");

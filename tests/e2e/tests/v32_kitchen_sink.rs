@@ -433,9 +433,12 @@ fn each_method_reaches_its_operation() {
 fn the_event_names_an_additional_method() {
     let events = std::sync::Arc::new(Mutex::new(vec![]));
     let sink = std::sync::Arc::clone(&events);
-    let service = api::Server::new(Products::default())
-        .on_event(move |event| sink.lock().unwrap().push(event.fields()))
-        .into_service();
+    let service = tower::ServiceBuilder::new()
+        .map_response(move |resp: api::Response| {
+            sink.lock().unwrap().extend(resp.extensions().get::<api::RequestEvent>().map(api::RequestEvent::fields));
+            resp
+        })
+        .service(api::Server::new(Products::default()).into_service());
     let client = Client::new(service).with_oauth("t");
     let copy = ops::copy_products::Params { x_trace: None };
     assert_eq!(api::block_on(client.copy_products(copy)).ok(), Some(ops::copy_products::Response::NoContent));

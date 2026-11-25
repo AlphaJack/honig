@@ -87,11 +87,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 async fn serve(addr: &str) -> std::io::Result<()> {
     let listener = tokio::net::TcpListener::bind(addr).await?;
     println!("serving the catalog on http://{addr}/v1");
-    let app = api::Server::new(Catalog::default())
-        // One JSON line per request: the operation, the status, the duration, the body sizes and more.
-        .on_event(|event: &api::RequestEvent| println!("{}", event.to_json()))
-        .into_axum();
+    // One JSON line per request: the operation, the status, the duration, the body sizes and more.
+    let app = api::Server::new(Catalog::default()).into_axum().layer(axum::middleware::map_response(log));
     axum::serve(listener, app).await
+}
+
+/// Prints the wide event that the server put in the extensions of the response.
+async fn log(resp: axum::response::Response) -> axum::response::Response {
+    if let Some(event) = resp.extensions().get::<api::RequestEvent>() {
+        println!("{}", event.to_json());
+    }
+    resp
 }
 // ANCHOR_END: server
 

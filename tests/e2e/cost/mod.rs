@@ -611,12 +611,12 @@ pub fn paths(size: usize) -> Vec<Path> {
             body: scan_body(size),
             ..path("multipart_b64", "POST", "/mp/scans", "*/*", (1.3, 1.55))
         },
-        path("download", "GET", "/dl/exports/x", "application/zip", (1.3, 2.25)),
-        path("json_get", "GET", "/dl/exports/x/manifest", "application/json", (1.1, 1.55)),
+        path("download", "GET", "/dl/exports/x", "application/zip", (1.35, 2.25)),
+        path("json_get", "GET", "/dl/exports/x/manifest", "application/json", (1.15, 1.55)),
         Path {
             content_type: "application/json",
             body: manifest_body(),
-            ..path("json_put", "PUT", "/dl/exports/x/manifest", "*/*", (1.2, 1.55))
+            ..path("json_put", "PUT", "/dl/exports/x/manifest", "*/*", (1.25, 1.55))
         },
         path("sse", "GET", "/sse/tiles/stream", "text/event-stream", (0.8, 0.95)),
         path("jsonl", "GET", "/sse/tiles/lines", "application/jsonl", (1.0, 1.75)),

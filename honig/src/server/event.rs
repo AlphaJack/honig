@@ -5,7 +5,8 @@ use serde_json::{Map, Value};
 
 use crate::{Operation, Reason, Request, Response, server::auth::SatisfiedSecurity};
 
-/// One wide event per request. It goes to the `on_event` of the server.
+/// One wide event per request. The server puts it in the extensions of the response once the response is ready, so a
+/// layer outside the server reads it with `resp.extensions().get::<api::RequestEvent>()`.
 ///
 /// Layers and handlers add fields with `event.set(TENANT, id)`, where `const TENANT: EventKey =
 /// EventKey::new("tenant")`. `Id` is the generated `Operation` of the API.
@@ -147,16 +148,6 @@ impl<Id: Clone> RequestEvent<Id> {
         self.with(|f| f.request_bytes = request_bytes);
     }
 
-    /// Records the outcome: status, duration and response size.
-    pub fn finish(&self, resp: &Response, started: std::time::Instant) {
-        let duration_us = u64::try_from(started.elapsed().as_micros()).unwrap_or(u64::MAX);
-        self.with(|f| {
-            f.status = resp.status().as_u16();
-            f.duration_us = duration_us;
-            f.response_bytes = resp.body().len();
-        });
-    }
-
     /// Returns a copy of the typed fields.
     #[must_use]
     pub fn snapshot(&self) -> RequestEventFields<Id> {
@@ -165,6 +156,18 @@ impl<Id: Clone> RequestEvent<Id> {
 }
 
 impl<Id: Operation> RequestEvent<Id> {
+    /// Records the outcome (status, duration and response size) and puts the event in the extensions of `resp`.
+    pub(crate) fn finish(&self, mut resp: Response, started: std::time::Instant) -> Response {
+        let duration_us = u64::try_from(started.elapsed().as_micros()).unwrap_or(u64::MAX);
+        self.with(|f| {
+            f.status = resp.status().as_u16();
+            f.duration_us = duration_us;
+            f.response_bytes = resp.body().len();
+        });
+        resp.extensions_mut().insert(self.clone());
+        resp
+    }
+
     /// Returns every field as one JSON object (typed fields and then handler fields).
     #[must_use]
     pub fn fields(&self) -> Map<String, Value> {
