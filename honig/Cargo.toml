@@ -114,7 +114,7 @@ gloo-net = ["client", "dep:gloo-net", "dep:web-sys", "dep:js-sys", "dep:wasm-bin
 ## `Server::into_axum` and the address of the client from the `ConnectInfo` of axum
 # `tokio`: `ConnectInfo`. `axum::serve` puts the address of the client there.
 axum = ["server", "dep:axum", "axum/tokio"]
-## A span per request and a log line for each wide event
+## A span per request with its operation, route and status, in the conventions of OpenTelemetry
 tracing = ["server", "dep:tracing"]
 ## W3C Trace Context: `traceparent` and `tracestate`
 tracing-opentelemetry = ["dep:opentelemetry", "dep:tracing-opentelemetry", "dep:tracing"]
