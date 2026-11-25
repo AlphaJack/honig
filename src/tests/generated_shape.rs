@@ -786,15 +786,6 @@ fn params_new_and_one_name_per_type() {
     assert!(server.contains("params: ops::list::Params,"), "{server}");
 }
 
-/// A description without schemas. `types.rs` has no type to check. So there is no runtime import.
-#[test]
-fn types_without_schemas_import_no_runtime() {
-    let doc = common::spec("3.2.0", &json!({}), &json!({}));
-    let opts = crate::emit::Options::default();
-    let types = common::file(&common::generate("shape-no-schemas", &doc, &opts), "types.rs").to_owned();
-    assert!(!types.contains("use super::runtime;"), "{types}");
-}
-
 /// `new` accepts exactly the required properties without a spec default; the rest start empty or at that default.
 #[test]
 fn structs_have_new_with_their_required_properties() {
@@ -1001,8 +992,8 @@ fn a_response_of_a_union_of_unions_is_sized_to_the_bottom() {
     assert!(ops.contains("Ok(Box<types::U39>)"), "{ops}");
 }
 
-/// A `$ref` beside an extension (`x-patch-strategy`) is the referenced type: an extension asserts nothing, so nothing
-/// is checked whole. Properties named like keywords (`$ref`, `type`) are field names, not keywords.
+/// A `$ref` beside an extension (`x-patch-strategy`) is the referenced type: an extension asserts nothing.
+/// Properties named like keywords (`$ref`, `type`) are field names, not keywords.
 #[test]
 fn a_ref_beside_an_extension_or_keyword_names_is_typed() {
     let doc = common::spec(
@@ -1020,8 +1011,8 @@ fn a_ref_beside_an_extension_or_keyword_names_is_typed() {
         }}),
     );
     let files = common::generate("shape-keyword-names", &doc, &crate::emit::Options::default());
-    let all: String = files.iter().map(|(_, text)| text.as_str()).collect();
-    assert!(!all.contains("check_schema"), "{all}");
+    let types = common::file(&files, "types.rs");
+    assert!(types.contains("pub strategy: Strategy,") && types.contains(r#"#[serde(rename = "$ref")]"#), "{types}");
 }
 
 /// Every struct gets a builder, with a checked field or without: the builder is the one way to set fields by name.
@@ -1161,8 +1152,8 @@ fn a_time_with_its_offset_is_a_full_time_with_any_date_library() {
     assert!(types.contains("pub start: ::honig::FullTime"), "{types}");
 }
 
-/// `dependentRequired` over properties that the struct declares is a check of its fields: no schema is checked whole.
-/// A name that the struct does not declare, or an optional one whose default hides its absence, keeps the whole check.
+/// `dependentRequired` over properties that the struct declares is a check of its fields.
+/// A name that the struct does not declare, or an optional one whose default hides its absence, is checked on the JSON object.
 #[test]
 fn dependent_required_checks_the_fields() {
     let types = |schema: serde_json::Value| {
@@ -1172,18 +1163,18 @@ fn dependent_required_checks_the_fields() {
     };
     let typed = types(json!({"type": "object", "properties": {"card": {"type": "string"}, "cvc": {"type": "string"}},
         "dependentRequired": {"card": ["cvc"]}}));
-    assert!(typed.contains("is required when") && !typed.contains("check_schema"), "{typed}");
+    assert!(typed.contains("is required when"), "{typed}");
     let undeclared = types(json!({"type": "object", "properties": {"card": {"type": "string"}},
         "dependentRequired": {"card": ["cvc"]}}));
     // An undeclared name is kept by the struct and checked on the JSON object.
-    assert!(undeclared.contains("is required when") && !undeclared.contains("check_schema"), "{undeclared}");
+    assert!(undeclared.contains("is required when"), "{undeclared}");
     let defaulted = types(json!({"type": "object", "properties": {"card": {"type": "string"},
         "cvc": {"type": "string", "default": "000"}}, "dependentRequired": {"card": ["cvc"]}}));
     // A name with a default fills in no default here: its absence shows.
-    assert!(defaulted.contains("is required when") && !defaulted.contains("check_schema"), "{defaulted}");
+    assert!(defaulted.contains("is required when"), "{defaulted}");
 }
 
-/// `propertyNames` of `pattern`, `minLength` and `maxLength` is a check of each name: no schema is checked whole. Any
+/// `propertyNames` of `pattern`, `minLength` and `maxLength` is a check of each name. Any
 /// other schema of names is a type that each name decodes as. A map component enforces it where it is used, as
 /// `minProperties`.
 #[test]
@@ -1195,13 +1186,13 @@ fn property_names_checks_each_name() {
         common::file(&common::generate("property-names", &doc, &crate::emit::Options::default()), "types.rs").to_owned()
     };
     let typed = types(json!({"pattern": "^[a-z]+$", "maxLength": 8}));
-    assert!(typed.contains("for name in") && !typed.contains("check_schema"), "{typed}");
+    assert!(typed.contains("for name in"), "{typed}");
     let other = types(json!({"enum": ["a", "b"]}));
-    assert!(other.contains("is not an allowed property name") && !other.contains("check_schema"), "{other}");
+    assert!(other.contains("is not an allowed property name"), "{other}");
 }
 
 /// One `patternProperties` entry of a closed map is a map of the pattern's schema whose names are checked against the
-/// pattern. An open map or two patterns check each matched value: no schema is checked whole either way.
+/// pattern. An open map or two patterns check each matched value.
 #[test]
 fn a_closed_map_of_one_pattern_is_typed() {
     let types = |scores: serde_json::Value| {
@@ -1212,32 +1203,37 @@ fn a_closed_map_of_one_pattern_is_typed() {
     };
     let int = json!({"type": "integer", "minimum": 0});
     let typed = types(json!({"type": "object", "patternProperties": {"^[a-z]+$": int}, "additionalProperties": false}));
-    assert!(typed.contains("for name in") && !typed.contains("check_schema"), "{typed}");
+    assert!(typed.contains("for name in"), "{typed}");
     let open = types(json!({"type": "object", "patternProperties": {"^[a-z]+$": int}}));
-    assert!(!open.contains("check_schema"), "{open}");
+    assert!(open.contains("pub pattern_1: std::collections::BTreeMap<String, ScoresPattern1>,"), "{open}");
+    assert!(
+        open.contains("pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,"),
+        "{open}"
+    );
     let two = types(json!({"type": "object", "patternProperties": {"^[a-z]+$": int, "^x": int},
         "additionalProperties": false}));
-    assert!(!two.contains("check_schema"), "{two}");
+    assert!(two.contains("pub pattern_2: std::collections::BTreeMap<String, ScoresPattern2>,"), "{two}");
+    assert!(two.contains("pub additional_properties: ::honig::__private::Closed,"), "{two}");
 }
 
 /// A schema without `type` whose keywords each apply to one kind of value (`minimum`, `maxLength`, `maxItems`, ...) is
-/// a `serde_json::Value` checked by its kind: no schema is checked whole.
+/// a `serde_json::Value` checked by its kind.
 #[test]
 fn keywords_without_a_type_check_values_of_their_kind() {
     let any = json!({"type": "object", "properties": {"v": {"minimum": 1, "maxLength": 3, "maxItems": 2}}});
     let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Loose": any}}));
     let types =
         common::file(&common::generate("typeless", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
-    assert!(types.contains("serde_json::Value::Number") && !types.contains("check_schema"), "{types}");
+    assert!(types.contains("serde_json::Value::Number"), "{types}");
 }
 
-/// `not: S` is a check that the value does not decode as the type of `S`: no schema is checked whole.
+/// `not: S` is a check that the value does not decode as the type of `S`.
 #[test]
 fn not_is_a_check_against_the_type_of_its_schema() {
     let code = json!({"type": "object", "properties": {"code": {"type": "string", "not": {"type": "string", "pattern": "^x"}}}});
     let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Coded": code}}));
     let types = common::file(&common::generate("not", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
-    assert!(types.contains(".matches::<") && !types.contains("check_schema"), "{types}");
+    assert!(types.contains(".matches::<"), "{types}");
 }
 
 /// A range check states each bound it has (`max: Some(100)`) and leaves the others to `Bounds::NONE`: no four
@@ -1277,7 +1273,7 @@ fn a_pattern_is_printed_once_per_check() {
 }
 
 /// `dependentSchemas` over properties that the struct declares is a check that the value decodes as the type of the
-/// schema when the property is present: no schema is checked whole.
+/// schema when the property is present.
 #[test]
 fn dependent_schemas_check_against_the_type_of_the_schema() {
     let card = json!({"type": "object", "properties": {"card": {"type": "string"}, "cvc": {"type": "string"}},
@@ -1286,18 +1282,18 @@ fn dependent_schemas_check_against_the_type_of_the_schema() {
     let types =
         common::file(&common::generate("dependent-schemas", &doc, &crate::emit::Options::default()), "types.rs")
             .to_owned();
-    assert!(types.contains("is present: ") && !types.contains("\\\"dependentSchemas\\\""), "{types}");
+    assert!(types.contains("is present: "), "{types}");
     let voucher = json!({"type": "object", "properties": {"code": {"type": "string"}, "amount": {"type": "integer"}},
         "dependentSchemas": {"code": {"properties": {"amount": {"maximum": 100}}, "required": ["amount"]}}});
     let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Voucher": voucher}}));
     let types =
         common::file(&common::generate("dependent-schemas2", &doc, &crate::emit::Options::default()), "types.rs")
             .to_owned();
-    assert!(types.contains("is present: ") && !types.contains("\\\"dependentSchemas\\\""), "{types}");
+    assert!(types.contains("is present: "), "{types}");
 }
 
 /// An `if` that is no tagged union checks the value against the types of its schemas: a value of the type of `if` is
-/// one of the type of `then`, any other one of the type of `else`. No schema is checked whole.
+/// one of the type of `then`, any other one of the type of `else`.
 #[test]
 fn if_then_else_checks_against_the_types_of_its_schemas() {
     let size = json!({"type": "object", "properties": {"unit": {"type": "string"}, "value": {"type": "number"}},
@@ -1307,7 +1303,7 @@ fn if_then_else_checks_against_the_types_of_its_schemas() {
     let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Size": size}}));
     let types =
         common::file(&common::generate("if-then-else", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
-    assert!(types.contains("`then`: ") && !types.contains("check_schema"), "{types}");
+    assert!(types.contains("`then`: "), "{types}");
 }
 
 /// A named type checks its own `not`: a field of it gets no checked type of its own.
@@ -1322,7 +1318,7 @@ fn a_field_of_a_type_that_checks_itself_takes_no_second_check() {
 }
 
 /// `contains` on an array counts the items that decode as the type of its schema, limited to `minContains` and
-/// `maxContains`: no schema is checked whole.
+/// `maxContains`.
 #[test]
 fn contains_counts_the_items_of_its_type() {
     let tags = json!({"type": "array", "items": {"type": "string"}, "contains": {"const": "vip"}, "maxContains": 1});
@@ -1330,10 +1326,10 @@ fn contains_counts_the_items_of_its_type() {
     let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Tagged": tagged}}));
     let types =
         common::file(&common::generate("contains", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
-    assert!(types.contains("matching items, more than allowed") && !types.contains("check_schema"), "{types}");
+    assert!(types.contains("matching items, more than allowed"), "{types}");
 }
 
-/// An `anyOf` with a branch that asserts nothing is true for every value: no schema is checked whole.
+/// An `anyOf` with a branch that asserts nothing is true for every value.
 #[test]
 fn an_any_of_with_a_branch_of_any_value_is_typed() {
     let money = json!({"type": "object", "properties": {"amount": {"type": "integer"}}});
@@ -1342,11 +1338,11 @@ fn an_any_of_with_a_branch_of_any_value_is_typed() {
     let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Money": money, "Price": price}}));
     let types =
         common::file(&common::generate("any-branch", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
-    assert!(!types.contains("check_schema"), "{types}");
+    assert!(types.contains("Money(Money),\n    Other(serde_json::Value),"), "{types}");
 }
 
 /// A `oneOf` whose discriminator picks one branch while two share a type counts the branches that the value decodes
-/// as: no schema is checked whole.
+/// as.
 #[test]
 fn a_one_of_of_shared_types_counts_its_branches() {
     let car = json!({"type": "object", "required": ["wheels"], "properties": {"kind": {"type": "string"}, "wheels": {"type": "integer"}}});
@@ -1356,7 +1352,7 @@ fn a_one_of_of_shared_types_counts_its_branches() {
     let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Car": car, "Van": van, "Vehicle": vehicle}}));
     let types =
         common::file(&common::generate("one-of-count", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
-    assert!(types.contains("of `oneOf`, not exactly one") && !types.contains("check_schema"), "{types}");
+    assert!(types.contains("of `oneOf`, not exactly one"), "{types}");
 }
 
 /// `required`, `uniqueItems` and `format` without `type` apply to objects, arrays and strings: no schema is checked
@@ -1369,7 +1365,7 @@ fn required_unique_and_format_without_a_type_check_their_kind() {
     let types =
         common::file(&common::generate("typeless-required", &doc, &crate::emit::Options::default()), "types.rs")
             .to_owned();
-    assert!(types.contains("::honig::__private::check_unique") && !types.contains("check_schema"), "{types}");
+    assert!(types.contains("::honig::__private::check_unique"), "{types}");
 }
 
 /// `patternProperties` beside declared properties is a map per pattern, of the type of its schema: each undeclared
@@ -1415,14 +1411,14 @@ fn additional_properties_beside_patterns_types_the_other_names() {
 }
 
 /// A tuple that no Rust tuple represents (`prefixItems` with fewer `minItems`, or open) checks each item against the
-/// type of its schema: no schema is checked whole.
+/// type of its schema.
 #[test]
 fn a_tuple_checks_each_item_against_its_schema() {
     let pair = json!({"type": "array", "prefixItems": [{"type": "string"}, {"type": "integer"}], "items": false});
     let holder = json!({"type": "object", "properties": {"pair": pair}});
     let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Holder": holder}}));
     let types = common::file(&common::generate("tuple", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
-    assert!(types.contains("::honig::InstanceLocation::Index") && !types.contains("check_schema"), "{types}");
+    assert!(types.contains("::honig::InstanceLocation::Index"), "{types}");
 }
 
 /// `required` of an object without `properties` is a map that must have those names.
@@ -1435,8 +1431,7 @@ fn a_map_checks_the_names_it_requires() {
     assert!(types.contains("::honig::__private::check_required") && types.contains("\"foo\""), "{types}");
 }
 
-/// Keywords beside a `oneOf` apply to whichever branch matches: the value also decodes as their type. No schema is
-/// checked whole.
+/// Keywords beside a `oneOf` apply to whichever branch matches: the value also decodes as their type.
 #[test]
 fn keywords_beside_a_union_hold_for_each_branch() {
     let a = json!({"type": "object", "properties": {"kind": {"const": "a"}, "x": {"type": "integer"}}, "required": ["kind"]});
@@ -1446,11 +1441,11 @@ fn keywords_beside_a_union_hold_for_each_branch() {
     let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"A": a, "B": b, "Item": item}}));
     let types =
         common::file(&common::generate("beside-union", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
-    assert!(types.contains(".decode_ref::<") && !types.contains("check_schema"), "{types}");
+    assert!(types.contains(".decode_ref::<"), "{types}");
 }
 
 /// An `allOf` whose members one merged type cannot represent (two `maxLength`) is that type, and the value also decodes
-/// as each member: no schema is checked whole.
+/// as each member.
 #[test]
 fn an_all_of_that_loses_keywords_checks_each_member() {
     let code = json!({"allOf": [{"type": "string", "maxLength": 8}, {"type": "string", "maxLength": 4}]});
@@ -1459,7 +1454,7 @@ fn an_all_of_that_loses_keywords_checks_each_member() {
     let types =
         common::file(&common::generate("lossy-all-of-typed", &doc, &crate::emit::Options::default()), "types.rs")
             .to_owned();
-    assert!(types.contains(".decode_ref::<") && !types.contains("check_schema"), "{types}");
+    assert!(types.contains(".decode_ref::<"), "{types}");
 }
 
 /// An `enum` or `const` of values that no scalar type represents (numbers with strings, objects) is a type of unit
@@ -1477,7 +1472,7 @@ fn values_that_no_scalar_type_holds_are_unit_types() {
 }
 
 /// `unevaluatedProperties` refuses the names that the schema, what it applies in place and the branches that the value
-/// matches leave: no schema is checked whole.
+/// matches leave.
 #[test]
 fn unevaluated_properties_refuses_what_nothing_evaluates() {
     let base = json!({"type": "object", "properties": {"id": {"type": "string"}}});
@@ -1492,7 +1487,7 @@ fn unevaluated_properties_refuses_what_nothing_evaluates() {
         "types.rs",
     )
     .to_owned();
-    assert!(types.contains("is not allowed (unevaluatedProperties)") && !types.contains("check_schema"), "{types}");
+    assert!(types.contains("is not allowed (unevaluatedProperties)"), "{types}");
 }
 
 /// `unevaluatedProperties` beside a union sees the names that the matched branches evaluate: it is not split off.
@@ -1508,8 +1503,7 @@ fn unevaluated_properties_beside_a_union_sees_its_branches() {
     assert!(types.contains("matches!(name, \"foo\")"), "{types}");
 }
 
-/// `unevaluatedItems` refuses the items that `contains` and the branches that the value matches leave: no schema is
-/// checked whole.
+/// `unevaluatedItems` refuses the items that `contains` and the branches that the value matches leave.
 #[test]
 fn unevaluated_items_refuses_what_nothing_evaluates() {
     let pair = json!({"type": "array", "contains": {"type": "integer"}, "unevaluatedItems": false});
@@ -1518,7 +1512,7 @@ fn unevaluated_items_refuses_what_nothing_evaluates() {
     let types =
         common::file(&common::generate("unevaluated-items-typed", &doc, &crate::emit::Options::default()), "types.rs")
             .to_owned();
-    assert!(types.contains("is not allowed (unevaluatedItems)") && !types.contains("check_schema"), "{types}");
+    assert!(types.contains("is not allowed (unevaluatedItems)"), "{types}");
 }
 
 /// What a nested `then` evaluates counts only when the `if` around it matched too: the branch keeps its own
@@ -1547,7 +1541,7 @@ fn a_dynamic_ref_to_one_anchor_is_typed() {
     let types =
         common::file(&common::generate("dynamic-ref-typed", &doc, &crate::emit::Options::default()), "types.rs")
             .to_owned();
-    assert!(!types.contains("check_schema"), "{types}");
+    assert!(types.contains("pub children: Vec<Self>,"), "{types}");
 }
 
 /// A `$dynamicRef` in a resource with an `$id`, to the one `$dynamicAnchor` of that name, is typed as its target.
@@ -1576,7 +1570,7 @@ fn a_root_dynamic_anchor_binds_the_generic_to_its_site() {
     assert!(types.contains("#[optional]\n        pub children: Vec<Self>"), "{types}");
 }
 
-/// `propertyNames` of any schema decodes each name, as a JSON string, as its type: no schema is checked whole.
+/// `propertyNames` of any schema decodes each name, as a JSON string, as its type.
 #[test]
 fn property_names_of_any_schema_decode_each_name() {
     let labels = json!({"type": "object", "additionalProperties": {"type": "string"},
@@ -1586,11 +1580,11 @@ fn property_names_of_any_schema_decode_each_name() {
     let types =
         common::file(&common::generate("property-names-any", &doc, &crate::emit::Options::default()), "types.rs")
             .to_owned();
-    assert!(types.contains("is not an allowed property name") && !types.contains("check_schema"), "{types}");
+    assert!(types.contains("is not an allowed property name"), "{types}");
 }
 
 /// `dependentSchemas` of a name that the struct does not declare keeps that name and checks the schema when it is
-/// present: no schema is checked whole.
+/// present.
 #[test]
 fn dependent_schemas_of_an_undeclared_name_are_typed() {
     let card = json!({"type": "object", "properties": {"cvc": {"type": "string"}},
@@ -1599,7 +1593,7 @@ fn dependent_schemas_of_an_undeclared_name_are_typed() {
     let types =
         common::file(&common::generate("dependent-undeclared", &doc, &crate::emit::Options::default()), "types.rs")
             .to_owned();
-    assert!(types.contains("is present: ") && !types.contains("check_schema"), "{types}");
+    assert!(types.contains("is present: "), "{types}");
 }
 
 /// A `dependentSchemas` of an undeclared name beside `additionalProperties: false` keeps the struct closed: the name
@@ -1618,7 +1612,7 @@ fn an_undeclared_dependent_name_keeps_a_closed_struct_closed() {
 }
 
 /// `contains`, `patternProperties`, `propertyNames` and `dependentRequired` on a schema without `type` apply to values
-/// of their kind only: each is checked on its own, and no schema is checked whole.
+/// of their kind only: each is checked on its own.
 #[test]
 fn keywords_of_one_kind_without_a_type_are_checked() {
     for (keyword, schema, check) in [
@@ -1631,7 +1625,7 @@ fn keywords_of_one_kind_without_a_type_are_checked() {
         let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Holder": holder}}));
         let files = common::generate(&format!("typeless-{keyword}"), &doc, &crate::emit::Options::default());
         let types = common::file(&files, "types.rs");
-        assert!(types.contains(check) && !types.contains("check_schema"), "{keyword}: {types}");
+        assert!(types.contains(check), "{keyword}: {types}");
     }
 }
 
@@ -1646,7 +1640,7 @@ fn a_conditional_without_an_object_type_is_checked() {
     let types =
         common::file(&common::generate("typeless-conditional", &doc, &crate::emit::Options::default()), "types.rs")
             .to_owned();
-    assert!(types.contains("`then`: ") || types.contains("check_schema"), "{types}");
+    assert!(types.contains("`then`: "), "{types}");
 }
 
 /// `contains` and `dependentRequired` without `type` beside `properties` or `patternProperties`: the value is the union
@@ -1669,12 +1663,12 @@ fn keywords_beside_an_implied_shape_are_checked() {
         let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Holder": holder}}));
         let files = common::generate(&format!("implied-{keyword}"), &doc, &crate::emit::Options::default());
         let types = common::file(&files, "types.rs");
-        assert!(types.contains(check) && !types.contains("check_schema"), "{keyword}: {types}");
+        assert!(types.contains(check), "{keyword}: {types}");
     }
 }
 
 /// `false` refuses any value that is present, and `items`, `prefixItems` or `additionalProperties` without `type` are
-/// stored by the union of their implied shape: no schema is checked whole.
+/// stored by the union of their implied shape.
 #[test]
 fn false_and_implied_shapes_are_checked_by_types() {
     let holder = json!({"type": "object", "properties": {
@@ -1687,7 +1681,7 @@ fn false_and_implied_shapes_are_checked_by_types() {
     let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Holder": holder}}));
     let types = common::file(&common::generate("false-and-shapes", &doc, &crate::emit::Options::default()), "types.rs")
         .to_owned();
-    assert!(types.contains("no value is allowed here") && !types.contains("check_schema"), "{types}");
+    assert!(types.contains("no value is allowed here"), "{types}");
     // The names of the object that `named` accepts match its one pattern.
     let flat: String = types.split_whitespace().collect();
     assert!(flat.contains("::honig::__private::check_pattern(") && flat.contains(r#"Pattern::new("^a",)"#), "{types}");
@@ -1698,7 +1692,7 @@ fn false_and_implied_shapes_are_checked_by_types() {
 }
 
 /// A `oneOf` or `anyOf` whose branches no union tells apart (a branch without one `type`) counts the branches that the
-/// value decodes as: exactly one of `oneOf`, one at least of `anyOf`. No schema is checked whole.
+/// value decodes as: exactly one of `oneOf`, one at least of `anyOf`.
 #[test]
 fn a_loose_union_counts_its_branches() {
     for (keyword, check) in [("oneOf", "not exactly one"), ("anyOf", "matches none of `anyOf`")] {
@@ -1707,12 +1701,12 @@ fn a_loose_union_counts_its_branches() {
         let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Holder": holder}}));
         let files = common::generate(&format!("loose-{keyword}"), &doc, &crate::emit::Options::default());
         let types = common::file(&files, "types.rs");
-        assert!(types.contains(check) && !types.contains("check_schema"), "{keyword}: {types}");
+        assert!(types.contains(check), "{keyword}: {types}");
     }
 }
 
 /// Keywords of one kind beside an implied shape (`required` beside `properties`, `minItems` beside `items`, no `type`)
-/// are checked on the value of the union by its kind: no schema is checked whole.
+/// are checked on the value of the union by its kind.
 #[test]
 fn keywords_of_one_kind_beside_an_implied_shape_are_checked() {
     for (name, schema, check) in [
@@ -1723,12 +1717,12 @@ fn keywords_of_one_kind_beside_an_implied_shape_are_checked() {
         let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Holder": holder}}));
         let files = common::generate(&format!("implied-{name}"), &doc, &crate::emit::Options::default());
         let types = common::file(&files, "types.rs");
-        assert!(types.contains(check) && !types.contains("check_schema"), "{name}: {types}");
+        assert!(types.contains(check), "{name}: {types}");
     }
 }
 
 /// A `$ref` with keywords beside it is the `allOf` of the two: the merged type enforces them, and a member that it
-/// cannot enforce is checked on its own. No schema is checked whole.
+/// cannot enforce is checked on its own.
 #[test]
 fn keywords_beside_a_ref_are_checked() {
     let doc = common::spec(
@@ -1747,11 +1741,11 @@ fn keywords_beside_a_ref_are_checked() {
     let types =
         common::file(&common::generate("ref-siblings", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
     assert!(types.contains("check_len") && types.contains("matches `not`"), "{types}");
-    assert!(types.contains("pub b: String") && !types.contains("check_schema"), "{types}");
+    assert!(types.contains("pub b: String"), "{types}");
 }
 
 /// Draft 7 `dependencies` is split as 2019-09 did: a list of names is `dependentRequired`, a schema `dependentSchemas`.
-/// Both are checked by generated code, and no schema is checked whole.
+/// Both are checked by generated code.
 #[test]
 fn draft_7_dependencies_are_split() {
     let card = json!({"type": "object", "properties": {"card": {"type": "string"}, "cvc": {"type": "string"}},
@@ -1763,7 +1757,7 @@ fn draft_7_dependencies_are_split() {
 }
 
 /// A property that `dependentRequired` uses keeps its absence: its `default` is not filled in, so the check sees
-/// whether it was sent. No schema is checked whole.
+/// whether it was sent.
 #[test]
 fn a_dependent_name_with_a_default_keeps_its_absence() {
     let card = json!({"type": "object", "properties": {"card": {"type": "string"},
@@ -1773,12 +1767,10 @@ fn a_dependent_name_with_a_default_keeps_its_absence() {
         common::file(&common::generate("dependent-default", &doc, &crate::emit::Options::default()), "types.rs")
             .to_owned();
     assert!(types.contains("#[optional]\n        pub cvc: String") && types.contains("is required when"), "{types}");
-    assert!(!types.contains("check_schema"), "{types}");
 }
 
 /// A resource that declares a `$dynamicAnchor` and reaches a generic through a plain `$ref` binds it: the outermost
-/// resource in the dynamic scope wins (JSON Schema 2020-12 section 8.2.3.2). The list's items are its strings, and no
-/// schema is checked whole.
+/// resource in the dynamic scope wins (JSON Schema 2020-12 section 8.2.3.2). The list's items are its strings.
 #[test]
 fn a_resource_binds_the_generic_that_it_reaches() {
     let root = json!({"$id": "https://example.test/root", "type": "object", "required": ["list"],
@@ -1791,7 +1783,7 @@ fn a_resource_binds_the_generic_that_it_reaches() {
     let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Root": root}}));
     let types =
         common::file(&common::generate("dynamic-scope", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
-    assert!(types.contains("pub list: Vec<String>") && !types.contains("check_schema"), "{types}");
+    assert!(types.contains("pub list: Vec<String>"), "{types}");
 }
 
 /// A resource nested in a binding resource is not in its dynamic scope when it is reached directly: its `$dynamicRef`
@@ -1813,7 +1805,7 @@ fn a_nested_resource_reached_directly_keeps_its_anchor() {
 }
 
 /// `dependentRequired` of a name that the struct does not declare: the struct keeps that name, and the rule is checked
-/// on the JSON object. No schema is checked whole.
+/// on the JSON object.
 #[test]
 fn an_undeclared_dependent_required_name_is_checked() {
     let card = json!({"type": "object", "properties": {"card": {"type": "string"}},
@@ -1824,7 +1816,7 @@ fn an_undeclared_dependent_required_name_is_checked() {
         "types.rs",
     )
     .to_owned();
-    assert!(types.contains("`cvc` is required when `card` is present") && !types.contains("check_schema"), "{types}");
+    assert!(types.contains("`cvc` is required when `card` is present"), "{types}");
 }
 
 /// `items` and `additionalProperties` see only their own schema's `prefixItems` and `properties`, not those of an

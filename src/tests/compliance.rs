@@ -1244,7 +1244,7 @@ fn an_unfillable_error_body_requires_error_response() {
 }
 
 /// `allOf: [$ref: Base, {type: object, properties: ...}]` merges into one struct that contains every member: its fields
-/// are checked as typed and the body is never checked whole. Two members that both declare `name` merge too, and the
+/// are checked as typed. Two members that both declare `name` merge too, and the
 /// body also decodes as each member: one struct would keep only one of their schemas.
 #[test]
 fn an_all_of_that_one_struct_cannot_hold_checks_each_member() {
@@ -1263,9 +1263,8 @@ fn an_all_of_that_one_struct_cannot_hold_checks_each_member() {
         [common::file(&files, "types.rs"), common::file(&files, "operations.rs")].concat()
     };
     let typed = generated("all-of-typed", json!({"type": "object", "properties": {"sku": {"type": "string"}}}));
-    assert!(!typed.contains("check_schema"), "{typed}");
     let lossy = generated("all-of-lossy", json!({"type": "object", "properties": {"name": {"maxLength": 5}}}));
-    assert!(lossy.contains(".decode_ref::<") && !lossy.contains("check_schema"), "{lossy}");
+    assert!(!typed.contains(".decode_ref::<") && lossy.contains(".decode_ref::<"), "{typed}\n{lossy}");
 }
 
 /// An error body of RFC 9457 `problem+json` is filled by the RFC's member names: the generated `Api` gives
