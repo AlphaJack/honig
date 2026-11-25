@@ -2749,3 +2749,17 @@ fn only_values_that_no_type_holds_are_compared_as_json() {
         assert!(!types(schema.clone()).contains(compared), "{schema}");
     }
 }
+
+/// An `allOf` member that holds a nested `allOf` beside a `oneOf` stays whole: lifting its `allOf` out would drop the
+/// union, and the type would accept a value that matches neither branch.
+#[test]
+fn a_member_with_a_union_beside_its_all_of_stays_whole() {
+    let branch = |name: &str, t: &str| json!({"type": "object", "required": [name], "properties": {name: {"type": t}}});
+    let s = json!({"allOf": [{"allOf": [{"type": "object", "properties": {"id": {"type": "string"}}}],
+        "oneOf": [{"$ref": "#/components/schemas/B"}, {"$ref": "#/components/schemas/C"}]}]});
+    let schemas = json!({"schemas": {"B": branch("b", "string"), "C": branch("c", "integer"), "S": s}});
+    let doc = common::spec("3.2.0", &json!({}), &schemas);
+    let types =
+        common::file(&common::generate("member-union", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(types.contains("pub struct S(pub(super) SVariants);"), "{types}");
+}
