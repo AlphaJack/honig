@@ -2695,3 +2695,32 @@ fn an_alias_of_a_checked_type_is_checked_once() {
         common::file(&common::generate("alias-checked", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
     assert!(types.contains("pub a: A,") && !types.contains("pub struct HolderA("), "{types}");
 }
+
+/// `xml` is a feature only for an XML body or a part whose `encoding.contentType` lists XML, and `cookie` only for an
+/// API key in a cookie or a cookie parameter of the server.
+#[test]
+fn codec_features_follow_the_description() {
+    let features = |body: serde_json::Value, params: serde_json::Value, key_in: &str| {
+        let paths = json!({"/a": {"post": {"operationId": "a", "parameters": params, "security": [{"key": []}],
+            "requestBody": {"content": body}, "responses": {"204": {"description": "ok"}}}}});
+        let schemes = json!({"securitySchemes": {"key": {"type": "apiKey", "in": key_in, "name": "k"}}});
+        let doc = common::spec("3.2.0", &paths, &schemes);
+        let path = common::write("codec-features", &doc, &[]);
+        crate::generate::generate(&path, &crate::emit::Options::default()).expect("generates").runtime_features
+    };
+    let object = json!({"type": "object", "properties": {"meta": {"type": "object"}}});
+    let part =
+        |types: &str| json!({"multipart/form-data": {"schema": object, "encoding": {"meta": {"contentType": types}}}});
+    let (xml, cookie) = (&crate::settings::XML, &crate::settings::COOKIE);
+    let plain = features(json!({"application/json": {"schema": object}}), json!([]), "header");
+    assert!(!plain.contains(xml) && !plain.contains(cookie), "{plain:?}");
+    let listed = features(part("application/json, application/xml"), json!([]), "header");
+    assert!(listed.contains(xml), "{listed:?}");
+    let json_part = features(part("application/json"), json!([]), "header");
+    assert!(!json_part.contains(xml), "{json_part:?}");
+    let in_cookie = features(json!({"application/json": {"schema": object}}), json!([]), "cookie");
+    assert!(in_cookie.contains(cookie), "{in_cookie:?}");
+    let cookie_param = json!([{"name": "session", "in": "cookie", "schema": {"type": "string"}}]);
+    let param = features(json!({"application/json": {"schema": object}}), cookie_param, "header");
+    assert!(param.contains(cookie), "{param:?}");
+}
