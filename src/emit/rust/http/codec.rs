@@ -416,7 +416,7 @@ pub(crate) fn decode_contents(
 }
 
 /// Does decoding use the `Content-Type` (`ct`)? To choose among several, for a multipart boundary or for the media
-/// type that a [`runtime::Blob`] of a range keeps.
+/// type that a [`honig::Blob`] of a range keeps.
 pub(crate) fn needs_ct(contents: &[Content]) -> bool {
     contents.len() > 1
         || contents

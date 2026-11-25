@@ -1,4 +1,4 @@
-//! Every body codec that the runtime offers is a path of `runtime/benches/paths`. `scaling` checks those for growth. A
+//! Every body codec that honig offers is a path of `honig/benches/paths`. `scaling` checks those for growth. A
 //! codec that it leaves out could grow quadratically unseen.
 
 use std::fs;
@@ -22,12 +22,12 @@ impl Visit<'_> for Codecs {
 #[test]
 fn every_runtime_codec_is_a_bench_path() {
     let mut found = vec![];
-    sources(&root().join("runtime").join("src"), &mut found);
+    sources(&root().join("honig").join("src"), &mut found);
     let mut codecs = Codecs(vec![]);
     for (_, text) in &found {
         codecs.visit_file(&syn::parse_file(text).unwrap());
     }
-    let scaling = fs::read_to_string(root().join("runtime").join("benches").join("support").join("paths.rs")).unwrap();
+    let scaling = fs::read_to_string(root().join("honig").join("benches").join("support").join("paths.rs")).unwrap();
     let timed = |name: &str| {
         scaling.match_indices(name).any(|(at, _)| {
             let before = scaling.get(..at).and_then(|s| s.chars().next_back());
@@ -38,5 +38,5 @@ fn every_runtime_codec_is_a_bench_path() {
     };
     let missing: Vec<&String> = codecs.0.iter().filter(|n| !timed(n)).collect();
     assert!(!codecs.0.is_empty(), "no codecs found: the scan is broken");
-    assert!(missing.is_empty(), "add to runtime/benches/support/paths.rs: {missing:?}");
+    assert!(missing.is_empty(), "add to honig/benches/support/paths.rs: {missing:?}");
 }

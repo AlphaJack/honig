@@ -1,4 +1,4 @@
-//! The router: the `Op` enum, the route trie, base paths and the `Routes` that the runtime serves.
+//! The router: the `Op` enum, the route trie, base paths and the `Routes` that honig serves.
 
 use std::collections::{BTreeMap, BTreeSet};
 

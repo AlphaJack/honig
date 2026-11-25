@@ -1,6 +1,6 @@
 # Settings
 
-`cargo honig init openapi.yaml` writes the module `api` with the settings that most crates change. Here the runtime also sends through `reqwest` and types `format: uuid` as `uuid::Uuid`:
+`cargo honig init openapi.yaml` writes the module `api` with the settings that most crates change. Here honig also sends through `reqwest` and types `format: uuid` as `uuid::Uuid`:
 
 ```toml
 [dependencies]
@@ -31,7 +31,7 @@ Each table `[package.metadata.honig.<module>]` is one module and sets what is ge
 `operations = ["getOrder"]` on the module table keeps only those operations, by `operationId`, for both halves: the
 client calls them, the server serves them, and the module contains only the types that they reach.
 
-An adapter is a feature of the runtime. `features = ["client", "reqwest"]` adds `ReqwestTransport` and `features = ["server", "axum"]` adds `into_axum`. [Adapters](adapters.md) lists them all.
+An adapter is a feature of honig. `features = ["client", "reqwest"]` adds `ReqwestTransport` and `features = ["server", "axum"]` adds `into_axum`. [Adapters](adapters.md) lists them all.
 
 ## Several root documents
 

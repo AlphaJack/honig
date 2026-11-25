@@ -1,4 +1,4 @@
-//! The runtime features the generated code needs from the target crate.
+//! honig features the generated code needs from the target crate.
 
 use std::collections::BTreeSet;
 
@@ -10,7 +10,7 @@ use crate::ir::security::{SchemeKind, SecurityScheme};
 use crate::ir::types::{Format, Ty, def_types};
 use crate::settings::{BASE64, CLIENT, COOKIE, FormatLibs, IDN, MULTIPART, OAUTH, PKCE, REGRESS, SERVER, XML};
 
-/// Returns the runtime features that the description needs whatever the crate depends on. That is the halves that it
+/// Returns honig features that the description needs whatever the crate depends on. That is the halves that it
 /// generates and the codecs, checks and flows that they call. `patterns`: it has a `pattern`. [`uses_pattern`] finds
 /// it.
 pub(crate) fn runtime_features(
@@ -39,7 +39,7 @@ pub(crate) fn runtime_features(
     features
 }
 
-/// Returns the runtime codecs that the generated code calls. That is for a body or part in their media types, a
+/// Returns honig codecs that the generated code calls. That is for a body or part in their media types, a
 /// `Cookie` API key or a cookie parameter that the server parses. The client writes one without the parser of the
 /// runtime.
 fn codecs(api: &Api, server: bool) -> Vec<&'static str> {
@@ -64,20 +64,20 @@ fn codecs(api: &Api, server: bool) -> Vec<&'static str> {
     needed.into_iter().filter_map(|(feature, on)| on.then_some(feature)).collect()
 }
 
-/// Returns the runtime features of the string formats that a description uses. `idn` is for the types of mail addresses
+/// Returns honig features of the string formats that a description uses. `idn` is for the types of mail addresses
 /// and host names. `regress` checks `regex` without its library type.
 fn format_checks(api: &Api, libs: &FormatLibs) -> Vec<&'static str> {
     let mut used = BTreeSet::new();
     for ty in every_ty(api) {
         formats_in(ty, &mut used);
     }
-    // A type that the table sets parses text that the runtime checked first.
+    // A type that the table sets parses text that honig checked first.
     let checked = |formats: &[Format]| {
         formats.iter().any(|f| used.contains(f) && (untyped(libs, *f) || libs.named.contains_key(f)))
     };
     let mail = [Format::Email, Format::IdnEmail, Format::Hostname, Format::IdnHostname];
     let needed = [
-        // The types of mail addresses and host names are the runtime's own.
+        // The types of mail addresses and host names are honig's own.
         (IDN, mail.iter().any(|f| used.contains(f))),
         // The libraries that would type these formats check them.
         (REGRESS, checked(&[Format::Regex])),
@@ -119,7 +119,7 @@ fn formats_in(ty: &Ty, out: &mut BTreeSet<Format>) {
     ty.children().iter().for_each(|x| formats_in(x, out));
 }
 
-/// What the document's schemas use that turns on a runtime feature, found by scanning them as written.
+/// What the document's schemas use that turns on a honig feature, found by scanning them as written.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Uses {
     /// `pattern` or `patternProperties`: [`uses_pattern`].

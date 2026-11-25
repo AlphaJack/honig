@@ -3,7 +3,7 @@
 
 /// Writes an object type: the struct with the serde attributes of each field, and its `Serialize` and `Deserialize`.
 /// `Deserialize` decodes through `NoSeq`: `type: object` accepts no array. The serde attributes refer to `runtime::`
-/// paths, so the calling module imports the runtime as `runtime`. The body is a struct, so it looks and prints as one.
+/// paths, so the calling module imports honig as `runtime`. The body is a struct, so it looks and prints as one.
 ///
 /// A marker first on a field picks its kind:
 ///

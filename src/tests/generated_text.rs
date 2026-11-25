@@ -65,7 +65,7 @@ fn generated_text_has_no_banners_boilerplate_docs_or_products() {
                 if BOILERPLATE.iter().any(|(start, end)| t.starts_with(start) && t.ends_with(end)) {
                     hits.push(format!("boilerplate doc: {}", at()));
                 }
-                // The runtime is the generator's own text; other files may echo the spec.
+                // honig is the generator's own text; other files may echo the spec.
                 if (file == "runtime.rs" || !spec_mentions_products) && t.starts_with("//") && mentions_products(t) {
                     hits.push(format!("products: {}", at()));
                 }

@@ -6,7 +6,7 @@ use syn::{
     visit::{self, Visit},
 };
 
-/// The generator's sources: the runtime's decoders hand their messages to generated code.
+/// The generator's sources: honig's decoders hand their messages to generated code.
 const GENERATOR: &str = "src/";
 
 /// The lines of functions returning `Result<_, String>`.

@@ -19,7 +19,7 @@ use syn::{
 use super::is_test;
 
 /// The source folders of the packages checked.
-const PACKAGES: &[&str] = &["src", "runtime/src"];
+const PACKAGES: &[&str] = &["src", "honig/src"];
 
 /// Bodies of fewer tokens are too short to say the same thing twice, such as `{ Ok(()) }` and `self.name.clone()`.
 const SHORTEST_BODY: usize = 10;

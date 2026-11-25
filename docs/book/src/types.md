@@ -105,7 +105,7 @@ The type features of the `honig` dependency pick the type of each string format:
 honig = { version = "=x.y.z", features = ["client", "server", "uuid", "url", "ipnet", "jiff"] }
 ```
 
-The runtime re-exports each crate. So generated code refers to `api::runtime::uuid::Uuid` and your crate needs no `uuid` dependency of its own. Your code can still write `uuid::Uuid` with its own `uuid` dependency of the same major version: cargo builds one copy.
+honig re-exports each crate. So generated code refers to `api::runtime::uuid::Uuid` and your crate needs no `uuid` dependency of its own. Your code can still write `uuid::Uuid` with its own `uuid` dependency of the same major version: cargo builds one copy.
 
 {{#include generated/formats.md}}
 
@@ -120,11 +120,11 @@ The key is the name of the format. The value is the path of a type, without gene
 
 `format: time` has an offset (`08:30:06+02:00`), and no `jiff` time type supports one. So it is `api::FullTime` with or without `jiff`: plain numbers (`hour`, `minute`, `second`, `nanosecond`, `offset_seconds`) and whether the second was a leap second. With `jiff` on, `time()` and `offset()` return it as `jiff` types.
 
-A format without its feature is its checked text, such as `api::UuidStr` or `api::DateTimeStr`. Only text of the format is one: `try_from`, `parse` and decoding check it as the library would on parsing. It derefs to `str`. Some checks need a runtime feature. `generate` stops and prints the `cargo add` line when it is off. [Adapters](adapters.md) lists the features.
+A format without its feature is its checked text, such as `api::UuidStr` or `api::DateTimeStr`. Only text of the format is one: `try_from`, `parse` and decoding check it as the library would on parsing. It derefs to `str`. Some checks need a honig feature. `generate` stops and prints the `cargo add` line when it is off. [Adapters](adapters.md) lists the features.
 
 A library accepts more than its format allows. `jiff` accepts `2024-06-19 08:30Z` as a `date-time`. `uuid` accepts `{...}` and `url` accepts a space. So a library type in a property, a branch of a union, a newtype, a parameter or a body has its text validated first, as a `String` of that format is. The items of a body decoded as it arrives are validated one at a time. Then the library parses it. A server decoding a request and a client decoding a response check alike. A fraction of a second past nine digits is cut: `jiff` stores nanoseconds.
 
-Mail addresses and host names are types of the runtime. Only a valid value can be one of them. `try_from` and decoding check the value. They need the `idn` feature of the runtime when the description uses them:
+Mail addresses and host names are types of honig. Only a valid value can be one of them. `try_from` and decoding check the value. They need the `idn` feature of honig when the description uses them:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_catalog/schemas.rs:email}}
@@ -152,7 +152,7 @@ A number in such a value rounds when it is past `u64`. It also rounds when it ha
 
 ## Checked types
 
-A string with a `pattern`, `minLength` or `maxLength` is a type of its own. So is an integer or number with `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum` or `multipleOf`. Only valid values can be that type: `try_from` and decoding check the keywords and return the first one that the value breaks. The `regress` feature of the runtime checks `pattern`. The generated code needs it when the description uses `pattern`. A limit beside `x-rust-type` runs on the JSON value before it converts to your type. A `minLength`, `maxLength` or `pattern` on a `format: byte` field runs on its base64 text. A `pattern`, `minLength` or `maxLength` beside a `format` with a type of its own, such as `uuid` or `date-time`, runs on the text that the value writes. A `pattern` that is not an ECMA-262 regular expression fails generation: its type could not check it:
+A string with a `pattern`, `minLength` or `maxLength` is a type of its own. So is an integer or number with `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum` or `multipleOf`. Only valid values can be that type: `try_from` and decoding check the keywords and return the first one that the value breaks. The `regress` feature of honig checks `pattern`. The generated code needs it when the description uses `pattern`. A limit beside `x-rust-type` runs on the JSON value before it converts to your type. A `minLength`, `maxLength` or `pattern` on a `format: byte` field runs on its base64 text. A `pattern`, `minLength` or `maxLength` beside a `format` with a type of its own, such as `uuid` or `date-time`, runs on the text that the value writes. A `pattern` that is not an ECMA-262 regular expression fails generation: its type could not check it:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_catalog/schemas.rs:pattern}}

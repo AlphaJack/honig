@@ -1,4 +1,4 @@
-<!-- Generated from runtime/src/server/range.rs by src/tests/docs_pages.rs. Edit the source, not this file. -->
+<!-- Generated from honig/src/server/range.rs by src/tests/docs_pages.rs. Edit the source, not this file. -->
 
 Range requests (RFC 9110 section 14): one byte range of a binary response, for a download that resumes or a
 player that seeks.

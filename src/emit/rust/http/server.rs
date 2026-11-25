@@ -58,7 +58,7 @@ fn operation_type(op: &Operation) -> proc_macro2::Ident {
     ident(if is_path(op) { "Operation" } else { "WebhookOperation" })
 }
 
-/// Returns `name`: one variant per operation of `ops`, each to its `runtime::Op`. Then the runtime types typed by it
+/// Returns `name`: one variant per operation of `ops`, each to its `runtime::Op`. Then honig types typed by it
 /// under the names in `aliases` (`Context` to `runtime::Context`), the one way your code refers to them.
 fn operation_enum(name: &str, ops: &[&Operation], aliases: &[(&str, &str)]) -> TokenStream {
     let name = ident(name);
@@ -255,7 +255,7 @@ fn webhooks(api: &Api, allow_unimplemented: bool, filled: bool) -> Option<TokenS
 /// `206` (or `2XX`) or a `Range` parameter. Then its handler answers ranges itself.
 fn serves_ranges(op: &Operation) -> bool {
     let own_206 = op.responses.iter().any(|r| {
-        matches!(r.status, Status::Code(c) if c == runtime::http::StatusCode::PARTIAL_CONTENT)
+        matches!(r.status, Status::Code(c) if c == honig::http::StatusCode::PARTIAL_CONTENT)
             || r.status == Status::Range(2)
     });
     let own_range = op.params.iter().any(|p| p.location == Location::Header && p.wire.eq_ignore_ascii_case("range"));

@@ -1,4 +1,4 @@
-//! Requests and responses: the types of the `http` crate with a [`Body`] of the runtime.
+//! Requests and responses: the types of the `http` crate with a [`Body`] of honig.
 
 use std::borrow::Cow;
 

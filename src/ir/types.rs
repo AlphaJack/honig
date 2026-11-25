@@ -624,7 +624,7 @@ pub(crate) enum Format {
     /// `{type: string, format: decimal128}`: text checked as a decimal that IEEE 754 decimal128 represents exactly.
     /// That is at most 34 significant digits within its exponent range.
     Decimal128,
-    /// `format: email` (RFC 5321 Mailbox): `runtime::EmailStr` (the runtime's `idn` feature).
+    /// `format: email` (RFC 5321 Mailbox): `runtime::EmailStr` (honig's `idn` feature).
     Email,
     /// `format: idn-email` (RFC 6531 with UTF-8 allowed): `runtime::IdnEmailStr`.
     IdnEmail,
@@ -646,7 +646,7 @@ pub(crate) enum Format {
     JsonPointer,
     /// `format: relative-json-pointer`.
     RelativeJsonPointer,
-    /// `format: regex`: an ECMA-262 regular expression (the runtime's `regress` feature).
+    /// `format: regex`: an ECMA-262 regular expression (honig's `regress` feature).
     Regex,
     /// `format: uri-template` (RFC 6570).
     UriTemplate,

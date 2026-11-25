@@ -92,7 +92,7 @@ fn a_handler_returns_its_operations_result() {
     assert!(server.contains("Output = ops::a::Result>"), "{server}");
 }
 
-/// The runtime's checked text of a format sits beside the types that hold it: `types::UuidStr`. A schema of that name
+/// honig's checked text of a format sits beside the types that hold it: `types::UuidStr`. A schema of that name
 /// keeps it.
 #[test]
 fn format_strs_sit_beside_the_types() {
@@ -271,7 +271,7 @@ fn params_always_have_new_and_default_only_without_arguments() {
 }
 
 /// A string with a `pattern` is always a checked newtype. The description uses `pattern`. So generated code needs the
-/// `regress` feature of the runtime.
+/// `regress` feature of honig.
 #[test]
 fn pattern_strings_are_always_checked_newtypes() {
     let doc = common::spec(
@@ -319,7 +319,7 @@ fn the_authorization_code_client_alone_turns_on_pkce() {
     assert!(!features("shape-pkce-none", &credentials, &both).contains(&crate::settings::PKCE));
 }
 
-/// A client of any `OAuth` 2.0 flow, or of discovery alone, turns on the runtime's `oauth` helpers.
+/// A client of any `OAuth` 2.0 flow, or of discovery alone, turns on honig's `oauth` helpers.
 #[test]
 fn each_oauth_flow_alone_turns_on_oauth() {
     let urls = json!({"tokenUrl": "https://shop.example/token", "authorizationUrl": "https://shop.example/auth",
@@ -440,7 +440,7 @@ fn a_tag_too_deep_is_left_out() {
     assert!(!ops.contains("pub mod tags"), "{ops}");
 }
 
-/// The string formats of a description turn on the runtime features that check them, and nothing else: `idn` for mail
+/// The string formats of a description turn on honig features that check them, and nothing else: `idn` for mail
 /// addresses and host names (typed or not), `regress` for `regex` without a library, `jiff` for `time` with jiff dates.
 #[test]
 fn formats_turn_on_the_features_that_check_them() {
@@ -724,7 +724,7 @@ fn a_text_error_body_is_filled() {
 }
 
 /// Each operation sets the name of its span by the HTTP server conventions of OpenTelemetry. The `tracing`
-/// feature of the runtime opens it. So generated code never refers to `tracing`.
+/// feature of honig opens it. So generated code never refers to `tracing`.
 #[test]
 fn operations_carry_their_otel_span_name() {
     let doc = common::spec(
@@ -740,7 +740,7 @@ fn operations_carry_their_otel_span_name() {
         common::file(&common::generate("shape-span", &doc, &crate::emit::Options::default()), "server.rs").to_owned();
     let squashed: String = server.split_whitespace().collect();
     assert!(squashed.contains(r#""GET","/products/{productId}","GET/products/{productId}""#), "{server}");
-    // The span itself is the runtime's `tracing` feature: generated code never refers to `tracing`.
+    // The span itself is honig's `tracing` feature: generated code never refers to `tracing`.
     assert!(!server.contains("tracing"), "{server}");
 }
 
@@ -1139,7 +1139,7 @@ fn an_any_of_is_judged_by_its_variants() {
     assert!(types.contains("of `oneOf`, not exactly one"), "the `oneOf` counts: {types}");
 }
 
-/// `format: time` is the runtime's `FullTime` whatever the date library: neither date library has a time with an
+/// `format: time` is honig's `FullTime` whatever the date library: neither date library has a time with an
 /// offset, and `FullTime` stores plain numbers.
 #[test]
 fn a_time_with_its_offset_is_a_full_time_with_any_date_library() {
@@ -1257,7 +1257,7 @@ fn a_range_check_names_its_bounds() {
     );
 }
 
-/// A pattern check prints its pattern once, in its `static`: the runtime writes the message from it. A checked type
+/// A pattern check prints its pattern once, in its `static`: honig writes the message from it. A checked type
 /// also exposes it as `PATTERN`.
 #[test]
 fn a_pattern_is_printed_once_per_check() {
@@ -2023,7 +2023,7 @@ fn a_part_encoding_nests_three_deep_at_most() {
     }
 }
 
-/// Binary data in JSON is base64: a field of it turns on the runtime's `base64`, as does a list of it.
+/// Binary data in JSON is base64: a field of it turns on honig's `base64`, as does a list of it.
 #[test]
 fn binary_data_turns_on_base64() {
     for field in [
@@ -2064,7 +2064,7 @@ fn xml_lists_of_one_item_name_are_a_warning() {
     assert!(!warned(json!({"a": list(false), "b": list(true)})), "one wrapped");
 }
 
-/// `Content-Type`, `Accept` and `Authorization` headers belong to the runtime: such a header parameter is left out. A
+/// `Content-Type`, `Accept` and `Authorization` headers belong to honig: such a header parameter is left out. A
 /// query parameter of that name is the description's own.
 #[test]
 fn only_header_parameters_of_runtime_names_are_left_out() {
@@ -2266,7 +2266,7 @@ fn a_checked_type_reads_json_text_once() {
     assert!(types.contains("runtime::checked_deserialize!(") && types.contains(", once);"), "{types}");
 }
 
-/// The impls that every enum and checked newtype shares come from the runtime: a module calls them and contains no
+/// The impls that every enum and checked newtype shares come from honig: a module calls them and contains no
 /// copy.
 #[test]
 fn shared_impls_are_runtime_macros_and_not_copies() {

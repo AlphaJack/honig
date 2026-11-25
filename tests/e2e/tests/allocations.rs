@@ -9,7 +9,7 @@ mod cost;
 #[path = "../cost/roundtrip.rs"]
 mod roundtrip;
 
-/// The mutexes that the runtime makes for one request that a generated server answers: the slot of the request body
+/// The mutexes that honig makes for one request that a generated server answers: the slot of the request body
 /// and the `RequestEvent`. The baselines make none.
 const SERVER_LOCKS: u64 = 2;
 

@@ -72,7 +72,7 @@ pub(crate) fn style(p: &Param) -> TokenStream {
     style_variant(p.style)
 }
 
-/// Returns the runtime's `Style` variant for a parameter style.
+/// Returns honig's `Style` variant for a parameter style.
 pub(crate) fn style_variant(style: Style) -> TokenStream {
     let name = match style {
         Style::Simple => "Simple",
@@ -127,9 +127,9 @@ pub(crate) fn variant_codes(op: &Operation, r: &Resp) -> Vec<u16> {
     };
     let codes = match r.status {
         Status::Range(n) => n * 100..n * 100 + 100,
-        Status::Code(_) | Status::Default => runtime::__private::FINAL,
+        Status::Code(_) | Status::Default => honig::__private::FINAL,
     };
-    codes.filter(|c| runtime::__private::reason(*c).is_some() && !taken(*c)).collect()
+    codes.filter(|c| honig::__private::reason(*c).is_some() && !taken(*c)).collect()
 }
 
 /// How a response variant carries its data.
@@ -439,7 +439,7 @@ impl Resp {
 
     /// Is it an error: a code of 400 or more, the `4XX` or `5XX` range, or `default`? `1XX` and `3XX` are neither.
     pub(crate) fn is_error(&self) -> bool {
-        matches!(self.status, Status::Code(c) if c >= runtime::http::StatusCode::BAD_REQUEST.as_u16())
+        matches!(self.status, Status::Code(c) if c >= honig::http::StatusCode::BAD_REQUEST.as_u16())
             || matches!(self.status, Status::Range(r) if r >= ERROR_CLASS)
             || self.status == Status::Default
     }

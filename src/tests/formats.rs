@@ -23,7 +23,7 @@ fn types_rs(test: &str, jiff: bool) -> String {
     common::file(&common::generate(test, &doc, &opts), "types.rs").to_owned()
 }
 
-/// `time` has an offset (`08:30:06Z`) that no `jiff` time type represents. It is the runtime's `FullTime`, plain
+/// `time` has an offset (`08:30:06Z`) that no `jiff` time type represents. It is honig's `FullTime`, plain
 /// numbers, with or without `jiff`.
 #[test]
 fn time_is_a_full_time_with_any_date_library() {

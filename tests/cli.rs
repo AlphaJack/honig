@@ -71,13 +71,13 @@ fn scratch_crate(name: &str) -> PathBuf {
     dir
 }
 
-/// The runtime features that the code generated from the `shop` description needs.
+/// honig features that the code generated from the `shop` description needs.
 const SHOP: &[&str] = &["client", "server", "pkce", "oauth", "cookie", "base64", "idn", "multipart", "xml"];
 
-/// Adds the runtime of this checkout to the crate in `dir` with `features`, as `cargo add` would.
+/// Adds honig of this checkout to the crate in `dir` with `features`, as `cargo add` would.
 fn add_runtime(dir: &Path, features: &[&str]) {
     let manifest = dir.join("Cargo.toml");
-    let runtime = Path::new(env!("CARGO_MANIFEST_DIR")).join("runtime");
+    let runtime = Path::new(env!("CARGO_MANIFEST_DIR")).join("honig");
     let features: Vec<String> = features.iter().map(|f| format!("\"{f}\"")).collect();
     let line = format!(
         "\n[dependencies]\nhonig = {{ version = \"={}\", path = {:?}, features = [{}] }}\n",

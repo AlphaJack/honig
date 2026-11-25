@@ -1,18 +1,18 @@
-//! The runtime dependency in the target crate's `Cargo.toml`.
+//! the honig dependency in the target crate's `Cargo.toml`.
 //!
-//! Generated code needs the runtime at exactly the version of the generator (`=x.y.z`) with the features that it
+//! Generated code needs honig at exactly the version of the generator (`=x.y.z`) with the features that it
 //! calls. The dependency is yours: `generate` and `check` stop and print the `cargo add` line that fixes it.
 
 use crate::emit::rust::RUNTIME_VERSION;
 use crate::error::Error;
 use crate::settings::{FEATURES, Manifest, RUNTIME};
 
-/// Checks that the crate depends on the runtime at the version of the generator with every feature in `needed`.
+/// Checks that the crate depends on honig at the version of the generator with every feature in `needed`.
 ///
 /// # Errors
-/// The crate has no runtime dependency, it requires another version or it lacks a feature in `needed`.
+/// The crate has no honig dependency, it requires another version or it lacks a feature in `needed`.
 pub(crate) fn check_runtime(manifest: &Manifest, needed: &[&str]) -> Result<(), Error> {
-    // In the order of the runtime's `[features]`, whatever order the modules found them in.
+    // In the order of honig's `[features]`, whatever order the modules found them in.
     let needed: Vec<&str> = FEATURES.iter().map(|(name, _)| *name).filter(|name| needed.contains(name)).collect();
     let version = format!("={RUNTIME_VERSION}");
     let Some(dep) = manifest.runtime() else {

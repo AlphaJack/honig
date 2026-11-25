@@ -1,4 +1,4 @@
-<!-- Generated from runtime/Cargo.toml by src/tests/docs_pages.rs. Edit the source, not this file. -->
+<!-- Generated from honig/Cargo.toml by src/tests/docs_pages.rs. Edit the source, not this file. -->
 
 | Feature | Crate | Adds | Needed when |
 |---|---|---|---|
@@ -23,4 +23,4 @@
 | `multipart` | multer | `multipart/*` bodies and parts | The description calls for it |
 | `base64` | base64 | Binary data in JSON (`format: byte`, `contentEncoding`, `base64url`) and `http basic` credentials | The description calls for it |
 | `xml` | quick-xml | XML bodies and parts | The description calls for it |
-| `simd` | sonic-rs | SIMD for large bodies: JSON with `sonic-rs` (x86_64 and aarch64), the UTF-8 check of text with `simdutf8` and base64 with `base64-simd`. Multipart boundaries use `memchr` with or without it | Optional |
+| `simd` | sonic-rs | SIMD for large bodies: JSON with `sonic-rs` (`x86_64` and `aarch64`), the UTF-8 check of text with `simdutf8` and base64 with `base64-simd`. Multipart boundaries use `memchr` with or without it | Optional |

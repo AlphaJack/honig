@@ -1,4 +1,4 @@
-//! No source file of the generator or the runtime outside the tests runs past 1500 lines: a longer one splits by kind.
+//! No source file of the generator or honig outside the tests runs past 1500 lines: a longer one splits by kind.
 
 /// The longest file allowed.
 const MAX_LINES: usize = 1500;

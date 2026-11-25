@@ -36,7 +36,7 @@ fn offending(file: &str, text: &str, code: bool) -> Vec<String> {
 /// The Markdown and TOML files that a reader sees: the sources of the book, the READMEs and the manifests.
 fn prose() -> Vec<(String, String)> {
     let mut files: Vec<String> =
-        ["README.md", "CONTRIBUTING.md", "Cargo.toml", "runtime/README.md", "runtime/Cargo.toml", "clippy.toml"]
+        ["README.md", "CONTRIBUTING.md", "Cargo.toml", "honig/README.md", "honig/Cargo.toml", "clippy.toml"]
             .map(str::to_owned)
             .to_vec();
     let book = root().join("docs").join("book").join("src");

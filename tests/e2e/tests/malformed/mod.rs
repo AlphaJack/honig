@@ -59,7 +59,7 @@ const EDGES: &[&str] = &[
     "not-a-uuid",
 ];
 
-/// Headers that the runtime parses for every operation.
+/// Headers that honig parses for every operation.
 const HEADER_NAMES: &[&str] = &[
     "Accept",
     "Authorization",

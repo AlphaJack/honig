@@ -1,4 +1,4 @@
-//! Edge cases of the codecs that the runtime uses from crates (quick-xml, multer, percent-encoding, `form_urlencoded`
+//! Edge cases of the codecs that honig uses from crates (quick-xml, multer, percent-encoding, `form_urlencoded`
 //! and cookie). Each test asserts behaviour that a swap or a rewrite must keep.
 
 #![expect(clippy::unwrap_used, reason = "test code fails loudly")]

@@ -1,4 +1,4 @@
-<!-- Generated from runtime/src/server/auth.rs by src/tests/docs_pages.rs. Edit the source, not this file. -->
+<!-- Generated from honig/src/server/auth.rs by src/tests/docs_pages.rs. Edit the source, not this file. -->
 
 What a `verify_` method of the `Api` found for a credential and the scopes that the credential grants.
 

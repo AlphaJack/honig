@@ -74,7 +74,7 @@ pub fn violation(out: &mut Vec<Violation>, location: &InstanceLocation<'_>, mess
 
 /// Checks a string `format` the crate has no library type for: what parsing into that type would refuse.
 ///
-/// The runtime checks each format by its own grammar: `uuid`, the dates and times, `uri`, the CIDR blocks, `decimal`
+/// honig checks each format by its own grammar: `uuid`, the dates and times, `uri`, the CIDR blocks, `decimal`
 /// and the rest. `regex` needs the feature `regress`, and mail addresses and host names the feature `idn`. A format
 /// that it does not know passes.
 #[cfg_attr(

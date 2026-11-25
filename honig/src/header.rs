@@ -1,4 +1,4 @@
-//! Header values to and from text. Nothing here depends on the rest of the runtime.
+//! Header values to and from text. Nothing here depends on the rest of honig.
 
 use std::borrow::Cow;
 

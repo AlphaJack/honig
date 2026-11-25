@@ -357,7 +357,7 @@ pub(crate) fn challenge(resp: &mut Response, security: &[&[Requirement]]) {
     }
 }
 
-/// One operation for the tests of the runtime.
+/// One operation for the tests of honig.
 #[cfg(test)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct TestOp;

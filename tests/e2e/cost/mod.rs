@@ -749,7 +749,7 @@ unsafe impl GlobalAlloc for Counting {
 static GLOBAL: Counting = Counting;
 
 /// The allocations of a `std::sync::Mutex` on its first lock. Where std builds it on a pthread mutex (Apple targets)
-/// it boxes one: 1. Where it builds it on a futex (Linux, the CI) none: 0. The runtime makes a few per request.
+/// it boxes one: 1. Where it builds it on a futex (Linux, the CI) none: 0. honig makes a few per request.
 #[allow(dead_code, reason = "the time bench does not count allocations")]
 pub fn lock_box() -> u64 {
     let lock = std::sync::Mutex::new(());
@@ -845,7 +845,7 @@ pub async fn times_of(head: &impl AsyncFn(), base: &impl AsyncFn(), rounds: usiz
     }
 }
 
-/// The runtime that requests are served on. One thread: the allocations that it counts are the request's.
+/// honig that requests are served on. One thread: the allocations that it counts are the request's.
 pub fn runtime() -> tokio::runtime::Runtime {
     tokio::runtime::Builder::new_current_thread().enable_all().build().expect("a tokio runtime")
 }

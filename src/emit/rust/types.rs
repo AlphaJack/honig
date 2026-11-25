@@ -108,7 +108,7 @@ pub(super) fn emit(api: &crate::ir::Api, space: &Space<'_>, opts: &crate::emit::
     quote! { #header #runtime_import #strs #(#items)* #builders }
 }
 
-/// Returns `pub use` of the runtime's checked text types that `items` hold, so that they sit beside the types of the
+/// Returns `pub use` of honig's checked text types that `items` hold, so that they sit beside the types of the
 /// description. A type of the description with the same name keeps it.
 fn format_strs(space: &Space<'_>, items: &[TokenStream]) -> Option<TokenStream> {
     let text: String = items.iter().map(ToString::to_string).collect();

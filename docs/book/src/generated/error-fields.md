@@ -1,4 +1,4 @@
-<!-- Generated from runtime/src/reject.rs by src/tests/docs_pages.rs. Edit the source, not this file. -->
+<!-- Generated from honig/src/reject.rs by src/tests/docs_pages.rs. Edit the source, not this file. -->
 
 | Variant | Meaning |
 |---|---|

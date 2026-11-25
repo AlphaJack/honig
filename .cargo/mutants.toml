@@ -3,7 +3,7 @@ test_workspace = true
 
 # Not the generated code of `tests/e2e` and `examples/shop`: an edit to it is stale, so `tests/regen.rs` catches
 # every mutant of it.
-examine_globs = ["src/**", "runtime/src/**"]
+examine_globs = ["src/**", "honig/src/**"]
 
 # Mutants go to the shards one by one. Then the shards finish together.
 sharding = "round-robin"
@@ -18,10 +18,10 @@ all_features = true
 # Built only for wasm32. The runner never compiles them, so every mutant is missed. The same for the engines that
 # `simd` replaces.
 exclude_globs = [
-  "runtime/src/client/adapters/gloo.rs",
-  "runtime/src/client/adapters/reqwest/wasm.rs",
-  "runtime/src/transport/wasm.rs",
-  "runtime/src/json/plain.rs",
+  "honig/src/client/adapters/gloo.rs",
+  "honig/src/client/adapters/reqwest/wasm.rs",
+  "honig/src/transport/wasm.rs",
+  "honig/src/json/plain.rs",
 ]
 
 # Mutants that change nothing a test can see.
@@ -32,58 +32,58 @@ exclude_re = [
   # A hint: callers must work with any value.
   '::size_hint -> Option<usize>',
   # Forwards to the wrapped serializer. No format of the runtime uses it.
-  'runtime/src/(finite|path|integral|no_seq)\.rs:.*is_human_readable',
-  'runtime/src/path\.rs:\d+:\d+: replace <impl de::VariantAccess<.*>::unit_variant -> ',
+  'honig/src/(finite|path|integral|no_seq)\.rs:.*is_human_readable',
+  'honig/src/path\.rs:\d+:\d+: replace <impl de::VariantAccess<.*>::unit_variant -> ',
   # Needs a server on the network. The build without `remote-refs` is not mutated.
   'src/resolve\.rs:.*replace download -> ',
   # The 16 MiB default of `max_body_bytes`.
-  'runtime/src/reject\.rs:\d+:\d+: replace \* with \+$',
+  'honig/src/reject\.rs:\d+:\d+: replace \* with \+$',
   # The same pass walks and hoists what adoption brought in. Another pass after adoption alone finds nothing.
   'src/resolve\.rs:\d+:\d+: replace \|\| with && in bundle_with$',
   # A fragment that is empty or a pointer finds no anchor either way.
   'src/resolve\.rs:\d+:\d+: replace && with \|\| in fetch$',
   # When a decoder drops the records it returned. Later only costs memory.
-  'runtime/src/stream\.rs:\d+:\d+: replace (/ with \*|> with <|> with >=) in Decoder<T>::poll_item$',
+  'honig/src/stream\.rs:\d+:\d+: replace (/ with \*|> with <|> with >=) in Decoder<T>::poll_item$',
   # One more item in a piece of a streamed body. The bytes are the same.
-  'runtime/src/stream\.rs:319:\d+: replace < with <= in ',
+  'honig/src/stream\.rs:319:\d+: replace < with <= in ',
   # Three bytes contain no whole event: waiting for a fourth changes nothing.
-  'runtime/src/stream\.rs:872:\d+: replace < with <= in ',
+  'honig/src/stream\.rs:872:\d+: replace < with <= in ',
   # `eol + 1` and `eol * 1`: past the line break either way.
-  'runtime/src/stream\.rs:(930:34|948:37): replace \+ with \* in ',
+  'honig/src/stream\.rs:(930:34|948:37): replace \+ with \* in ',
   # The base64 engine without `simd`. The build has `simd` on.
-  'runtime/src/base64\.rs:(2[4-9]|3\d|4[0-4]):',
+  'honig/src/base64\.rs:(2[4-9]|3\d|4[0-4]):',
   # `from_str` checks what the guard checks: the guard only saves the check.
-  'runtime/src/header\.rs:\d+:\d+: replace (match guard .* with false|\|\| with &&) in header_value$',
+  'honig/src/header\.rs:\d+:\d+: replace (match guard .* with false|\|\| with &&) in header_value$',
   # Pieces joined early decode to the same bytes. The capacity is a hint.
-  'runtime/src/base64\.rs:\d+:\d+: replace && with \|\| in decode_pieces$',
-  'runtime/src/base64\.rs:\d+:\d+: replace [/*] with [-+*/%] in unbase64_mime$',
+  'honig/src/base64\.rs:\d+:\d+: replace && with \|\| in decode_pieces$',
+  'honig/src/base64\.rs:\d+:\d+: replace [/*] with [-+*/%] in unbase64_mime$',
   # A month that does not exist has 0 days: no day is in `1..=0` either way.
-  'runtime/src/formats\.rs:\d+:\d+: replace > with >= in is_date$',
+  'honig/src/formats\.rs:\d+:\d+: replace > with >= in is_date$',
   # An ASCII character that the arm before refused is no `ucschar` or `iprivate` either.
-  'runtime/src/uri\.rs:\d+:\d+: replace match guard !c\.is_ascii\(\) with true in all$',
+  'honig/src/uri\.rs:\d+:\d+: replace match guard !c\.is_ascii\(\) with true in all$',
   # serde_json refuses an optional map key itself.
-  'runtime/src/unique_keys\.rs:\d+:\d+: replace <impl Serializer for KeyText>::serialize_some -> ',
+  'honig/src/unique_keys\.rs:\d+:\d+: replace <impl Serializer for KeyText>::serialize_some -> ',
   # Text that does not start with `[` parses to no array: the guard only saves the parse.
-  'runtime/src/coerce\.rs:\d+:\d+: replace match guard s\.trim_start\(\)\.starts_with\(.*\) with true ',
+  'honig/src/coerce\.rs:\d+:\d+: replace match guard s\.trim_start\(\)\.starts_with\(.*\) with true ',
   # `None` and the error both send the value down the `Value` path.
-  'runtime/src/scalar\.rs:\d+:\d+: replace <impl Serializer for ScalarText>::serialize_(bytes|newtype_variant) -> .* with Ok\(None\)$',
-  'runtime/src/scalar\.rs:\d+:\d+: replace <impl fmt::Display for NotScalar>::fmt ',
+  'honig/src/scalar\.rs:\d+:\d+: replace <impl Serializer for ScalarText>::serialize_(bytes|newtype_variant) -> .* with Ok\(None\)$',
+  'honig/src/scalar\.rs:\d+:\d+: replace <impl fmt::Display for NotScalar>::fmt ',
   # A leading comma on both sides: the text is still the same for equal values only.
-  'runtime/src/checks\.rs:\d+:\d+: replace > with >= in canonical$',
+  'honig/src/checks\.rs:\d+:\d+: replace > with >= in canonical$',
   # A field comes once: no two fields of a body have one index in the shape.
-  'runtime/src/xml_tree/encode\.rs:\d+:\d+: replace > with >= in after$',
+  'honig/src/xml_tree/encode\.rs:\d+:\d+: replace > with >= in after$',
   # One text field per shape: the text is written in order or not streamed, with the same bytes.
-  'runtime/src/xml_tree/encode\.rs:421:42: delete ! in ',
+  'honig/src/xml_tree/encode\.rs:421:42: delete ! in ',
   # An inline object writes neither its attributes nor the properties that its shape does not list.
-  'runtime/src/xml_tree/encode\.rs:\d+:\d+: replace match guard self\.inline( && f\.attribute)? with false in ',
+  'honig/src/xml_tree/encode\.rs:\d+:\d+: replace match guard self\.inline( && f\.attribute)? with false in ',
   # `Ok(())` already, and a stop that no caller writes out.
-  'runtime/src/xml_tree/encode\.rs:\d+:\d+: replace <impl SerializeSeq for Items<.*>::end -> Result with Ok\(Default',
-  'runtime/src/xml_tree/encode\.rs:\d+:\d+: replace <impl fmt::Display for Stop>::fmt ',
+  'honig/src/xml_tree/encode\.rs:\d+:\d+: replace <impl SerializeSeq for Items<.*>::end -> Result with Ok\(Default',
+  'honig/src/xml_tree/encode\.rs:\d+:\d+: replace <impl fmt::Display for Stop>::fmt ',
   # CDATA without a `\r` has nothing to normalize: the owned copy contains the same text.
-  'runtime/src/xml/stream\.rs:\d+:\d+: replace match guard c\.contains\(.\\r.\) with true in ',
+  'honig/src/xml/stream\.rs:\d+:\d+: replace match guard c\.contains\(.\\r.\) with true in ',
   # A shape of 128 fields or more: none is that big.
-  'runtime/src/xml/stream\.rs:\d+:\d+: replace < with <= in Seen::bit$',
+  'honig/src/xml/stream\.rs:\d+:\d+: replace < with <= in Seen::bit$',
   # Members of an object start with a quoted key: without commas the text still tells them apart.
-  'runtime/src/checks\.rs:447:\d+: replace > with (<|==) in canonical$',
-  'runtime/src/checks\.rs:513:\d+: replace > with (<|==|>=) in canonical_content$',
+  'honig/src/checks\.rs:447:\d+: replace > with (<|==) in canonical$',
+  'honig/src/checks\.rs:513:\d+: replace > with (<|==|>=) in canonical_content$',
 ]

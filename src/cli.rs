@@ -265,7 +265,7 @@ struct Module {
     generated: generate::Generated,
 }
 
-/// The modules generated in memory and the runtime features that all of them need.
+/// The modules generated in memory and honig features that all of them need.
 struct Plan {
     runtime: Vec<&'static str>,
     selected: Vec<Module>,
@@ -273,7 +273,7 @@ struct Plan {
 
 /// Generates or checks every module, or only the module `only`.
 ///
-/// The runtime dependency serves every module. So it needs the features of every module, also when `only` writes one
+/// the honig dependency serves every module. So it needs the features of every module, also when `only` writes one
 /// module. Nothing is written when it lacks one.
 fn generate_or_check(check: bool, only: Option<&str>, args: &Args) -> Result<ExitCode, Failure> {
     let manifest = settings::Manifest::load(&args.manifest)?;
@@ -288,7 +288,7 @@ fn generate_or_check(check: bool, only: Option<&str>, args: &Args) -> Result<Exi
     write_modules(&selected, args)
 }
 
-/// Returns every module generated in memory, and the runtime features that all of them need. Only the module `only` is
+/// Returns every module generated in memory, and honig features that all of them need. Only the module `only` is
 /// kept, when there is one. `None` when a module does not generate: its diagnostics are printed.
 fn generate_modules(manifest: &settings::Manifest, only: Option<&str>, args: &Args) -> Result<Option<Plan>, Failure> {
     let modules = settings::modules(manifest, &args.manifest)?;
@@ -329,15 +329,12 @@ fn generate_modules(manifest: &settings::Manifest, only: Option<&str>, args: &Ar
             Err(d) => {
                 print(&d, false);
                 if only.is_some_and(|o| module.name() != o) {
-                    eprintln!(
-                        "[{}] does not generate: Cargo.toml needs the runtime features of every module",
-                        cfg.table
-                    );
+                    eprintln!("[{}] does not generate: Cargo.toml needs honig features of every module", cfg.table);
                 }
                 return Ok(None);
             }
         };
-        // The runtime features every module needs: the halves and the codecs of its description.
+        // honig features every module needs: the halves and the codecs of its description.
         for feature in &generated.runtime_features {
             if !runtime.contains(feature) {
                 runtime.push(feature);

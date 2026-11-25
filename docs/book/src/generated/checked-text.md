@@ -1,4 +1,4 @@
-<!-- Generated from runtime/src/formats.rs by src/tests/docs_pages.rs. Edit the source, not this file. -->
+<!-- Generated from honig/src/formats.rs by src/tests/docs_pages.rs. Edit the source, not this file. -->
 
 | Format | Type | Accepts |
 |---|---|---|

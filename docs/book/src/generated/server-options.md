@@ -1,4 +1,4 @@
-<!-- Generated from runtime/src/server/service.rs by src/tests/docs_pages.rs. Edit the source, not this file. -->
+<!-- Generated from honig/src/server/service.rs by src/tests/docs_pages.rs. Edit the source, not this file. -->
 
 A server for the operations `O` with the tower layers `L` between routing and each operation.
 
