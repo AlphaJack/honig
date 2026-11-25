@@ -120,7 +120,6 @@ pub(crate) fn body_bytes(e: &TokenStream, c: &Content, by_ref: bool) -> Option<T
         MediaKind::Text if matches!(c.ty, Ty::String) => quote!(String::into_bytes(#e)),
         MediaKind::Text => quote!(::honig::__private::text_encode_as(#e)?),
         MediaKind::Xml => quote!(::honig::__private::xml_encode(#arg)?),
-        MediaKind::Bytes if !blob(c) => e.clone(),
         MediaKind::Form if !form_types(c).is_empty() => {
             let styles = form_encode_styles(c);
             let types = form_types(c);
@@ -131,9 +130,6 @@ pub(crate) fn body_bytes(e: &TokenStream, c: &Content, by_ref: bool) -> Option<T
             quote!(::honig::__private::form_encode_styled(#arg, &[#(#styles),*])?)
         }
         MediaKind::Form => quote!(::honig::__private::form_encode(#arg)?),
-        MediaKind::JsonLines if !c.streams() => quote!(::honig::__private::jsonl_encode(#arg)?),
-        MediaKind::JsonSeq if !c.streams() => quote!(::honig::__private::json_seq_encode(#arg)?),
-        MediaKind::Sse if !c.streams() => quote!(::honig::__private::sse_encode(#arg)?),
         MediaKind::Bytes
         | MediaKind::Multipart
         | MediaKind::MultipartMixed
