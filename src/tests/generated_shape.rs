@@ -156,7 +156,7 @@ fn a_struct_with_a_required_field_has_no_default() {
 }
 
 /// `into_result` gives a tuple of the body and headers only when no two have the same type: a reorder of two headers
-/// of one type would swap them without a compile error. Else it gives the response, which names each.
+/// of one type would swap them without a compile error. Else it gives a `Success` struct that names each.
 #[test]
 fn into_result_gives_no_tuple_of_two_values_of_one_type() {
     let header = |schema: serde_json::Value| json!({"schema": schema});
@@ -168,7 +168,11 @@ fn into_result_gives_no_tuple_of_two_values_of_one_type() {
     };
     let same = ops("tuple-same", json!({"type": "string"}));
     assert!(!same.contains("pub type Success"), "{same}");
-    assert!(same.contains("pub fn into_result(self) -> Result<Self, Box<Self>>"), "{same}");
+    assert!(
+        same.contains("pub struct Success {\n        pub e_tag: Option<String>,\n        pub rev: Option<String>,"),
+        "{same}"
+    );
+    assert!(same.contains("pub fn into_result(self) -> Result<Success, Box<Self>>"), "{same}");
     let different = ops("tuple-different", json!({"type": "integer"}));
     assert!(different.contains("pub type Success"), "{different}");
 }
