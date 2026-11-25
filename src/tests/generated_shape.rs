@@ -2683,3 +2683,15 @@ fn a_number_default_is_a_literal_of_its_width() {
         assert!(types.contains(&format!("->{t}{{{literal}}}")), "{literal}: {types}");
     }
 }
+
+/// A field of an alias of a checked type (`A: $ref S`, `S` with `not`) is that type: `S` checks its keywords, so the
+/// field gets no second check of them.
+#[test]
+fn an_alias_of_a_checked_type_is_checked_once() {
+    let schemas = json!({"schemas": {"S": {"type": "string", "not": {"const": "x"}}, "A": {"$ref": "#/components/schemas/S"},
+        "Holder": {"type": "object", "properties": {"a": {"$ref": "#/components/schemas/A"}}}}});
+    let doc = common::spec("3.2.0", &json!({}), &schemas);
+    let types =
+        common::file(&common::generate("alias-checked", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(types.contains("pub a: A,") && !types.contains("pub struct HolderA("), "{types}");
+}
