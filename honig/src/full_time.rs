@@ -23,8 +23,8 @@ pub(crate) fn is_full_time(text: &str) -> bool {
 
 /// `format: time`: an RFC 3339 `full-time` such as `08:30:06.5+01:00`. It keeps its offset and its leap second.
 ///
-/// It stores plain numbers, so no date library is part of it. With the feature `jiff`, [`FullTime::time`] and
-/// [`FullTime::offset`] return it as that library's types.
+/// It stores plain numbers, so no date library is part of it. With the feature `jiff`, its methods `time` and `offset`
+/// return it as that library's types.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct FullTime {
     /// 0 to 23.
