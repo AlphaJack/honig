@@ -1400,3 +1400,18 @@ fn every_subschema_is_validated() {
         assert!(w.iter().any(|m| m.starts_with("/components/schemas/S") && m.contains(&at)), "{key}: {w:#?}");
     }
 }
+
+/// An `Accept` or `Content-Type` header parameter is ignored (OAS 3.2 section 4.12.2): one warning each says so.
+#[test]
+fn an_ignored_header_parameter_is_a_warning() {
+    let param = |name: &str| json!({"name": name, "in": "header", "schema": {"type": "string"}});
+    let paths = json!({"/a": {"get": {"operationId": "a", "parameters": [param("Accept"), param("Content-Type")],
+        "responses": {"204": {"description": "ok"}}}}});
+    let path = common::write("ignored-headers", &doc(&paths, &json!({})), &[]);
+    let made = crate::generate::generate(&path, &Options::default()).expect("generates");
+    for i in ["0", "1"] {
+        let at = format!("/paths/~1a/get/parameters/{i}");
+        let warned = made.diagnostics.iter().filter(|d| d.pointer == at && d.message.contains("is ignored")).count();
+        assert_eq!(warned, 1, "{at}: {:#?}", made.diagnostics);
+    }
+}

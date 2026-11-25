@@ -690,6 +690,11 @@ fn ignored_header(b: &mut Builder<'_>, wire: &str, param: &Value, ptr: &str) -> 
             ptr,
             format!("a required `{wire}` header parameter is ignored: describe authentication with a security scheme"),
         );
+    } else {
+        b.diags.warning(
+            ptr,
+            format!("a `{wire}` header parameter is ignored (OAS 3.2 section 4.12.2): honig sets the header itself"),
+        );
     }
     true
 }
