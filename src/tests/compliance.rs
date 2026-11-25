@@ -449,27 +449,32 @@ fn unevaluated_properties_past_the_depth_limit_warn_through_every_keyword() {
 }
 
 /// A link expression `$response.body#/idd` that reaches no property of the response body is always absent: a warning
-/// at the link. A pointer to a declared property needs none.
+/// at the link. A pointer to a declared property, to a name that an open object keeps, or to an item of an array needs
+/// none.
 #[test]
 fn a_link_pointer_that_reaches_nothing_is_a_warning() {
     let param = json!({"in": "path", "name": "id", "required": true, "schema": {"type": "string"}});
-    let paths = |pointer: &str| {
+    let product = json!({"type": "object", "properties": {"id": {"type": "string"}}});
+    let paths = |body: &Value, pointer: &str| {
         json!({"/start": {"get": {"operationId": "start", "responses": {"200": {"description": "ok",
-            "content": {"application/json": {"schema": {"type": "object", "properties": {"id": {"type": "string"}}}}},
+            "content": {"application/json": {"schema": body}},
             "links": {"next": {"operationId": "get_item", "parameters": {"id": format!("$response.body#{pointer}")}}}}}}},
             "/items/{id}": {"get": {"operationId": "get_item", "parameters": [param],
             "responses": {"204": {"description": "ok"}}}}})
     };
-    let made = |pointer: &str| {
-        let path = common::write("link-pointer", &doc(&paths(pointer), &json!({})), &[]);
-        crate::generate::generate(&path, &Options::default())
-    };
-    let warned = |pointer: &str| {
-        let made = made(pointer).expect("a valid description generates");
+    let warned = |body: &Value, pointer: &str| {
+        let path = common::write("link-pointer", &doc(&paths(body, pointer), &json!({})), &[]);
+        let made = crate::generate::generate(&path, &Options::default()).expect("a valid description generates");
         made.diagnostics.iter().any(|d| d.pointer.ends_with("/links/next/parameters/id"))
     };
-    assert!(!warned("/id"), "a declared property");
-    assert!(warned("/idd"), "no property idd");
+    assert!(!warned(&product, "/id"), "a declared property");
+    assert!(warned(&product, "/idd"), "no property idd");
+    let open = json!({"type": "object", "properties": {"id": {"type": "string"}}, "additionalProperties": true});
+    assert!(!warned(&open, "/idd"), "an open object keeps idd");
+    let list = json!({"type": "array", "items": product});
+    assert!(!warned(&list, "/0/id"), "a property of an item");
+    assert!(warned(&list, "/0/idd"), "no property idd of an item");
+    assert!(warned(&list, "/first/id"), "no index first");
 }
 
 /// A length on a `format: byte` field generates a check of its base64 text.
