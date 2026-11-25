@@ -2800,3 +2800,27 @@ fn a_tag_pinned_deep_in_all_of_is_seen_up_to_the_depth_limit() {
     let counted = item(9);
     assert!(counted.contains("pub struct Item(pub(super) ItemVariants);"), "{counted}");
 }
+
+/// A union's variants take their names from their branches: a `$dynamicRef` from its target, a lone array branch is
+/// `Array`, and a branch that any value passes is the `Other` that the union has already.
+#[test]
+fn union_variants_take_the_names_of_their_branches() {
+    let doc = common::spec(
+        "3.2.0",
+        &json!({}),
+        &json!({"schemas": {
+            "Product": {"$dynamicAnchor": "product", "type": "object", "properties": {"sku": {"type": "string"}}},
+            "Line": {"oneOf": [{"$dynamicRef": "#/components/schemas/Product"}, {"type": "integer"}]},
+            "Skus": {"oneOf": [{"type": "array", "items": {"type": "string"}}, {"type": "integer"}]},
+            "Note": {"oneOf": [{"type": "string"}, {"$comment": "any value"}]},
+        }}),
+    );
+    let types =
+        common::file(&common::generate("variant-names", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(types.contains("pub enum LineVariants {\n    Product(Product),"), "{types}");
+    assert!(types.contains("pub enum Skus {\n    Array(Vec<String>),"), "{types}");
+    assert!(
+        types.contains("pub enum NoteVariants {\n    String(String),\n    Other(serde_json::Value),\n}"),
+        "{types}"
+    );
+}
