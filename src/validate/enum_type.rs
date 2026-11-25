@@ -19,9 +19,8 @@ fn is(v: &Value, t: &str) -> bool {
         "object" => v.is_object(),
         "array" => v.is_array(),
         "number" => v.is_number(),
-        "integer" => {
-            v.as_number().is_some_and(|n| n.is_i64() || n.is_u64() || n.as_f64().is_some_and(|f| f.fract() == 0.0))
-        }
+        // Any integer converts to a float without a fraction, so a whole float such as `7.0` is one too.
+        "integer" => v.as_f64().is_some_and(|f| f.fract() == 0.0),
         _ => true,
     }
 }
@@ -60,6 +59,28 @@ mod tests {
     use serde_json::json;
 
     use super::*;
+
+    /// Each JSON Schema type accepts its own values and none of another type: `7.0` is an integer, `7.5` is not.
+    #[test]
+    fn a_value_is_of_its_own_type_only() {
+        let values = [json!("a"), json!(true), json!(null), json!({}), json!([]), json!(7.5), json!(-7), json!(7.0)];
+        let types = ["string", "boolean", "null", "object", "array", "number", "integer"];
+        let own = |v: &Value| match v {
+            Value::String(_) => vec!["string"],
+            Value::Bool(_) => vec!["boolean"],
+            Value::Null => vec!["null"],
+            Value::Object(_) => vec!["object"],
+            Value::Array(_) => vec!["array"],
+            Value::Number(n) if n.as_f64().is_some_and(|f| f.fract() == 0.0) => vec!["number", "integer"],
+            Value::Number(_) => vec!["number"],
+        };
+        for v in &values {
+            for t in types {
+                assert_eq!(is(v, t), own(v).contains(&t), "{v} as {t}");
+            }
+        }
+        assert!(is(&json!(u64::MAX), "integer"));
+    }
 
     fn count(schema: &Value) -> usize {
         found(&json!({"openapi": "3.2.0", "components": {"schemas": {"S": schema}}})).len()
