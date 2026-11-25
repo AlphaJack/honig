@@ -2638,3 +2638,21 @@ fn macro_bodies_print_one_entry_per_line() {
     let ops = common::file(&files, "operations.rs");
     assert!(ops.contains("            Self::Created => \"status 201 (Created)\",\n"), "{ops}");
 }
+
+/// A keyword beside a `$ref` to a checked type (`minLength` beside a `maxLength` type) is not the type's own: the field
+/// gets a checked type of its own that checks it.
+#[test]
+fn a_keyword_beside_a_checked_type_is_checked() {
+    let code = json!({"type": "string", "maxLength": 9});
+    let holder =
+        json!({"type": "object", "properties": {"code": {"$ref": "#/components/schemas/Code", "minLength": 2}}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Code": code, "Holder": holder}}));
+    let types = common::file(&common::generate("beside-checked", &doc, &crate::emit::Options::default()), "types.rs")
+        .split_whitespace()
+        .collect::<String>();
+    assert!(types.contains("pubcode:HolderCodeChecked,"), "{types}");
+    assert!(
+        types.contains("check_len(out,&::honig::InstanceLocation::Root,n,Some(2),Some(9),\"characters\""),
+        "{types}"
+    );
+}
