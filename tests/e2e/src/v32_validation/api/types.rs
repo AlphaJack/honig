@@ -4606,349 +4606,640 @@ impl TryFrom<serde_json::Value> for NotChecked4 {
 pub mod builders {
     use super as types;
     ::honig::typestate_builder! {
-        Wallet => super::Wallet; required { cents : R0 : types::Cents = "cents" }
-        optional {} fixed {}
-    }
-    ::honig::typestate_builder! {
-        Stamp => super::Stamp; required {} optional { at(at) : String = "at" => nullable,
-        ::honig::Nullable::Absent } fixed {}
-    }
-    ::honig::typestate_builder! {
-        NarrowStamp => super::NarrowStamp; required { at : R0 : types::NarrowStampAt =
-        "at" } optional {} fixed {}
-    }
-    ::honig::typestate_builder! {
-        Exact => super::Exact; required {} optional { tenth(tenth) : types::ExactTenth =
-        "tenth" => some, None, cents(cents) : types::ExactCents = "cents" => some, None }
+        Wallet => super::Wallet;
+        required {
+            cents: R0: types::Cents = "cents",
+        }
+        optional {}
         fixed {}
     }
     ::honig::typestate_builder! {
-        Degenerate => super::Degenerate; required {} optional { huge(huge) :
-        types::DegenerateHuge = "huge" => some, None, fives(fives) :
-        types::DegenerateFives = "fives" => some, None, zero(zero) :
-        types::DegenerateZero = "zero" => some, None, half(half) : types::DegenerateHalf
-        = "half" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        Kinded => super::KindedFields, try_from super::Kinded; required {} optional {
-        kind(kind) : String = "kind" => some, None, x(x) : String = "x" => some, None }
+        Stamp => super::Stamp;
+        required {}
+        optional {
+            at(at): String = "at" => nullable, ::honig::Nullable::Absent,
+        }
         fixed {}
     }
     ::honig::typestate_builder! {
-        TwoElses => super::TwoElsesFields, try_from super::TwoElses; required { kind : R0
-        : String = "kind" } optional { x(x) : String = "x" => some, None, y(y) : String =
-        "y" => some, None, z(z) : String = "z" => some, None } fixed {}
+        NarrowStamp => super::NarrowStamp;
+        required {
+            at: R0: types::NarrowStampAt = "at",
+        }
+        optional {}
+        fixed {}
     }
     ::honig::typestate_builder! {
-        Ledger => super::Ledger; required {} optional { entries(entries) : Vec <
-        types::Entry > = "entries" => some, None } fixed {}
+        Exact => super::Exact;
+        required {}
+        optional {
+            tenth(tenth): types::ExactTenth = "tenth" => some, None,
+            cents(cents): types::ExactCents = "cents" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        Entry => super::Entry; required {} optional { lines(lines) :
-        types::EntryLinesChecked = "lines" => some, None, id(id) : i64 = "id" => some,
-        None } fixed {}
+        Degenerate => super::Degenerate;
+        required {}
+        optional {
+            huge(huge): types::DegenerateHuge = "huge" => some, None,
+            fives(fives): types::DegenerateFives = "fives" => some, None,
+            zero(zero): types::DegenerateZero = "zero" => some, None,
+            half(half): types::DegenerateHalf = "half" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        EntryFields => super::EntryFields; required {} optional { lines(lines) : Vec <
-        types::Line > = "lines" => some, None } fixed {}
+        Kinded => super::KindedFields, try_from super::Kinded;
+        required {}
+        optional {
+            kind(kind): String = "kind" => some, None,
+            x(x): String = "x" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        Line => super::Line; required {} optional { note(note) : types::LineNote = "note"
-        => nullable, ::honig::Nullable::Absent } fixed {}
+        TwoElses => super::TwoElsesFields, try_from super::TwoElses;
+        required {
+            kind: R0: String = "kind",
+        }
+        optional {
+            x(x): String = "x" => some, None,
+            y(y): String = "y" => some, None,
+            z(z): String = "z" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        Refusal => super::Refusal; required { detail : R0 : String = "detail" } optional
-        {} fixed { object : types::RefusalObject {}, }
+        Ledger => super::Ledger;
+        required {}
+        optional {
+            entries(entries): Vec<types::Entry> = "entries" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        Problem => super::Problem; required { code : R0 : types::ProblemCode = "code",
-        status : R1 : i32 = "status", detail : R2 : String = "detail" } optional {} fixed
-        {}
+        Entry => super::Entry;
+        required {}
+        optional {
+            lines(lines): types::EntryLinesChecked = "lines" => some, None,
+            id(id): i64 = "id" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        Closed => super::Closed; required { name : R0 : String = "name" } optional {}
+        EntryFields => super::EntryFields;
+        required {}
+        optional {
+            lines(lines): Vec<types::Line> = "lines" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        Line => super::Line;
+        required {}
+        optional {
+            note(note): types::LineNote = "note" => nullable, ::honig::Nullable::Absent,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        Refusal => super::Refusal;
+        required {
+            detail: R0: String = "detail",
+        }
+        optional {}
+        fixed {
+            object: types::RefusalObject {},
+        }
+    }
+    ::honig::typestate_builder! {
+        Problem => super::Problem;
+        required {
+            code: R0: types::ProblemCode = "code",
+            status: R1: i32 = "status",
+            detail: R2: String = "detail",
+        }
+        optional {}
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        Closed => super::Closed;
+        required {
+            name: R0: String = "name",
+        }
+        optional {}
         fixed {}
     }
     ::honig::typestate_builder! {
         NoOptions => super::NoOptions; required {} optional {} fixed {}
     }
     ::honig::typestate_builder! {
-        Badge => super::Badge; required { id : R0 : i64 = "id", label : R1 :
-        types::BadgeLabel = "label", holders : R2 : types::BadgeHolders = "holders" }
-        optional {} fixed {}
-    }
-    ::honig::typestate_builder! {
-        Login => super::Login; required { user : R0 : String = "user", token : R1 :
-        String = "token" } optional {} fixed {}
-    }
-    ::honig::typestate_builder! {
-        Loose => super::Loose; required {} optional { v(v) : types::LooseV = "v" => some,
-        None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        Voucher => super::VoucherFields, try_from super::Voucher; required {} optional {
-        code(code) : String = "code" => some, None, amount(amount) : i64 = "amount" =>
-        some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        Payment => super::PaymentFields, try_from super::Payment; required {} optional {
-        card(card) : String = "card" => some, None, cvc(cvc) : String = "cvc" => some,
-        None, holder(holder) : String = "holder" => nullable, ::honig::Nullable::Absent,
-        note(note) : String = "note" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        Labelled => super::Labelled; required {} optional { labels(labels) :
-        types::Labels = "labels" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        Pair => super::PairFields, try_from super::Pair; required {} optional { a(a) :
-        String = "a" => some, None, b(b) : String = "b" => some, None } fixed {
-        additional_properties : std::collections::BTreeMap::new(), }
-    }
-    ::honig::typestate_builder! {
-        Settings => super::Settings; required {} optional { name(name) : String = "name"
-        => some, None } fixed { pattern_1 : std::collections::BTreeMap::new(), pattern_2
-        : std::collections::BTreeMap::new(), additional_properties :
-        ::honig::__private::Closed, }
-    }
-    ::honig::typestate_builder! {
-        Profile => super::ProfileFields, try_from super::Profile; required {} optional {
-        name(name) : String = "name" => some, None, nick_name(nick_name) : String =
-        "Nick-Name" => some, None } fixed { additional_properties :
-        std::collections::BTreeMap::new(), }
-    }
-    ::honig::typestate_builder! {
-        Scored => super::Scored; required {} optional { scores(scores) : types::Scores =
-        "scores" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        Price => super::Price; required {} optional { amount(amount) : types::PriceAmount
-        = "amount" => some, None, retired(retired) : () = "retired" => some, None } fixed
-        {}
-    }
-    ::honig::typestate_builder! {
-        User => super::User; required { name : R0 : types::UserName = "name", role : R1 :
-        types::UserRole = "role" } optional { handle(handle) : types::UserHandle =
-        "handle" => some, None, age(age) : types::UserAge = "age" => some, None,
-        score(score) : types::UserScore = "score" => some, None, tags(tags) :
-        types::UserTags = "tags" => some, None, email(email) : ::honig::EmailStr =
-        "email" => some, None, site(site) : ::honig::IdnHostnameStr = "site" => some,
-        None, meta(meta) : types::UserMeta = "meta" => some, None, loyalty(loyalty) :
-        types::UserLoyalty = "loyalty" => some, None, note(note) : types::UserNote =
-        "note" => nullable, ::honig::Nullable::Absent } fixed {}
-    }
-    ::honig::typestate_builder! {
-        TaggedLabel => super::TaggedLabel; required {} optional { size(size) : i64 =
-        "size" => some, None } fixed { label : types::TaggedLabelLabel {},
-        additional_properties : std::collections::BTreeMap::new(), }
-    }
-    ::honig::typestate_builder! {
-        TaggedColour => super::TaggedColour; required {} optional { size(size) : i64 =
-        "size" => some, None } fixed { colour : types::TaggedColourColour {},
-        additional_properties : std::collections::BTreeMap::new(), }
-    }
-    ::honig::typestate_builder! {
-        ImpliedObject => super::ImpliedObject; required { name : R0 : String = "name" }
-        optional {} fixed {}
-    }
-    ::honig::typestate_builder! {
-        ReachVariant1 => super::ReachVariant1; required { email : R0 : String = "email" }
-        optional { phone(phone) : String = "phone" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        ReachVariant2 => super::ReachVariant2; required { phone : R0 : String = "phone" }
-        optional { email(email) : String = "email" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        LooseKindKind => super::LooseKindKind; required {} optional { kind(kind) :
-        types::ObjectKind = "kind" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        LooseKindVariant2 => super::LooseKindVariant2; required { n : R0 : i64 = "n" }
-        optional { kind(kind) : types::LooseKindVariant2Kind = "kind" => some, None }
+        Badge => super::Badge;
+        required {
+            id: R0: i64 = "id",
+            label: R1: types::BadgeLabel = "label",
+            holders: R2: types::BadgeHolders = "holders",
+        }
+        optional {}
         fixed {}
     }
     ::honig::typestate_builder! {
-        TreeVariant2 => super::TreeVariant2; required { items : R0 : Vec < types::Tree >
-        = "items", x : R1 : String = "x" } optional {} fixed {}
-    }
-    ::honig::typestate_builder! {
-        TreeVariant1 => super::TreeVariant1; required { items : R0 : Vec < types::Tree >
-        = "items", x : R1 : i64 = "x" } optional {} fixed {}
-    }
-    ::honig::typestate_builder! {
-        ShipmentInternational => super::ShipmentInternationalFields, try_from
-        super::ShipmentInternational; required { customs : R0 : String = "customs",
-        parcels : R1 : types::ShipmentInternationalParcels = "parcels" } optional {
-        insured(insured) : bool = "insured" => some, None, insurer(insurer) : String =
-        "insurer" => some, None, options(options) : types::NoOptions = "options" => some,
-        None, rating(rating) : types::ShipmentInternationalRating = "rating" => some,
-        None, meta(meta) : types::ShipmentInternationalMeta = "meta" => some, None,
-        label(label) : types::ShipmentInternationalLabel = "label" => value,
-        super::ShipmentInternationalFields::default_label(), scores(scores) :
-        types::ShipmentInternationalScores = "scores" => some, None, priority(priority) :
-        types::ShipmentInternationalPriority = "priority" => nullable,
-        ::honig::Nullable::Absent, weight(weight) : types::ShipmentInternationalWeight =
-        "weight" => nullable, ::honig::Nullable::Absent, labels(labels) :
-        types::ShipmentInternationalLabels = "labels" => some, None } fixed { kind :
-        types::ShipmentInternationalKind {}, }
-    }
-    ::honig::typestate_builder! {
-        MetaObject => super::MetaObject; required {} optional { count(count) : i64 =
-        "count" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        ParcelsItem => super::ParcelsItem; required {} optional { fragile(fragile) : bool
-        = "fragile" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        ShipmentInternationalLabels => super::LabelsFields, try_from
-        super::ShipmentInternationalLabels; required {} optional {} fixed { pattern_1 :
-        std::collections::BTreeMap::new(), additional_properties :
-        std::collections::BTreeMap::new(), }
-    }
-    ::honig::typestate_builder! {
-        ShipmentOtherwise => super::ShipmentOtherwiseFields, try_from
-        super::ShipmentOtherwise; required { kind : R0 : types::ShipmentOtherwiseKind =
-        "kind", parcels : R1 : types::ShipmentOtherwiseParcels = "parcels" } optional {
-        customs(customs) : String = "customs" => some, None, insured(insured) : bool =
-        "insured" => some, None, insurer(insurer) : String = "insurer" => some, None,
-        options(options) : types::NoOptions = "options" => some, None, rating(rating) :
-        types::ShipmentOtherwiseRating = "rating" => some, None, meta(meta) :
-        types::ShipmentOtherwiseMeta = "meta" => some, None, label(label) :
-        types::ShipmentOtherwiseLabel = "label" => value,
-        super::ShipmentOtherwiseFields::default_label(), scores(scores) :
-        types::ShipmentOtherwiseScores = "scores" => some, None, priority(priority) :
-        types::ShipmentOtherwisePriority = "priority" => nullable,
-        ::honig::Nullable::Absent, weight(weight) : types::ShipmentOtherwiseWeight =
-        "weight" => nullable, ::honig::Nullable::Absent, labels(labels) :
-        types::ShipmentOtherwiseLabels = "labels" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        ShipmentOtherwiseLabels => super::ShipmentOtherwiseLabelsFields, try_from
-        super::ShipmentOtherwiseLabels; required {} optional {} fixed { pattern_1 :
-        std::collections::BTreeMap::new(), additional_properties :
-        std::collections::BTreeMap::new(), }
-    }
-    ::honig::typestate_builder! {
-        Not => super::Not; required {} optional { size(size) : i64 = "size" => some, None
-        } fixed { additional_properties : std::collections::BTreeMap::new(), }
-    }
-    ::honig::typestate_builder! {
-        Not2Object => super::Not2Object; required {} optional {} fixed { label :
-        types::Not2ObjectLabel {}, additional_properties :
-        std::collections::BTreeMap::new(), }
-    }
-    ::honig::typestate_builder! {
-        Not3Object => super::Not3Object; required {} optional {} fixed { colour :
-        types::Not3ObjectColour {}, additional_properties :
-        std::collections::BTreeMap::new(), }
-    }
-    ::honig::typestate_builder! {
-        Not4 => super::Not4; required {} optional { email(email) : String = "email" =>
-        some, None, phone(phone) : String = "phone" => some, None } fixed {
-        additional_properties : std::collections::BTreeMap::new(), }
-    }
-    ::honig::typestate_builder! {
-        Not5Object => super::Not5Object; required {} optional { kind(kind) :
-        types::Not5ObjectKind = "kind" => some, None } fixed { additional_properties :
-        std::collections::BTreeMap::new(), }
-    }
-    ::honig::typestate_builder! {
-        Not7Object => super::Not7Object; required {} optional { kind(kind) :
-        types::Not7ObjectKind = "kind" => some, None } fixed { additional_properties :
-        std::collections::BTreeMap::new(), }
-    }
-    ::honig::typestate_builder! {
-        Not9Object => super::Not9Object; required {} optional {} fixed { fragile :
-        types::Not9ObjectFragile {}, additional_properties :
-        std::collections::BTreeMap::new(), }
-    }
-    ::honig::typestate_builder! {
-        Not10Object => super::Not10Object; required {} optional {} fixed { customs :
-        types::ObjectCustoms {}, additional_properties :
-        std::collections::BTreeMap::new(), }
-    }
-    ::honig::typestate_builder! {
-        Not13Object => super::Not13Object; required { amount : R0 :
-        types::Not13ObjectAmount = "amount" } optional {} fixed { additional_properties :
-        std::collections::BTreeMap::new(), }
-    }
-    ::honig::typestate_builder! {
-        BadgeRequest => super::BadgeRequest; required { label : R0 : types::BadgeLabel =
-        "label", holders : R1 : types::BadgeRequestHolders = "holders" } optional {}
+        Login => super::Login;
+        required {
+            user: R0: String = "user",
+            token: R1: String = "token",
+        }
+        optional {}
         fixed {}
     }
     ::honig::typestate_builder! {
-        LoginRequest => super::LoginRequest; required { user : R0 : String = "user",
-        password : R1 : types::LoginPassword = "password" } optional {} fixed {}
+        Loose => super::Loose;
+        required {}
+        optional {
+            v(v): types::LooseV = "v" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        KindedFields => super::KindedFields; required {} optional { kind(kind) : String =
-        "kind" => some, None, x(x) : String = "x" => some, None } fixed {}
+        Voucher => super::VoucherFields, try_from super::Voucher;
+        required {}
+        optional {
+            code(code): String = "code" => some, None,
+            amount(amount): i64 = "amount" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        TwoElsesFields => super::TwoElsesFields; required { kind : R0 : String = "kind" }
-        optional { x(x) : String = "x" => some, None, y(y) : String = "y" => some, None,
-        z(z) : String = "z" => some, None } fixed {}
+        Payment => super::PaymentFields, try_from super::Payment;
+        required {}
+        optional {
+            card(card): String = "card" => some, None,
+            cvc(cvc): String = "cvc" => some, None,
+            holder(holder): String = "holder" => nullable, ::honig::Nullable::Absent,
+            note(note): String = "note" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        VoucherFields => super::VoucherFields; required {} optional { code(code) : String
-        = "code" => some, None, amount(amount) : i64 = "amount" => some, None } fixed {}
+        Labelled => super::Labelled;
+        required {}
+        optional {
+            labels(labels): types::Labels = "labels" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        PaymentFields => super::PaymentFields; required {} optional { card(card) : String
-        = "card" => some, None, cvc(cvc) : String = "cvc" => some, None, holder(holder) :
-        String = "holder" => nullable, ::honig::Nullable::Absent, note(note) : String =
-        "note" => some, None } fixed {}
+        Pair => super::PairFields, try_from super::Pair;
+        required {}
+        optional {
+            a(a): String = "a" => some, None,
+            b(b): String = "b" => some, None,
+        }
+        fixed {
+            additional_properties: std::collections::BTreeMap::new(),
+        }
     }
     ::honig::typestate_builder! {
-        PairFields => super::PairFields; required {} optional { a(a) : String = "a" =>
-        some, None, b(b) : String = "b" => some, None } fixed { additional_properties :
-        std::collections::BTreeMap::new(), }
+        Settings => super::Settings;
+        required {}
+        optional {
+            name(name): String = "name" => some, None,
+        }
+        fixed {
+            pattern_1: std::collections::BTreeMap::new(),
+            pattern_2: std::collections::BTreeMap::new(),
+            additional_properties: ::honig::__private::Closed,
+        }
     }
     ::honig::typestate_builder! {
-        ProfileFields => super::ProfileFields; required {} optional { name(name) : String
-        = "name" => some, None, nick_name(nick_name) : String = "Nick-Name" => some, None
-        } fixed { additional_properties : std::collections::BTreeMap::new(), }
+        Profile => super::ProfileFields, try_from super::Profile;
+        required {}
+        optional {
+            name(name): String = "name" => some, None,
+            nick_name(nick_name): String = "Nick-Name" => some, None,
+        }
+        fixed {
+            additional_properties: std::collections::BTreeMap::new(),
+        }
     }
     ::honig::typestate_builder! {
-        ShipmentInternationalFields => super::ShipmentInternationalFields; required {
-        customs : R0 : String = "customs", parcels : R1 :
-        types::ShipmentInternationalParcels = "parcels" } optional { insured(insured) :
-        bool = "insured" => some, None, insurer(insurer) : String = "insurer" => some,
-        None, options(options) : types::NoOptions = "options" => some, None,
-        rating(rating) : types::ShipmentInternationalRating = "rating" => some, None,
-        meta(meta) : types::ShipmentInternationalMeta = "meta" => some, None,
-        label(label) : types::ShipmentInternationalLabel = "label" => value,
-        super::ShipmentInternationalFields::default_label(), scores(scores) :
-        types::ShipmentInternationalScores = "scores" => some, None, priority(priority) :
-        types::ShipmentInternationalPriority = "priority" => nullable,
-        ::honig::Nullable::Absent, weight(weight) : types::ShipmentInternationalWeight =
-        "weight" => nullable, ::honig::Nullable::Absent, labels(labels) :
-        types::ShipmentInternationalLabels = "labels" => some, None } fixed { kind :
-        types::ShipmentInternationalKind {}, }
+        Scored => super::Scored;
+        required {}
+        optional {
+            scores(scores): types::Scores = "scores" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        LabelsFields => super::LabelsFields; required {} optional {} fixed { pattern_1 :
-        std::collections::BTreeMap::new(), additional_properties :
-        std::collections::BTreeMap::new(), }
+        Price => super::Price;
+        required {}
+        optional {
+            amount(amount): types::PriceAmount = "amount" => some, None,
+            retired(retired): () = "retired" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        ShipmentOtherwiseFields => super::ShipmentOtherwiseFields; required { kind : R0 :
-        types::ShipmentOtherwiseKind = "kind", parcels : R1 :
-        types::ShipmentOtherwiseParcels = "parcels" } optional { customs(customs) :
-        String = "customs" => some, None, insured(insured) : bool = "insured" => some,
-        None, insurer(insurer) : String = "insurer" => some, None, options(options) :
-        types::NoOptions = "options" => some, None, rating(rating) :
-        types::ShipmentOtherwiseRating = "rating" => some, None, meta(meta) :
-        types::ShipmentOtherwiseMeta = "meta" => some, None, label(label) :
-        types::ShipmentOtherwiseLabel = "label" => value,
-        super::ShipmentOtherwiseFields::default_label(), scores(scores) :
-        types::ShipmentOtherwiseScores = "scores" => some, None, priority(priority) :
-        types::ShipmentOtherwisePriority = "priority" => nullable,
-        ::honig::Nullable::Absent, weight(weight) : types::ShipmentOtherwiseWeight =
-        "weight" => nullable, ::honig::Nullable::Absent, labels(labels) :
-        types::ShipmentOtherwiseLabels = "labels" => some, None } fixed {}
+        User => super::User;
+        required {
+            name: R0: types::UserName = "name",
+            role: R1: types::UserRole = "role",
+        }
+        optional {
+            handle(handle): types::UserHandle = "handle" => some, None,
+            age(age): types::UserAge = "age" => some, None,
+            score(score): types::UserScore = "score" => some, None,
+            tags(tags): types::UserTags = "tags" => some, None,
+            email(email): ::honig::EmailStr = "email" => some, None,
+            site(site): ::honig::IdnHostnameStr = "site" => some, None,
+            meta(meta): types::UserMeta = "meta" => some, None,
+            loyalty(loyalty): types::UserLoyalty = "loyalty" => some, None,
+            note(note): types::UserNote = "note" => nullable, ::honig::Nullable::Absent,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        TaggedLabel => super::TaggedLabel;
+        required {}
+        optional {
+            size(size): i64 = "size" => some, None,
+        }
+        fixed {
+            label: types::TaggedLabelLabel {},
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+    ::honig::typestate_builder! {
+        TaggedColour => super::TaggedColour;
+        required {}
+        optional {
+            size(size): i64 = "size" => some, None,
+        }
+        fixed {
+            colour: types::TaggedColourColour {},
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+    ::honig::typestate_builder! {
+        ImpliedObject => super::ImpliedObject;
+        required {
+            name: R0: String = "name",
+        }
+        optional {}
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        ReachVariant1 => super::ReachVariant1;
+        required {
+            email: R0: String = "email",
+        }
+        optional {
+            phone(phone): String = "phone" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        ReachVariant2 => super::ReachVariant2;
+        required {
+            phone: R0: String = "phone",
+        }
+        optional {
+            email(email): String = "email" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        LooseKindKind => super::LooseKindKind;
+        required {}
+        optional {
+            kind(kind): types::ObjectKind = "kind" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        LooseKindVariant2 => super::LooseKindVariant2;
+        required {
+            n: R0: i64 = "n",
+        }
+        optional {
+            kind(kind): types::LooseKindVariant2Kind = "kind" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        TreeVariant2 => super::TreeVariant2;
+        required {
+            items: R0: Vec<types::Tree> = "items",
+            x: R1: String = "x",
+        }
+        optional {}
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        TreeVariant1 => super::TreeVariant1;
+        required {
+            items: R0: Vec<types::Tree> = "items",
+            x: R1: i64 = "x",
+        }
+        optional {}
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        ShipmentInternational => super::ShipmentInternationalFields, try_from super::ShipmentInternational;
+        required {
+            customs: R0: String = "customs",
+            parcels: R1: types::ShipmentInternationalParcels = "parcels",
+        }
+        optional {
+            insured(insured): bool = "insured" => some, None,
+            insurer(insurer): String = "insurer" => some, None,
+            options(options): types::NoOptions = "options" => some, None,
+            rating(rating): types::ShipmentInternationalRating = "rating" => some, None,
+            meta(meta): types::ShipmentInternationalMeta = "meta" => some, None,
+            label(label): types::ShipmentInternationalLabel = "label" => value, super::ShipmentInternationalFields::default_label(),
+            scores(scores): types::ShipmentInternationalScores = "scores" => some, None,
+            priority(priority): types::ShipmentInternationalPriority = "priority" => nullable, ::honig::Nullable::Absent,
+            weight(weight): types::ShipmentInternationalWeight = "weight" => nullable, ::honig::Nullable::Absent,
+            labels(labels): types::ShipmentInternationalLabels = "labels" => some, None,
+        }
+        fixed {
+            kind: types::ShipmentInternationalKind {},
+        }
+    }
+    ::honig::typestate_builder! {
+        MetaObject => super::MetaObject;
+        required {}
+        optional {
+            count(count): i64 = "count" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        ParcelsItem => super::ParcelsItem;
+        required {}
+        optional {
+            fragile(fragile): bool = "fragile" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        ShipmentInternationalLabels => super::LabelsFields, try_from super::ShipmentInternationalLabels;
+        required {}
+        optional {}
+        fixed {
+            pattern_1: std::collections::BTreeMap::new(),
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+    ::honig::typestate_builder! {
+        ShipmentOtherwise => super::ShipmentOtherwiseFields, try_from super::ShipmentOtherwise;
+        required {
+            kind: R0: types::ShipmentOtherwiseKind = "kind",
+            parcels: R1: types::ShipmentOtherwiseParcels = "parcels",
+        }
+        optional {
+            customs(customs): String = "customs" => some, None,
+            insured(insured): bool = "insured" => some, None,
+            insurer(insurer): String = "insurer" => some, None,
+            options(options): types::NoOptions = "options" => some, None,
+            rating(rating): types::ShipmentOtherwiseRating = "rating" => some, None,
+            meta(meta): types::ShipmentOtherwiseMeta = "meta" => some, None,
+            label(label): types::ShipmentOtherwiseLabel = "label" => value, super::ShipmentOtherwiseFields::default_label(),
+            scores(scores): types::ShipmentOtherwiseScores = "scores" => some, None,
+            priority(priority): types::ShipmentOtherwisePriority = "priority" => nullable, ::honig::Nullable::Absent,
+            weight(weight): types::ShipmentOtherwiseWeight = "weight" => nullable, ::honig::Nullable::Absent,
+            labels(labels): types::ShipmentOtherwiseLabels = "labels" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        ShipmentOtherwiseLabels => super::ShipmentOtherwiseLabelsFields, try_from super::ShipmentOtherwiseLabels;
+        required {}
+        optional {}
+        fixed {
+            pattern_1: std::collections::BTreeMap::new(),
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+    ::honig::typestate_builder! {
+        Not => super::Not;
+        required {}
+        optional {
+            size(size): i64 = "size" => some, None,
+        }
+        fixed {
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+    ::honig::typestate_builder! {
+        Not2Object => super::Not2Object;
+        required {}
+        optional {}
+        fixed {
+            label: types::Not2ObjectLabel {},
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+    ::honig::typestate_builder! {
+        Not3Object => super::Not3Object;
+        required {}
+        optional {}
+        fixed {
+            colour: types::Not3ObjectColour {},
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+    ::honig::typestate_builder! {
+        Not4 => super::Not4;
+        required {}
+        optional {
+            email(email): String = "email" => some, None,
+            phone(phone): String = "phone" => some, None,
+        }
+        fixed {
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+    ::honig::typestate_builder! {
+        Not5Object => super::Not5Object;
+        required {}
+        optional {
+            kind(kind): types::Not5ObjectKind = "kind" => some, None,
+        }
+        fixed {
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+    ::honig::typestate_builder! {
+        Not7Object => super::Not7Object;
+        required {}
+        optional {
+            kind(kind): types::Not7ObjectKind = "kind" => some, None,
+        }
+        fixed {
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+    ::honig::typestate_builder! {
+        Not9Object => super::Not9Object;
+        required {}
+        optional {}
+        fixed {
+            fragile: types::Not9ObjectFragile {},
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+    ::honig::typestate_builder! {
+        Not10Object => super::Not10Object;
+        required {}
+        optional {}
+        fixed {
+            customs: types::ObjectCustoms {},
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+    ::honig::typestate_builder! {
+        Not13Object => super::Not13Object;
+        required {
+            amount: R0: types::Not13ObjectAmount = "amount",
+        }
+        optional {}
+        fixed {
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+    ::honig::typestate_builder! {
+        BadgeRequest => super::BadgeRequest;
+        required {
+            label: R0: types::BadgeLabel = "label",
+            holders: R1: types::BadgeRequestHolders = "holders",
+        }
+        optional {}
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        LoginRequest => super::LoginRequest;
+        required {
+            user: R0: String = "user",
+            password: R1: types::LoginPassword = "password",
+        }
+        optional {}
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        KindedFields => super::KindedFields;
+        required {}
+        optional {
+            kind(kind): String = "kind" => some, None,
+            x(x): String = "x" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        TwoElsesFields => super::TwoElsesFields;
+        required {
+            kind: R0: String = "kind",
+        }
+        optional {
+            x(x): String = "x" => some, None,
+            y(y): String = "y" => some, None,
+            z(z): String = "z" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        VoucherFields => super::VoucherFields;
+        required {}
+        optional {
+            code(code): String = "code" => some, None,
+            amount(amount): i64 = "amount" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        PaymentFields => super::PaymentFields;
+        required {}
+        optional {
+            card(card): String = "card" => some, None,
+            cvc(cvc): String = "cvc" => some, None,
+            holder(holder): String = "holder" => nullable, ::honig::Nullable::Absent,
+            note(note): String = "note" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        PairFields => super::PairFields;
+        required {}
+        optional {
+            a(a): String = "a" => some, None,
+            b(b): String = "b" => some, None,
+        }
+        fixed {
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+    ::honig::typestate_builder! {
+        ProfileFields => super::ProfileFields;
+        required {}
+        optional {
+            name(name): String = "name" => some, None,
+            nick_name(nick_name): String = "Nick-Name" => some, None,
+        }
+        fixed {
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+    ::honig::typestate_builder! {
+        ShipmentInternationalFields => super::ShipmentInternationalFields;
+        required {
+            customs: R0: String = "customs",
+            parcels: R1: types::ShipmentInternationalParcels = "parcels",
+        }
+        optional {
+            insured(insured): bool = "insured" => some, None,
+            insurer(insurer): String = "insurer" => some, None,
+            options(options): types::NoOptions = "options" => some, None,
+            rating(rating): types::ShipmentInternationalRating = "rating" => some, None,
+            meta(meta): types::ShipmentInternationalMeta = "meta" => some, None,
+            label(label): types::ShipmentInternationalLabel = "label" => value, super::ShipmentInternationalFields::default_label(),
+            scores(scores): types::ShipmentInternationalScores = "scores" => some, None,
+            priority(priority): types::ShipmentInternationalPriority = "priority" => nullable, ::honig::Nullable::Absent,
+            weight(weight): types::ShipmentInternationalWeight = "weight" => nullable, ::honig::Nullable::Absent,
+            labels(labels): types::ShipmentInternationalLabels = "labels" => some, None,
+        }
+        fixed {
+            kind: types::ShipmentInternationalKind {},
+        }
+    }
+    ::honig::typestate_builder! {
+        LabelsFields => super::LabelsFields;
+        required {}
+        optional {}
+        fixed {
+            pattern_1: std::collections::BTreeMap::new(),
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+    ::honig::typestate_builder! {
+        ShipmentOtherwiseFields => super::ShipmentOtherwiseFields;
+        required {
+            kind: R0: types::ShipmentOtherwiseKind = "kind",
+            parcels: R1: types::ShipmentOtherwiseParcels = "parcels",
+        }
+        optional {
+            customs(customs): String = "customs" => some, None,
+            insured(insured): bool = "insured" => some, None,
+            insurer(insurer): String = "insurer" => some, None,
+            options(options): types::NoOptions = "options" => some, None,
+            rating(rating): types::ShipmentOtherwiseRating = "rating" => some, None,
+            meta(meta): types::ShipmentOtherwiseMeta = "meta" => some, None,
+            label(label): types::ShipmentOtherwiseLabel = "label" => value, super::ShipmentOtherwiseFields::default_label(),
+            scores(scores): types::ShipmentOtherwiseScores = "scores" => some, None,
+            priority(priority): types::ShipmentOtherwisePriority = "priority" => nullable, ::honig::Nullable::Absent,
+            weight(weight): types::ShipmentOtherwiseWeight = "weight" => nullable, ::honig::Nullable::Absent,
+            labels(labels): types::ShipmentOtherwiseLabels = "labels" => some, None,
+        }
+        fixed {}
     }
 }

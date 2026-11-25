@@ -142,8 +142,12 @@ pub mod tile_batch {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : ::honig::Items <
-            types::TileEvent > = "body" } optional {} fixed {}
+            Params => super::Params;
+            required {
+                body: R0: ::honig::Items<types::TileEvent> = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

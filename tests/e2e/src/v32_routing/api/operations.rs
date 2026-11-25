@@ -108,7 +108,11 @@ pub mod status_by_key {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { key : R0 : String = "key" } optional {}
+            Params => super::Params;
+            required {
+                key: R0: String = "key",
+            }
+            optional {}
             fixed {}
         }
     }
@@ -173,7 +177,11 @@ pub mod file_raw {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { dir : R0 : String = "dir" } optional {}
+            Params => super::Params;
+            required {
+                dir: R0: String = "dir",
+            }
+            optional {}
             fixed {}
         }
     }
@@ -204,8 +212,13 @@ pub mod file_ext {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { name : R0 : String = "name", ext : R1 :
-            String = "ext" } optional {} fixed {}
+            Params => super::Params;
+            required {
+                name: R0: String = "name",
+                ext: R1: String = "ext",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -272,8 +285,14 @@ pub mod mix_mixed_tail {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { a : R0 : String = "a", b : R1 : String =
-            "b", c : R2 : String = "c" } optional {} fixed {}
+            Params => super::Params;
+            required {
+                a: R0: String = "a",
+                b: R1: String = "b",
+                c: R2: String = "c",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -303,8 +322,13 @@ pub mod mix_var_tail {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { a : R0 : String = "a", c : R1 : String =
-            "c" } optional {} fixed {}
+            Params => super::Params;
+            required {
+                a: R0: String = "a",
+                c: R1: String = "c",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

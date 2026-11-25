@@ -32,13 +32,21 @@ pub mod list_items {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { ids : R0 : Vec < i64 > = "ids" } optional
-            { csv(csv) : Vec < String > = "csv" => some, None, ssv(ssv) : Vec < String >
-            = "ssv" => some, None, tsv(tsv) : Vec < String > = "tsv" => some, None,
-            pipes(pipes) : Vec < String > = "pipes" => some, None, multi(multi) : Vec <
-            i64 > = "multi" => some, None, x_tags(x_tags) : Vec < String > = "X-Tags" =>
-            some, None, flag(flag) : bool = "flag" => some, None, page(page) : i64 =
-            "page" => some, None } fixed {}
+            Params => super::Params;
+            required {
+                ids: R0: Vec<i64> = "ids",
+            }
+            optional {
+                csv(csv): Vec<String> = "csv" => some, None,
+                ssv(ssv): Vec<String> = "ssv" => some, None,
+                tsv(tsv): Vec<String> = "tsv" => some, None,
+                pipes(pipes): Vec<String> = "pipes" => some, None,
+                multi(multi): Vec<i64> = "multi" => some, None,
+                x_tags(x_tags): Vec<String> = "X-Tags" => some, None,
+                flag(flag): bool = "flag" => some, None,
+                page(page): i64 = "page" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -75,8 +83,12 @@ pub mod upload {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : types::UploadBody = "body" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                body: R0: types::UploadBody = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -114,8 +126,12 @@ pub mod tag {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { body(body) : types::TagBody =
-            "body" => some, None } fixed {}
+            Params => super::Params;
+            required {}
+            optional {
+                body(body): types::TagBody = "body" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -149,11 +165,18 @@ pub mod rows {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { ssv : R0 : Vec < String > = "ssv", pipes
-            : R1 : Vec < String > = "pipes", tsv : R2 : Vec < String > = "tsv" } optional
-            { x_ssv(x_ssv) : Vec < String > = "X-Ssv" => some, None, x_pipes(x_pipes) :
-            Vec < String > = "X-Pipes" => some, None, x_tsv(x_tsv) : Vec < String > =
-            "X-Tsv" => some, None } fixed {}
+            Params => super::Params;
+            required {
+                ssv: R0: Vec<String> = "ssv",
+                pipes: R1: Vec<String> = "pipes",
+                tsv: R2: Vec<String> = "tsv",
+            }
+            optional {
+                x_ssv(x_ssv): Vec<String> = "X-Ssv" => some, None,
+                x_pipes(x_pipes): Vec<String> = "X-Pipes" => some, None,
+                x_tsv(x_tsv): Vec<String> = "X-Tsv" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

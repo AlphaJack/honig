@@ -18,7 +18,12 @@ impl GetFileOk {
 /// of its field. `build` returns the first field that did not convert.
 pub mod builders {
     ::honig::typestate_builder! {
-        GetFileOk => super::GetFileOk; required {} optional { path(path) : String =
-        "path" => some, None, filter(filter) : String = "filter" => some, None } fixed {}
+        GetFileOk => super::GetFileOk;
+        required {}
+        optional {
+            path(path): String = "path" => some, None,
+            filter(filter): String = "filter" => some, None,
+        }
+        fixed {}
     }
 }

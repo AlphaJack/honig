@@ -16,8 +16,12 @@ pub mod order_shipped_post {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : types::Shipment = "body" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                body: R0: types::Shipment = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

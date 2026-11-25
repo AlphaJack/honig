@@ -171,7 +171,7 @@ fn canonical(code: &str) -> String {
     // on disk for the stale check (and the bridge for user-edited files).
     #[expect(clippy::disallowed_methods, reason = "loads existing files back; generation itself builds trees")]
     let Ok(file) = syn::parse_file(body) else { return code.to_owned() };
-    format!("{header}{}", rust::syntax::unparse(file))
+    format!("{header}{}", rust::macro_text::unparse(file))
 }
 
 /// Whether the file on disk contains the fresh `code`. Git on Windows can check it out with CRLF line endings.

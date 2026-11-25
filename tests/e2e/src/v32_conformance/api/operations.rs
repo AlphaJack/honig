@@ -95,8 +95,14 @@ pub mod get_item {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { id : R0 : String = "id" } optional {
-            limit(limit) : i64 = "limit" => some, None } fixed {}
+            Params => super::Params;
+            required {
+                id: R0: String = "id",
+            }
+            optional {
+                limit(limit): i64 = "limit" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -135,9 +141,10 @@ pub mod get_item {
         507, LoopDetected = 508, NotExtended = 510, NetworkAuthenticationRequired = 511 }
     );
     ::honig::response_error!(
-        Response { Self::Success { status, .. } => format_args!("status {} (Success)",
-        status.as_u16()), Self::Default { status, .. } =>
-        format_args!("status {} (Default)", status.as_u16()), }
+        Response {
+            Self::Success { status,.. } => format_args!("status {} (Success)", status.as_u16()),
+            Self::Default { status,.. } => format_args!("status {} (Default)", status.as_u16()),
+        }
     );
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -171,8 +178,12 @@ pub mod post_closed {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : types::Closed = "body" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                body: R0: types::Closed = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -213,9 +224,12 @@ pub mod optional_body {
     ::honig::default_from_new!(Params);
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { body(body) :
-            std::collections::BTreeMap < String, serde_json::Value > = "body" => some,
-            None } fixed {}
+            Params => super::Params;
+            required {}
+            optional {
+                body(body): std::collections::BTreeMap<String, serde_json::Value> = "body" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -257,8 +271,12 @@ pub mod post_product {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : types::Product = "body" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                body: R0: types::Product = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -300,8 +318,12 @@ pub mod upload {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : types::UploadBody = "body" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                body: R0: types::UploadBody = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -381,9 +403,13 @@ pub mod filter {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { where_(where_) :
-            types::Closed = "where" => some, None, page(page) : i64 = "page" => some,
-            None } fixed {}
+            Params => super::Params;
+            required {}
+            optional {
+                where_(where_): types::Closed = "where" => some, None,
+                page(page): i64 = "page" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

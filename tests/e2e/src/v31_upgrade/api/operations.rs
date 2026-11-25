@@ -21,9 +21,15 @@ pub mod get_file {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { path : R0 : String = "path" } optional {
-            filter(filter) : String = "filter" => some, None, x_trace(x_trace) : String =
-            "X-Trace" => some, None } fixed {}
+            Params => super::Params;
+            required {
+                path: R0: String = "path",
+            }
+            optional {
+                filter(filter): String = "filter" => some, None,
+                x_trace(x_trace): String = "X-Trace" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

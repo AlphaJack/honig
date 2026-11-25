@@ -54,15 +54,30 @@ impl SubscribeBody {
 pub mod builders {
     use super as types;
     ::honig::typestate_builder! {
-        Product => super::Product; required { id : R0 : i64 = "id", name : R1 : String =
-        "name" } optional {} fixed {}
+        Product => super::Product;
+        required {
+            id: R0: i64 = "id",
+            name: R1: String = "name",
+        }
+        optional {}
+        fixed {}
     }
     ::honig::typestate_builder! {
-        Event => super::Event; required { kind : R0 : types::EventKind = "kind" }
-        optional { at(at) : ::honig::DateTimeStr = "at" => some, None } fixed {}
+        Event => super::Event;
+        required {
+            kind: R0: types::EventKind = "kind",
+        }
+        optional {
+            at(at): ::honig::DateTimeStr = "at" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        SubscribeBody => super::SubscribeBody; required { callback_url : R0 :
-        ::honig::url::Url = "callbackUrl" } optional {} fixed {}
+        SubscribeBody => super::SubscribeBody;
+        required {
+            callback_url: R0: ::honig::url::Url = "callbackUrl",
+        }
+        optional {}
+        fixed {}
     }
 }

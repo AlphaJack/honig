@@ -1383,162 +1383,290 @@ pub struct NotChecked4(pub(super) serde_json::Value);
 pub mod builders {
     use super as types;
     ::honig::typestate_builder! {
-        Product => super::ProductFields, try_from super::Product; required { id : R0 :
-        types::ProductId = "id", name : R1 : types::ProductName = "name", kind : R2 :
-        types::ProductKind = "kind" } optional { nickname(nickname) : String = "nickname"
-        => nullable, ::honig::Nullable::Absent, tags(tags) : types::ProductTags = "tags"
-        => some, None, point(point) : types::ProductPoint = "point" => some, None,
-        attrs(attrs) : types::ProductAttrs = "attrs" => some, None, weight(weight) :
-        types::ProductWeight = "weight" => some, None, owner(owner) : types::Owner =
-        "owner" => some, None } fixed {}
+        Product => super::ProductFields, try_from super::Product;
+        required {
+            id: R0: types::ProductId = "id",
+            name: R1: types::ProductName = "name",
+            kind: R2: types::ProductKind = "kind",
+        }
+        optional {
+            nickname(nickname): String = "nickname" => nullable, ::honig::Nullable::Absent,
+            tags(tags): types::ProductTags = "tags" => some, None,
+            point(point): types::ProductPoint = "point" => some, None,
+            attrs(attrs): types::ProductAttrs = "attrs" => some, None,
+            weight(weight): types::ProductWeight = "weight" => some, None,
+            owner(owner): types::Owner = "owner" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        Book => super::BookFields, try_from super::Book; required { id : R0 :
-        types::BookId = "id", name : R1 : types::BookName = "name", kind : R2 :
-        types::BookKind = "kind" } optional { nickname(nickname) : String = "nickname" =>
-        nullable, ::honig::Nullable::Absent, tags(tags) : types::BookTags = "tags" =>
-        some, None, point(point) : types::BookPoint = "point" => some, None, attrs(attrs)
-        : types::BookAttrs = "attrs" => some, None, weight(weight) : types::BookWeight =
-        "weight" => some, None, owner(owner) : types::Owner = "owner" => some, None,
-        hardcover(hardcover) : bool = "hardcover" => some, None } fixed {}
+        Book => super::BookFields, try_from super::Book;
+        required {
+            id: R0: types::BookId = "id",
+            name: R1: types::BookName = "name",
+            kind: R2: types::BookKind = "kind",
+        }
+        optional {
+            nickname(nickname): String = "nickname" => nullable, ::honig::Nullable::Absent,
+            tags(tags): types::BookTags = "tags" => some, None,
+            point(point): types::BookPoint = "point" => some, None,
+            attrs(attrs): types::BookAttrs = "attrs" => some, None,
+            weight(weight): types::BookWeight = "weight" => some, None,
+            owner(owner): types::Owner = "owner" => some, None,
+            hardcover(hardcover): bool = "hardcover" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        Owner => super::OwnerFields, try_from super::Owner; required {} optional {
-        children(children) : Vec < types::Owner > = "children" => some, None } fixed {}
+        Owner => super::OwnerFields, try_from super::Owner;
+        required {}
+        optional {
+            children(children): Vec<types::Owner> = "children" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        Error => super::Error; required {} optional { code(code) : i64 = "code" => some,
-        None, message(message) : String = "message" => some, None } fixed {}
+        Error => super::Error;
+        required {}
+        optional {
+            code(code): i64 = "code" => some, None,
+            message(message): String = "message" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        ProductAttrs => super::AttrsFields, try_from super::ProductAttrs; required {}
-        optional {} fixed { pattern_1 : std::collections::BTreeMap::new(),
-        additional_properties : std::collections::BTreeMap::new(), }
+        ProductAttrs => super::AttrsFields, try_from super::ProductAttrs;
+        required {}
+        optional {}
+        fixed {
+            pattern_1: std::collections::BTreeMap::new(),
+            additional_properties: std::collections::BTreeMap::new(),
+        }
     }
     ::honig::typestate_builder! {
-        BookAttrs => super::BookAttrsFields, try_from super::BookAttrs; required {}
-        optional {} fixed { pattern_1 : std::collections::BTreeMap::new(),
-        additional_properties : std::collections::BTreeMap::new(), }
+        BookAttrs => super::BookAttrsFields, try_from super::BookAttrs;
+        required {}
+        optional {}
+        fixed {
+            pattern_1: std::collections::BTreeMap::new(),
+            additional_properties: std::collections::BTreeMap::new(),
+        }
     }
     ::honig::typestate_builder! {
-        SubmitFormBody => super::SubmitFormBody; required { tags : R0 : Vec < String > =
-        "tags", priority : R1 : types::SubmitFormBodyPriority = "priority" } optional {
-        filter(filter) : types::SubmitFormBodyFilter = "filter" => some, None, note(note)
-        : String = "note" => some, None, blob(blob) : ::honig::Binary = "blob" => some,
-        None } fixed {}
+        SubmitFormBody => super::SubmitFormBody;
+        required {
+            tags: R0: Vec<String> = "tags",
+            priority: R1: types::SubmitFormBodyPriority = "priority",
+        }
+        optional {
+            filter(filter): types::SubmitFormBodyFilter = "filter" => some, None,
+            note(note): String = "note" => some, None,
+            blob(blob): ::honig::Binary = "blob" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        SubmitFormBodyFilter => super::SubmitFormBodyFilter; required { a : R0 : String =
-        "a" } optional { b(b) : String = "b" => some, None } fixed {}
+        SubmitFormBodyFilter => super::SubmitFormBodyFilter;
+        required {
+            a: R0: String = "a",
+        }
+        optional {
+            b(b): String = "b" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        PutBlobOkXQuota => super::PutBlobOkXQuota; required { limit : R0 : i64 = "limit"
-        } optional { scope(scope) : String = "scope" => some, None } fixed {}
+        PutBlobOkXQuota => super::PutBlobOkXQuota;
+        required {
+            limit: R0: i64 = "limit",
+        }
+        optional {
+            scope(scope): String = "scope" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        CreateProductBody => super::CreateProductBody; required {} optional { meta(meta)
-        : types::Product = "meta" => some, None, photo(photo) : ::honig::Binary = "photo"
-        => some, None } fixed {}
+        CreateProductBody => super::CreateProductBody;
+        required {}
+        optional {
+            meta(meta): types::Product = "meta" => some, None,
+            photo(photo): ::honig::Binary = "photo" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        SearchQ => super::SearchQ; required {} optional { term(term) : String = "term" =>
-        some, None, page(page) : i64 = "page" => some, None, filters(filters) :
-        std::collections::BTreeMap < String, serde_json::Value > = "filters" => some,
-        None } fixed {}
+        SearchQ => super::SearchQ;
+        required {}
+        optional {
+            term(term): String = "term" => some, None,
+            page(page): i64 = "page" => some, None,
+            filters(filters): std::collections::BTreeMap<String, serde_json::Value> = "filters" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        SearchOkItem => super::SearchOkItem; required { data : R0 :
-        types::SearchOkItemData = "data" } optional { event(event) : String = "event" =>
-        some, None, id(id) : String = "id" => some, None, retry(retry) : i64 = "retry" =>
-        some, None } fixed {}
+        SearchOkItem => super::SearchOkItem;
+        required {
+            data: R0: types::SearchOkItemData = "data",
+        }
+        optional {
+            event(event): String = "event" => some, None,
+            id(id): String = "id" => some, None,
+            retry(retry): i64 = "retry" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        Not2Object => super::Not2Object; required {} optional { kind(kind) :
-        types::Not2ObjectKind = "kind" => some, None } fixed { additional_properties :
-        std::collections::BTreeMap::new(), }
+        Not2Object => super::Not2Object;
+        required {}
+        optional {
+            kind(kind): types::Not2ObjectKind = "kind" => some, None,
+        }
+        fixed {
+            additional_properties: std::collections::BTreeMap::new(),
+        }
     }
     ::honig::typestate_builder! {
         ProductRequest => super::ProductRequestFields, try_from super::ProductRequest;
-        required { name : R0 : types::ProductName = "name", kind : R1 :
-        types::ProductKind = "kind" } optional { nickname(nickname) : String = "nickname"
-        => nullable, ::honig::Nullable::Absent, secret(secret) : String = "secret" =>
-        some, None, tags(tags) : types::ProductRequestTags = "tags" => some, None,
-        point(point) : types::ProductRequestPoint = "point" => some, None, attrs(attrs) :
-        types::ProductAttrs = "attrs" => some, None, weight(weight) :
-        types::ProductWeight = "weight" => some, None, owner(owner) : types::Owner =
-        "owner" => some, None } fixed {}
+        required {
+            name: R0: types::ProductName = "name",
+            kind: R1: types::ProductKind = "kind",
+        }
+        optional {
+            nickname(nickname): String = "nickname" => nullable, ::honig::Nullable::Absent,
+            secret(secret): String = "secret" => some, None,
+            tags(tags): types::ProductRequestTags = "tags" => some, None,
+            point(point): types::ProductRequestPoint = "point" => some, None,
+            attrs(attrs): types::ProductAttrs = "attrs" => some, None,
+            weight(weight): types::ProductWeight = "weight" => some, None,
+            owner(owner): types::Owner = "owner" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        BookRequest => super::BookRequestFields, try_from super::BookRequest; required {
-        name : R0 : types::BookName = "name", kind : R1 : types::BookKind = "kind" }
-        optional { nickname(nickname) : String = "nickname" => nullable,
-        ::honig::Nullable::Absent, secret(secret) : String = "secret" => some, None,
-        tags(tags) : types::BookRequestTags = "tags" => some, None, point(point) :
-        types::BookRequestPoint = "point" => some, None, attrs(attrs) : types::BookAttrs
-        = "attrs" => some, None, weight(weight) : types::BookWeight = "weight" => some,
-        None, owner(owner) : types::Owner = "owner" => some, None, hardcover(hardcover) :
-        bool = "hardcover" => some, None } fixed {}
+        BookRequest => super::BookRequestFields, try_from super::BookRequest;
+        required {
+            name: R0: types::BookName = "name",
+            kind: R1: types::BookKind = "kind",
+        }
+        optional {
+            nickname(nickname): String = "nickname" => nullable, ::honig::Nullable::Absent,
+            secret(secret): String = "secret" => some, None,
+            tags(tags): types::BookRequestTags = "tags" => some, None,
+            point(point): types::BookRequestPoint = "point" => some, None,
+            attrs(attrs): types::BookAttrs = "attrs" => some, None,
+            weight(weight): types::BookWeight = "weight" => some, None,
+            owner(owner): types::Owner = "owner" => some, None,
+            hardcover(hardcover): bool = "hardcover" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        CreateProductBodyRequest => super::CreateProductBodyRequest; required {} optional
-        { meta(meta) : types::ProductRequest = "meta" => some, None, photo(photo) :
-        ::honig::Binary = "photo" => some, None } fixed {}
+        CreateProductBodyRequest => super::CreateProductBodyRequest;
+        required {}
+        optional {
+            meta(meta): types::ProductRequest = "meta" => some, None,
+            photo(photo): ::honig::Binary = "photo" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        SearchOkItemRequest => super::SearchOkItemRequest; required { data : R0 :
-        types::SearchOkItemDataRequest = "data" } optional { event(event) : String =
-        "event" => some, None, id(id) : String = "id" => some, None, retry(retry) : i64 =
-        "retry" => some, None } fixed {}
+        SearchOkItemRequest => super::SearchOkItemRequest;
+        required {
+            data: R0: types::SearchOkItemDataRequest = "data",
+        }
+        optional {
+            event(event): String = "event" => some, None,
+            id(id): String = "id" => some, None,
+            retry(retry): i64 = "retry" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        ProductFields => super::ProductFields; required { id : R0 : types::ProductId =
-        "id", name : R1 : types::ProductName = "name", kind : R2 : types::ProductKind =
-        "kind" } optional { nickname(nickname) : String = "nickname" => nullable,
-        ::honig::Nullable::Absent, tags(tags) : types::ProductTags = "tags" => some,
-        None, point(point) : types::ProductPoint = "point" => some, None, attrs(attrs) :
-        types::ProductAttrs = "attrs" => some, None, weight(weight) :
-        types::ProductWeight = "weight" => some, None, owner(owner) : types::Owner =
-        "owner" => some, None } fixed {}
+        ProductFields => super::ProductFields;
+        required {
+            id: R0: types::ProductId = "id",
+            name: R1: types::ProductName = "name",
+            kind: R2: types::ProductKind = "kind",
+        }
+        optional {
+            nickname(nickname): String = "nickname" => nullable, ::honig::Nullable::Absent,
+            tags(tags): types::ProductTags = "tags" => some, None,
+            point(point): types::ProductPoint = "point" => some, None,
+            attrs(attrs): types::ProductAttrs = "attrs" => some, None,
+            weight(weight): types::ProductWeight = "weight" => some, None,
+            owner(owner): types::Owner = "owner" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        BookFields => super::BookFields; required { id : R0 : types::BookId = "id", name
-        : R1 : types::BookName = "name", kind : R2 : types::BookKind = "kind" } optional
-        { nickname(nickname) : String = "nickname" => nullable,
-        ::honig::Nullable::Absent, tags(tags) : types::BookTags = "tags" => some, None,
-        point(point) : types::BookPoint = "point" => some, None, attrs(attrs) :
-        types::BookAttrs = "attrs" => some, None, weight(weight) : types::BookWeight =
-        "weight" => some, None, owner(owner) : types::Owner = "owner" => some, None,
-        hardcover(hardcover) : bool = "hardcover" => some, None } fixed {}
+        BookFields => super::BookFields;
+        required {
+            id: R0: types::BookId = "id",
+            name: R1: types::BookName = "name",
+            kind: R2: types::BookKind = "kind",
+        }
+        optional {
+            nickname(nickname): String = "nickname" => nullable, ::honig::Nullable::Absent,
+            tags(tags): types::BookTags = "tags" => some, None,
+            point(point): types::BookPoint = "point" => some, None,
+            attrs(attrs): types::BookAttrs = "attrs" => some, None,
+            weight(weight): types::BookWeight = "weight" => some, None,
+            owner(owner): types::Owner = "owner" => some, None,
+            hardcover(hardcover): bool = "hardcover" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        OwnerFields => super::OwnerFields; required {} optional { children(children) :
-        Vec < types::Owner > = "children" => some, None } fixed {}
+        OwnerFields => super::OwnerFields;
+        required {}
+        optional {
+            children(children): Vec<types::Owner> = "children" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        AttrsFields => super::AttrsFields; required {} optional {} fixed { pattern_1 :
-        std::collections::BTreeMap::new(), additional_properties :
-        std::collections::BTreeMap::new(), }
+        AttrsFields => super::AttrsFields;
+        required {}
+        optional {}
+        fixed {
+            pattern_1: std::collections::BTreeMap::new(),
+            additional_properties: std::collections::BTreeMap::new(),
+        }
     }
     ::honig::typestate_builder! {
-        ProductRequestFields => super::ProductRequestFields; required { name : R0 :
-        types::ProductName = "name", kind : R1 : types::ProductKind = "kind" } optional {
-        nickname(nickname) : String = "nickname" => nullable, ::honig::Nullable::Absent,
-        secret(secret) : String = "secret" => some, None, tags(tags) :
-        types::ProductRequestTags = "tags" => some, None, point(point) :
-        types::ProductRequestPoint = "point" => some, None, attrs(attrs) :
-        types::ProductAttrs = "attrs" => some, None, weight(weight) :
-        types::ProductWeight = "weight" => some, None, owner(owner) : types::Owner =
-        "owner" => some, None } fixed {}
+        ProductRequestFields => super::ProductRequestFields;
+        required {
+            name: R0: types::ProductName = "name",
+            kind: R1: types::ProductKind = "kind",
+        }
+        optional {
+            nickname(nickname): String = "nickname" => nullable, ::honig::Nullable::Absent,
+            secret(secret): String = "secret" => some, None,
+            tags(tags): types::ProductRequestTags = "tags" => some, None,
+            point(point): types::ProductRequestPoint = "point" => some, None,
+            attrs(attrs): types::ProductAttrs = "attrs" => some, None,
+            weight(weight): types::ProductWeight = "weight" => some, None,
+            owner(owner): types::Owner = "owner" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        BookRequestFields => super::BookRequestFields; required { name : R0 :
-        types::BookName = "name", kind : R1 : types::BookKind = "kind" } optional {
-        nickname(nickname) : String = "nickname" => nullable, ::honig::Nullable::Absent,
-        secret(secret) : String = "secret" => some, None, tags(tags) :
-        types::BookRequestTags = "tags" => some, None, point(point) :
-        types::BookRequestPoint = "point" => some, None, attrs(attrs) : types::BookAttrs
-        = "attrs" => some, None, weight(weight) : types::BookWeight = "weight" => some,
-        None, owner(owner) : types::Owner = "owner" => some, None, hardcover(hardcover) :
-        bool = "hardcover" => some, None } fixed {}
+        BookRequestFields => super::BookRequestFields;
+        required {
+            name: R0: types::BookName = "name",
+            kind: R1: types::BookKind = "kind",
+        }
+        optional {
+            nickname(nickname): String = "nickname" => nullable, ::honig::Nullable::Absent,
+            secret(secret): String = "secret" => some, None,
+            tags(tags): types::BookRequestTags = "tags" => some, None,
+            point(point): types::BookRequestPoint = "point" => some, None,
+            attrs(attrs): types::BookAttrs = "attrs" => some, None,
+            weight(weight): types::BookWeight = "weight" => some, None,
+            owner(owner): types::Owner = "owner" => some, None,
+            hardcover(hardcover): bool = "hardcover" => some, None,
+        }
+        fixed {}
     }
 }

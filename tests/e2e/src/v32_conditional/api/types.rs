@@ -549,66 +549,145 @@ impl ContactOtherwise {
 pub mod builders {
     use super as types;
     ::honig::typestate_builder! {
-        EmailRequest => super::EmailRequest; required { email : R0 : ::honig::EmailStr =
-        "email" } optional {} fixed { type_ : types::EmailType {}, }
+        EmailRequest => super::EmailRequest;
+        required {
+            email: R0: ::honig::EmailStr = "email",
+        }
+        optional {}
+        fixed {
+            type_: types::EmailType {},
+        }
     }
     ::honig::typestate_builder! {
-        SmsRequest => super::SmsRequest; required { phone : R0 : String = "phone" }
-        optional {} fixed { type_ : types::SmsType {}, }
+        SmsRequest => super::SmsRequest;
+        required {
+            phone: R0: String = "phone",
+        }
+        optional {}
+        fixed {
+            type_: types::SmsType {},
+        }
     }
     ::honig::typestate_builder! {
-        Address => super::Address; required { street : R0 : String = "street" } optional
-        {} fixed {}
+        Address => super::Address;
+        required {
+            street: R0: String = "street",
+        }
+        optional {}
+        fixed {}
     }
     ::honig::typestate_builder! {
-        IfThenEmail => super::IfThenEmail; required { email : R0 : ::honig::EmailStr =
-        "email" } optional {} fixed { type_ : types::IfThenEmailType {}, }
+        IfThenEmail => super::IfThenEmail;
+        required {
+            email: R0: ::honig::EmailStr = "email",
+        }
+        optional {}
+        fixed {
+            type_: types::IfThenEmailType {},
+        }
     }
     ::honig::typestate_builder! {
-        IfThenSms => super::IfThenSms; required { phone : R0 : String = "phone" }
-        optional {} fixed { type_ : types::IfThenSmsType {}, }
+        IfThenSms => super::IfThenSms;
+        required {
+            phone: R0: String = "phone",
+        }
+        optional {}
+        fixed {
+            type_: types::IfThenSmsType {},
+        }
     }
     ::honig::typestate_builder! {
-        IfThenOtherwise => super::IfThenOtherwise; required { type_ : R0 : String =
-        "type" } optional {} fixed {}
+        IfThenOtherwise => super::IfThenOtherwise;
+        required {
+            type_: R0: String = "type",
+        }
+        optional {}
+        fixed {}
     }
     ::honig::typestate_builder! {
-        ConstOneOfEmail => super::ConstOneOfEmail; required { email : R0 : String =
-        "email" } optional {} fixed { type_ : types::ConstOneOfEmailType {}, }
+        ConstOneOfEmail => super::ConstOneOfEmail;
+        required {
+            email: R0: String = "email",
+        }
+        optional {}
+        fixed {
+            type_: types::ConstOneOfEmailType {},
+        }
     }
     ::honig::typestate_builder! {
-        DeliveryPickup => super::DeliveryPickup; required { pickup : R0 : bool =
-        "pickup", order_id : R1 : String = "orderId" } optional {} fixed {}
+        DeliveryPickup => super::DeliveryPickup;
+        required {
+            pickup: R0: bool = "pickup",
+            order_id: R1: String = "orderId",
+        }
+        optional {}
+        fixed {}
     }
     ::honig::typestate_builder! {
-        DeliveryAddress => super::DeliveryAddress; required { street : R0 : String =
-        "street", order_id : R1 : String = "orderId" } optional {} fixed {}
+        DeliveryAddress => super::DeliveryAddress;
+        required {
+            street: R0: String = "street",
+            order_id: R1: String = "orderId",
+        }
+        optional {}
+        fixed {}
     }
     ::honig::typestate_builder! {
-        DeliveryMethodPickup => super::DeliveryMethodPickup; required { pickup : R0 :
-        bool = "pickup" } optional {} fixed {}
+        DeliveryMethodPickup => super::DeliveryMethodPickup;
+        required {
+            pickup: R0: bool = "pickup",
+        }
+        optional {}
+        fixed {}
     }
     ::honig::typestate_builder! {
-        ShippingUs => super::ShippingUs; required { zip : R0 : String = "zip" } optional
-        { postcode(postcode) : String = "postcode" => some, None } fixed { country :
-        types::ShippingUsCountry {}, }
+        ShippingUs => super::ShippingUs;
+        required {
+            zip: R0: String = "zip",
+        }
+        optional {
+            postcode(postcode): String = "postcode" => some, None,
+        }
+        fixed {
+            country: types::ShippingUsCountry {},
+        }
     }
     ::honig::typestate_builder! {
-        ShippingOtherwise => super::ShippingOtherwise; required { country : R0 : String =
-        "country", postcode : R1 : String = "postcode" } optional { zip(zip) : String =
-        "zip" => some, None } fixed {}
+        ShippingOtherwise => super::ShippingOtherwise;
+        required {
+            country: R0: String = "country",
+            postcode: R1: String = "postcode",
+        }
+        optional {
+            zip(zip): String = "zip" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        ContactEmailOrMail => super::ContactEmailOrMail; required { via : R0 :
-        types::ContactEmailOrMailVia = "via", address : R1 : String = "address" }
-        optional {} fixed {}
+        ContactEmailOrMail => super::ContactEmailOrMail;
+        required {
+            via: R0: types::ContactEmailOrMailVia = "via",
+            address: R1: String = "address",
+        }
+        optional {}
+        fixed {}
     }
     ::honig::typestate_builder! {
-        ContactSms => super::ContactSms; required { phone : R0 : String = "phone" }
-        optional {} fixed { via : types::ContactSmsVia {}, }
+        ContactSms => super::ContactSms;
+        required {
+            phone: R0: String = "phone",
+        }
+        optional {}
+        fixed {
+            via: types::ContactSmsVia {},
+        }
     }
     ::honig::typestate_builder! {
-        ContactOtherwise => super::ContactOtherwise; required { via : R0 : String = "via"
-        } optional {} fixed {}
+        ContactOtherwise => super::ContactOtherwise;
+        required {
+            via: R0: String = "via",
+        }
+        optional {}
+        fixed {}
     }
 }

@@ -57,8 +57,14 @@ impl Route {
 pub mod builders {
     use super as types;
     ::honig::typestate_builder! {
-        Route => super::Route; required { start : R0 : types::Point = "start", stops : R1
-        : Vec < types::Point > = "stops" } optional { tags(tags) : types::Open = "tags"
-        => some, None } fixed {}
+        Route => super::Route;
+        required {
+            start: R0: types::Point = "start",
+            stops: R1: Vec<types::Point> = "stops",
+        }
+        optional {
+            tags(tags): types::Open = "tags" => some, None,
+        }
+        fixed {}
     }
 }

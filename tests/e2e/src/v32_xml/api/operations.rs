@@ -39,8 +39,14 @@ pub mod add_book {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : types::Book = "body" }
-            optional {} fixed { media : super::Media::ALL[0] }
+            Params => super::Params;
+            required {
+                body: R0: types::Book = "body",
+            }
+            optional {}
+            fixed {
+                media: super::Media::ALL[0],
+            }
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

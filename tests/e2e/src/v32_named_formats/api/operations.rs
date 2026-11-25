@@ -16,8 +16,12 @@ pub mod put_stamp {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : types::Stamp = "body" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                body: R0: types::Stamp = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

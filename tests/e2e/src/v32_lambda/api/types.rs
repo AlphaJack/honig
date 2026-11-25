@@ -29,9 +29,16 @@ impl GetItemOk {
 /// of its field. `build` returns the first field that did not convert.
 pub mod builders {
     ::honig::typestate_builder! {
-        GetItemOk => super::GetItemOk; required { id : R0 : String = "id", tags : R1 :
-        Vec < String > = "tags" } optional { trace(trace) : String = "trace" => some,
-        None, session(session) : String = "session" => some, None, source_ip(source_ip) :
-        String = "sourceIp" => some, None } fixed {}
+        GetItemOk => super::GetItemOk;
+        required {
+            id: R0: String = "id",
+            tags: R1: Vec<String> = "tags",
+        }
+        optional {
+            trace(trace): String = "trace" => some, None,
+            session(session): String = "session" => some, None,
+            source_ip(source_ip): String = "sourceIp" => some, None,
+        }
+        fixed {}
     }
 }

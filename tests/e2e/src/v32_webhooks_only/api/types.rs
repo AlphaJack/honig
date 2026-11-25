@@ -18,7 +18,13 @@ impl Shipment {
 /// of its field. `build` returns the first field that did not convert.
 pub mod builders {
     ::honig::typestate_builder! {
-        Shipment => super::Shipment; required { order_id : R0 : String = "orderId" }
-        optional { carrier(carrier) : String = "carrier" => some, None } fixed {}
+        Shipment => super::Shipment;
+        required {
+            order_id: R0: String = "orderId",
+        }
+        optional {
+            carrier(carrier): String = "carrier" => some, None,
+        }
+        fixed {}
     }
 }

@@ -53,8 +53,12 @@ pub mod put_order {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : types::OrderRequest = "body"
-            } optional {} fixed {}
+            Params => super::Params;
+            required {
+                body: R0: types::OrderRequest = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

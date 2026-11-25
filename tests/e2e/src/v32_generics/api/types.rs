@@ -72,25 +72,51 @@ impl StringTree {
 pub mod builders {
     use super as types;
     ::honig::typestate_builder! {
-        Product => super::Product; required { name : R0 : String = "name" } optional {}
+        Product => super::Product;
+        required {
+            name: R0: String = "name",
+        }
+        optional {}
         fixed {}
     }
     ::honig::typestate_builder! {
-        Page => super::Page; required { items : R0 : Vec < serde_json::Value > = "items"
-        } optional { next(next) : String = "next" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        ProductPage => super::ProductPage; required { items : R0 : Vec < types::Product >
-        = "items" } optional { next(next) : String = "next" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        Tree => super::Tree; required { value : R0 : serde_json::Value = "value" }
-        optional { children(children) : Vec < types::Tree > = "children" => some, None }
+        Page => super::Page;
+        required {
+            items: R0: Vec<serde_json::Value> = "items",
+        }
+        optional {
+            next(next): String = "next" => some, None,
+        }
         fixed {}
     }
     ::honig::typestate_builder! {
-        StringTree => super::StringTree; required { value : R0 : String = "value" }
-        optional { children(children) : Vec < types::StringTree > = "children" => some,
-        None } fixed {}
+        ProductPage => super::ProductPage;
+        required {
+            items: R0: Vec<types::Product> = "items",
+        }
+        optional {
+            next(next): String = "next" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        Tree => super::Tree;
+        required {
+            value: R0: serde_json::Value = "value",
+        }
+        optional {
+            children(children): Vec<types::Tree> = "children" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        StringTree => super::StringTree;
+        required {
+            value: R0: String = "value",
+        }
+        optional {
+            children(children): Vec<types::StringTree> = "children" => some, None,
+        }
+        fixed {}
     }
 }

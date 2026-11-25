@@ -173,17 +173,37 @@ impl ListProductsLimit {
 pub mod builders {
     use super as types;
     ::honig::typestate_builder! {
-        Physical => super::Physical; required { name : R0 : String = "name" } optional {
-        fragile(fragile) : bool = "fragile" => some, None, sku(sku) : types::PhysicalSku
-        = "sku" => some, None } fixed { kind : types::PhysicalKind {}, }
+        Physical => super::Physical;
+        required {
+            name: R0: String = "name",
+        }
+        optional {
+            fragile(fragile): bool = "fragile" => some, None,
+            sku(sku): types::PhysicalSku = "sku" => some, None,
+        }
+        fixed {
+            kind: types::PhysicalKind {},
+        }
     }
     ::honig::typestate_builder! {
-        Digital => super::Digital; required { name : R0 : String = "name" } optional {
-        downloads(downloads) : i32 = "downloads" => nullable, ::honig::Nullable::Absent }
-        fixed { kind : types::DigitalKind {}, }
+        Digital => super::Digital;
+        required {
+            name: R0: String = "name",
+        }
+        optional {
+            downloads(downloads): i32 = "downloads" => nullable, ::honig::Nullable::Absent,
+        }
+        fixed {
+            kind: types::DigitalKind {},
+        }
     }
     ::honig::typestate_builder! {
-        Error => super::Error; required { code : R0 : i32 = "code", message : R1 : String
-        = "message" } optional {} fixed {}
+        Error => super::Error;
+        required {
+            code: R0: i32 = "code",
+            message: R1: String = "message",
+        }
+        optional {}
+        fixed {}
     }
 }

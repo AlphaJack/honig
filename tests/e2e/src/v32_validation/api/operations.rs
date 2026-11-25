@@ -52,9 +52,15 @@ pub mod create_user {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : types::User = "body" }
-            optional { limit(limit) : types::CreateUserLimit = "limit" => some, None,
-            x_team(x_team) : types::CreateUserXTeam = "X-Team" => some, None } fixed {}
+            Params => super::Params;
+            required {
+                body: R0: types::User = "body",
+            }
+            optional {
+                limit(limit): types::CreateUserLimit = "limit" => some, None,
+                x_team(x_team): types::CreateUserXTeam = "X-Team" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq)]
@@ -79,8 +85,10 @@ pub mod create_user {
         431, UnavailableForLegalReasons = 451 }
     );
     ::honig::response_error!(
-        Response { Self::Created(..) => "status 201 (Created)", Self::ClientError {
-        status, .. } => format_args!("status {} (ClientError)", status.as_u16()), }
+        Response {
+            Self::Created(..) => "status 201 (Created)",
+            Self::ClientError { status,.. } => format_args!("status {} (ClientError)", status.as_u16()),
+        }
     );
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -109,8 +117,12 @@ pub mod create_shipment {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : types::Shipment = "body" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                body: R0: types::Shipment = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -123,8 +135,10 @@ pub mod create_shipment {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(
-        Response { Self::Created => "status 201 (Created)", Self::BadRequest(..) =>
-        "status 400 (BadRequest)", }
+        Response {
+            Self::Created => "status 201 (Created)",
+            Self::BadRequest(..) => "status 400 (BadRequest)",
+        }
     );
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -153,8 +167,12 @@ pub mod login {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : types::LoginRequest = "body"
-            } optional {} fixed {}
+            Params => super::Params;
+            required {
+                body: R0: types::LoginRequest = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -190,8 +208,12 @@ pub mod add_member {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : super::Body = "body" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                body: R0: super::Body = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq)]
@@ -232,8 +254,12 @@ pub mod add_closed {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : super::Body = "body" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                body: R0: super::Body = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -276,8 +302,12 @@ pub mod add_badge {
     ::honig::default_from_new!(Params);
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required {} optional { body(body) : super::Body =
-            "body" => some, None } fixed {}
+            Params => super::Params;
+            required {}
+            optional {
+                body(body): super::Body = "body" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

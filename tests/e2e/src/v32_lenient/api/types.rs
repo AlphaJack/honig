@@ -284,23 +284,45 @@ pub type DeliveryRequestVariants = DeliveryVariants;
 pub mod builders {
     use super as types;
     ::honig::typestate_builder! {
-        Order => super::Order; required { id : R0 : String = "id", status : R1 :
-        types::Status = "status" } optional { priority(priority) : types::OrderPriority =
-        "priority" => some, None, delivery(delivery) : types::Delivery = "delivery" =>
-        some, None } fixed {}
+        Order => super::Order;
+        required {
+            id: R0: String = "id",
+            status: R1: types::Status = "status",
+        }
+        optional {
+            priority(priority): types::OrderPriority = "priority" => some, None,
+            delivery(delivery): types::Delivery = "delivery" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        Pickup => super::Pickup; required { kind : R0 : String = "kind", store : R1 :
-        String = "store" } optional {} fixed {}
+        Pickup => super::Pickup;
+        required {
+            kind: R0: String = "kind",
+            store: R1: String = "store",
+        }
+        optional {}
+        fixed {}
     }
     ::honig::typestate_builder! {
-        Courier => super::Courier; required { kind : R0 : String = "kind", address : R1 :
-        String = "address" } optional {} fixed {}
+        Courier => super::Courier;
+        required {
+            kind: R0: String = "kind",
+            address: R1: String = "address",
+        }
+        optional {}
+        fixed {}
     }
     ::honig::typestate_builder! {
-        OrderRequest => super::OrderRequest; required { id : R0 : String = "id", status :
-        R1 : types::StatusRequest = "status" } optional { priority(priority) :
-        types::OrderPriorityRequest = "priority" => some, None, delivery(delivery) :
-        types::DeliveryRequest = "delivery" => some, None } fixed {}
+        OrderRequest => super::OrderRequest;
+        required {
+            id: R0: String = "id",
+            status: R1: types::StatusRequest = "status",
+        }
+        optional {
+            priority(priority): types::OrderPriorityRequest = "priority" => some, None,
+            delivery(delivery): types::DeliveryRequest = "delivery" => some, None,
+        }
+        fixed {}
     }
 }

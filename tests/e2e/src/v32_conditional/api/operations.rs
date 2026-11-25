@@ -16,8 +16,12 @@ pub mod a {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : types::Discriminated = "body"
-            } optional {} fixed {}
+            Params => super::Params;
+            required {
+                body: R0: types::Discriminated = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -54,8 +58,12 @@ pub mod b {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : types::IfThen = "body" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                body: R0: types::IfThen = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -92,8 +100,12 @@ pub mod c {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : types::ConstOneOf = "body" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                body: R0: types::ConstOneOf = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

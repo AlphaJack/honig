@@ -111,27 +111,55 @@ impl UploadScanBody {
 pub mod builders {
     use super as types;
     ::honig::typestate_builder! {
-        UploadBody => super::UploadBody; required { image : R0 : ::honig::Binary =
-        "image", meta : R1 : types::UploadBodyMeta = "meta" } optional { tags(tags) : Vec
-        < String > = "tags" => some, None, bundle(bundle) : types::UploadBodyBundle =
-        "bundle" => some, None, pages(pages) : Vec < String > = "pages" => some, None }
+        UploadBody => super::UploadBody;
+        required {
+            image: R0: ::honig::Binary = "image",
+            meta: R1: types::UploadBodyMeta = "meta",
+        }
+        optional {
+            tags(tags): Vec<String> = "tags" => some, None,
+            bundle(bundle): types::UploadBodyBundle = "bundle" => some, None,
+            pages(pages): Vec<String> = "pages" => some, None,
+        }
         fixed {}
     }
     ::honig::typestate_builder! {
-        UploadBodyMeta => super::UploadBodyMeta; required { title : R0 : String = "title"
-        } optional { width(width) : i64 = "width" => some, None } fixed {}
+        UploadBodyMeta => super::UploadBodyMeta;
+        required {
+            title: R0: String = "title",
+        }
+        optional {
+            width(width): i64 = "width" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        UploadBodyBundle => super::UploadBodyBundle; required {} optional { note(note) :
-        String = "note" => some, None, scan(scan) : ::honig::Binary = "scan" => some,
-        None } fixed {}
+        UploadBodyBundle => super::UploadBodyBundle;
+        required {}
+        optional {
+            note(note): String = "note" => some, None,
+            scan(scan): ::honig::Binary = "scan" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        PutIconBody => super::PutIconBody; required { icon : R0 : ::honig::Binary =
-        "icon" } optional { name(name) : String = "name" => some, None } fixed {}
+        PutIconBody => super::PutIconBody;
+        required {
+            icon: R0: ::honig::Binary = "icon",
+        }
+        optional {
+            name(name): String = "name" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
-        UploadScanBody => super::UploadScanBody; required { scan : R0 : ::honig::Binary =
-        "scan" } optional { label(label) : String = "label" => some, None } fixed {}
+        UploadScanBody => super::UploadScanBody;
+        required {
+            scan: R0: ::honig::Binary = "scan",
+        }
+        optional {
+            label(label): String = "label" => some, None,
+        }
+        fixed {}
     }
 }

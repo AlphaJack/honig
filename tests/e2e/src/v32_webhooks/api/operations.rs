@@ -16,8 +16,12 @@ pub mod subscribe {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : types::SubscribeBody = "body"
-            } optional {} fixed {}
+            Params => super::Params;
+            required {
+                body: R0: types::SubscribeBody = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -67,8 +71,12 @@ pub mod new_product {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : types::Product = "body" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                body: R0: types::Product = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -110,8 +118,12 @@ pub mod subscribe_on_event_post {
     pub mod builders {
         use super::types;
         ::honig::typestate_builder! {
-            Params => super::Params; required { body : R0 : types::Event = "body" }
-            optional {} fixed {}
+            Params => super::Params;
+            required {
+                body: R0: types::Event = "body",
+            }
+            optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

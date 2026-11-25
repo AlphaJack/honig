@@ -18,9 +18,15 @@ pub mod get_event {
     }
     pub mod builders {
         ::honig::typestate_builder! {
-            Params => super::Params; required { id : R0 : ::honig::UuidStr = "id" }
-            optional { on(on) : ::honig::DateStr = "on" => some, None, above(above) :
-            ::honig::Decimal = "above" => some, None } fixed {}
+            Params => super::Params;
+            required {
+                id: R0: ::honig::UuidStr = "id",
+            }
+            optional {
+                on(on): ::honig::DateStr = "on" => some, None,
+                above(above): ::honig::Decimal = "above" => some, None,
+            }
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

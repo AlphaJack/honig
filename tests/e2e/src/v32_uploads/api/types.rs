@@ -10,7 +10,12 @@
 /// of its field. `build` returns the first field that did not convert.
 pub mod builders {
     ::honig::typestate_builder! {
-        PutFileOk => super::PutFileOk; required { bytes : R0 : i64 = "bytes", chunks : R1
-        : i64 = "chunks" } optional {} fixed {}
+        PutFileOk => super::PutFileOk;
+        required {
+            bytes: R0: i64 = "bytes",
+            chunks: R1: i64 = "chunks",
+        }
+        optional {}
+        fixed {}
     }
 }
