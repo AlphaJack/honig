@@ -2,100 +2,14 @@
 pub use ::honig::EmailStr;
 ::honig::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-    pub struct EmailRequest {
-        #[serde(rename = "type")]
-        pub type_: EmailType,
-        pub email: ::honig::EmailStr,
+    pub struct Address {
+        pub street: String,
     }
 }
-::honig::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-    pub struct SmsRequest {
-        #[serde(rename = "type")]
-        pub type_: SmsType,
-        pub phone: String,
-    }
-}
-impl SmsRequest {
+impl Address {
     #[must_use]
-    pub const fn new(phone: String) -> Self {
-        Self { type_: SmsType {}, phone }
-    }
-}
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Discriminated {
-    EmailRequest(EmailRequest),
-    SmsRequest(SmsRequest),
-}
-::honig::union_serialize!(Discriminated { EmailRequest, SmsRequest });
-::honig::tagged_deserialize!(Discriminated);
-impl<'de> ::honig::__private::TaggedUnion<'de> for Discriminated {
-    const TAG: &'static str = "type";
-    fn knows(tag: &str) -> bool {
-        matches!(tag, "email" | "sms")
-    }
-    fn from_tag<D: serde::Deserializer<'de>>(tag: &str, d: D) -> Result<Self, D::Error> {
-        match tag {
-            "email" => {
-                <EmailRequest as serde::Deserialize>::deserialize(d)
-                    .map(Self::EmailRequest)
-            }
-            "sms" => {
-                <SmsRequest as serde::Deserialize>::deserialize(d).map(Self::SmsRequest)
-            }
-            _ => Err(serde::de::Error::custom("unknown discriminator")),
-        }
-    }
-    fn from_content(
-        v: ::honig::__private::Content<'de>,
-    ) -> Result<Self, serde_json::Error> {
-        let which = match v.tag("type").as_deref() {
-            Some("email") => 0,
-            Some("sms") => 1,
-            _ => 2,
-        };
-        match which {
-            0 => v.decode_into(Self::EmailRequest),
-            1 => v.decode_into(Self::SmsRequest),
-            _ => Err(serde::de::Error::custom("matches no variant")),
-        }
-    }
-}
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum IfThen {
-    Email(IfThenEmail),
-    Sms(IfThenSms),
-    Otherwise(IfThenOtherwise),
-}
-::honig::union_serialize!(IfThen { Email, Otherwise, Sms });
-::honig::tagged_deserialize!(IfThen);
-impl<'de> ::honig::__private::TaggedUnion<'de> for IfThen {
-    const TAG: &'static str = "type";
-    fn knows(tag: &str) -> bool {
-        matches!(tag, "email" | "sms")
-    }
-    fn from_tag<D: serde::Deserializer<'de>>(tag: &str, d: D) -> Result<Self, D::Error> {
-        match tag {
-            "email" => {
-                <IfThenEmail as serde::Deserialize>::deserialize(d).map(Self::Email)
-            }
-            "sms" => <IfThenSms as serde::Deserialize>::deserialize(d).map(Self::Sms),
-            _ => Err(serde::de::Error::custom("unknown discriminator")),
-        }
-    }
-    fn from_content(
-        v: ::honig::__private::Content<'de>,
-    ) -> Result<Self, serde_json::Error> {
-        let which = match v.tag("type").as_deref() {
-            Some("email") => 0,
-            Some("sms") => 1,
-            _ => 2,
-        };
-        match which {
-            0 => v.decode_into(Self::Email),
-            1 => v.decode_into(Self::Sms),
-            _ => v.decode_into(Self::Otherwise),
-        }
+    pub const fn new(street: String) -> Self {
+        Self { street }
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -131,6 +45,44 @@ impl<'de> ::honig::__private::TaggedUnion<'de> for ConstOneOf {
             0 => v.decode_into(Self::Email),
             1 => v.decode_into(Self::Sms),
             _ => Err(serde::de::Error::custom("matches no variant")),
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Contact {
+    EmailOrMail(ContactEmailOrMail),
+    Sms(ContactSms),
+    Otherwise(ContactOtherwise),
+}
+::honig::union_serialize!(Contact { Otherwise, Sms } "via" { EmailOrMail => "email" });
+::honig::tagged_deserialize!(Contact);
+impl<'de> ::honig::__private::TaggedUnion<'de> for Contact {
+    const TAG: &'static str = "via";
+    fn knows(tag: &str) -> bool {
+        matches!(tag, "email" | "mail" | "sms")
+    }
+    fn from_tag<D: serde::Deserializer<'de>>(tag: &str, d: D) -> Result<Self, D::Error> {
+        match tag {
+            "email" | "mail" => {
+                <ContactEmailOrMail as serde::Deserialize>::deserialize(d)
+                    .map(Self::EmailOrMail)
+            }
+            "sms" => <ContactSms as serde::Deserialize>::deserialize(d).map(Self::Sms),
+            _ => Err(serde::de::Error::custom("unknown discriminator")),
+        }
+    }
+    fn from_content(
+        v: ::honig::__private::Content<'de>,
+    ) -> Result<Self, serde_json::Error> {
+        let which = match v.tag("via").as_deref() {
+            Some("email" | "mail") => 0,
+            Some("sms") => 1,
+            _ => 2,
+        };
+        match which {
+            0 => v.decode_into(Self::EmailOrMail),
+            1 => v.decode_into(Self::Sms),
+            _ => v.decode_into(Self::Otherwise),
         }
     }
 }
@@ -268,16 +220,88 @@ impl<'de> serde::Deserialize<'de> for DeliveryMethod {
         )
     }
 }
-::honig::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-    pub struct Address {
-        pub street: String,
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Discriminated {
+    EmailRequest(EmailRequest),
+    SmsRequest(SmsRequest),
+}
+::honig::union_serialize!(Discriminated { EmailRequest, SmsRequest });
+::honig::tagged_deserialize!(Discriminated);
+impl<'de> ::honig::__private::TaggedUnion<'de> for Discriminated {
+    const TAG: &'static str = "type";
+    fn knows(tag: &str) -> bool {
+        matches!(tag, "email" | "sms")
+    }
+    fn from_tag<D: serde::Deserializer<'de>>(tag: &str, d: D) -> Result<Self, D::Error> {
+        match tag {
+            "email" => {
+                <EmailRequest as serde::Deserialize>::deserialize(d)
+                    .map(Self::EmailRequest)
+            }
+            "sms" => {
+                <SmsRequest as serde::Deserialize>::deserialize(d).map(Self::SmsRequest)
+            }
+            _ => Err(serde::de::Error::custom("unknown discriminator")),
+        }
+    }
+    fn from_content(
+        v: ::honig::__private::Content<'de>,
+    ) -> Result<Self, serde_json::Error> {
+        let which = match v.tag("type").as_deref() {
+            Some("email") => 0,
+            Some("sms") => 1,
+            _ => 2,
+        };
+        match which {
+            0 => v.decode_into(Self::EmailRequest),
+            1 => v.decode_into(Self::SmsRequest),
+            _ => Err(serde::de::Error::custom("matches no variant")),
+        }
     }
 }
-impl Address {
-    #[must_use]
-    pub const fn new(street: String) -> Self {
-        Self { street }
+::honig::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct EmailRequest {
+        #[serde(rename = "type")]
+        pub type_: EmailRequestType,
+        pub email: ::honig::EmailStr,
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum IfThen {
+    Email(IfThenEmail),
+    Sms(IfThenSms),
+    Otherwise(IfThenOtherwise),
+}
+::honig::union_serialize!(IfThen { Email, Otherwise, Sms });
+::honig::tagged_deserialize!(IfThen);
+impl<'de> ::honig::__private::TaggedUnion<'de> for IfThen {
+    const TAG: &'static str = "type";
+    fn knows(tag: &str) -> bool {
+        matches!(tag, "email" | "sms")
+    }
+    fn from_tag<D: serde::Deserializer<'de>>(tag: &str, d: D) -> Result<Self, D::Error> {
+        match tag {
+            "email" => {
+                <IfThenEmail as serde::Deserialize>::deserialize(d).map(Self::Email)
+            }
+            "sms" => <IfThenSms as serde::Deserialize>::deserialize(d).map(Self::Sms),
+            _ => Err(serde::de::Error::custom("unknown discriminator")),
+        }
+    }
+    fn from_content(
+        v: ::honig::__private::Content<'de>,
+    ) -> Result<Self, serde_json::Error> {
+        let which = match v.tag("type").as_deref() {
+            Some("email") => 0,
+            Some("sms") => 1,
+            _ => 2,
+        };
+        match which {
+            0 => v.decode_into(Self::Email),
+            1 => v.decode_into(Self::Sms),
+            _ => v.decode_into(Self::Otherwise),
+        }
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -311,42 +335,35 @@ impl<'de> ::honig::__private::TaggedUnion<'de> for Shipping {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Contact {
-    EmailOrMail(ContactEmailOrMail),
-    Sms(ContactSms),
-    Otherwise(ContactOtherwise),
+::honig::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct SmsRequest {
+        #[serde(rename = "type")]
+        pub type_: SmsRequestType,
+        pub phone: String,
+    }
 }
-::honig::union_serialize!(Contact { Otherwise, Sms } "via" { EmailOrMail => "email" });
-::honig::tagged_deserialize!(Contact);
-impl<'de> ::honig::__private::TaggedUnion<'de> for Contact {
-    const TAG: &'static str = "via";
-    fn knows(tag: &str) -> bool {
-        matches!(tag, "email" | "mail" | "sms")
-    }
-    fn from_tag<D: serde::Deserializer<'de>>(tag: &str, d: D) -> Result<Self, D::Error> {
-        match tag {
-            "email" | "mail" => {
-                <ContactEmailOrMail as serde::Deserialize>::deserialize(d)
-                    .map(Self::EmailOrMail)
-            }
-            "sms" => <ContactSms as serde::Deserialize>::deserialize(d).map(Self::Sms),
-            _ => Err(serde::de::Error::custom("unknown discriminator")),
+impl SmsRequest {
+    #[must_use]
+    pub const fn new(phone: String) -> Self {
+        Self {
+            type_: SmsRequestType {},
+            phone,
         }
     }
-    fn from_content(
-        v: ::honig::__private::Content<'de>,
-    ) -> Result<Self, serde_json::Error> {
-        let which = match v.tag("via").as_deref() {
-            Some("email" | "mail") => 0,
-            Some("sms") => 1,
-            _ => 2,
-        };
-        match which {
-            0 => v.decode_into(Self::EmailOrMail),
-            1 => v.decode_into(Self::Sms),
-            _ => v.decode_into(Self::Otherwise),
-        }
+}
+::honig::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct ConstOneOfEmail {
+        #[serde(rename = "type")]
+        pub type_: EmailType,
+        pub email: String,
+    }
+}
+impl ConstOneOfEmail {
+    #[must_use]
+    pub const fn new(email: String) -> Self {
+        Self { type_: EmailType {}, email }
     }
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
@@ -355,142 +372,26 @@ impl EmailType {
     pub const VALUE: &'static str = "email";
 }
 ::honig::const_impls!(EmailType, VALUE);
+::honig::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct ConstOneOfSms {
+        #[serde(rename = "type")]
+        pub type_: SmsType,
+        pub phone: String,
+    }
+}
+impl ConstOneOfSms {
+    #[must_use]
+    pub const fn new(phone: String) -> Self {
+        Self { type_: SmsType {}, phone }
+    }
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct SmsType;
 impl SmsType {
     pub const VALUE: &'static str = "sms";
 }
 ::honig::const_impls!(SmsType, VALUE);
-::honig::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-    pub struct IfThenEmail {
-        #[serde(rename = "type")]
-        pub type_: IfThenEmailType,
-        pub email: ::honig::EmailStr,
-    }
-}
-pub use EmailType as IfThenEmailType;
-::honig::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-    pub struct IfThenSms {
-        #[serde(rename = "type")]
-        pub type_: IfThenSmsType,
-        pub phone: String,
-    }
-}
-impl IfThenSms {
-    #[must_use]
-    pub const fn new(phone: String) -> Self {
-        Self {
-            type_: IfThenSmsType {},
-            phone,
-        }
-    }
-}
-pub use SmsType as IfThenSmsType;
-::honig::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-    pub struct IfThenOtherwise {
-        #[serde(rename = "type")]
-        pub type_: String,
-    }
-}
-impl IfThenOtherwise {
-    #[must_use]
-    pub const fn new(type_: String) -> Self {
-        Self { type_ }
-    }
-}
-::honig::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-    pub struct ConstOneOfEmail {
-        #[serde(rename = "type")]
-        pub type_: ConstOneOfEmailType,
-        pub email: String,
-    }
-}
-impl ConstOneOfEmail {
-    #[must_use]
-    pub const fn new(email: String) -> Self {
-        Self {
-            type_: ConstOneOfEmailType {},
-            email,
-        }
-    }
-}
-pub use EmailType as ConstOneOfEmailType;
-pub type ConstOneOfSms = IfThenSms;
-pub use SmsType as ConstOneOfSmsType;
-::honig::object! {
-    /// pickup
-    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-    pub struct DeliveryPickup {
-        pub pickup: bool,
-        #[serde(rename = "orderId")]
-        pub order_id: String,
-    }
-}
-impl DeliveryPickup {
-    #[must_use]
-    pub const fn new(pickup: bool, order_id: String) -> Self {
-        Self { pickup, order_id }
-    }
-}
-::honig::object! {
-    /// Address
-    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-    pub struct DeliveryAddress {
-        pub street: String,
-        #[serde(rename = "orderId")]
-        pub order_id: String,
-    }
-}
-::honig::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-    pub struct DeliveryMethodPickup {
-        pub pickup: bool,
-    }
-}
-impl DeliveryMethodPickup {
-    #[must_use]
-    pub const fn new(pickup: bool) -> Self {
-        Self { pickup }
-    }
-}
-::honig::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-    pub struct ShippingUs {
-        pub country: ShippingUsCountry,
-        pub zip: String,
-        #[optional]
-        pub postcode: String,
-    }
-}
-impl ShippingUs {
-    #[must_use]
-    pub const fn new(zip: String) -> Self {
-        Self {
-            country: ShippingUsCountry {},
-            zip,
-            postcode: None,
-        }
-    }
-}
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
-pub struct ShippingUsCountry;
-impl ShippingUsCountry {
-    pub const VALUE: &'static str = "US";
-}
-::honig::const_impls!(ShippingUsCountry, VALUE);
-::honig::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-    pub struct ShippingOtherwise {
-        pub country: String,
-        #[optional]
-        pub zip: String,
-        pub postcode: String,
-    }
-}
 ::honig::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct ContactEmailOrMail {
@@ -544,37 +445,138 @@ impl ContactOtherwise {
         Self { via }
     }
 }
+::honig::object! {
+    /// pickup
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct DeliveryPickup {
+        pub pickup: bool,
+        #[serde(rename = "orderId")]
+        pub order_id: String,
+    }
+}
+impl DeliveryPickup {
+    #[must_use]
+    pub const fn new(pickup: bool, order_id: String) -> Self {
+        Self { pickup, order_id }
+    }
+}
+::honig::object! {
+    /// Address
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct DeliveryAddress {
+        pub street: String,
+        #[serde(rename = "orderId")]
+        pub order_id: String,
+    }
+}
+::honig::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct DeliveryMethodPickup {
+        pub pickup: bool,
+    }
+}
+impl DeliveryMethodPickup {
+    #[must_use]
+    pub const fn new(pickup: bool) -> Self {
+        Self { pickup }
+    }
+}
+pub use EmailType as EmailRequestType;
+::honig::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct IfThenEmail {
+        #[serde(rename = "type")]
+        pub type_: IfThenEmailType,
+        pub email: ::honig::EmailStr,
+    }
+}
+pub use EmailType as IfThenEmailType;
+pub type IfThenSms = ConstOneOfSms;
+pub use SmsType as IfThenSmsType;
+::honig::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct IfThenOtherwise {
+        #[serde(rename = "type")]
+        pub type_: String,
+    }
+}
+impl IfThenOtherwise {
+    #[must_use]
+    pub const fn new(type_: String) -> Self {
+        Self { type_ }
+    }
+}
+::honig::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct ShippingUs {
+        pub country: ShippingUsCountry,
+        pub zip: String,
+        #[optional]
+        pub postcode: String,
+    }
+}
+impl ShippingUs {
+    #[must_use]
+    pub const fn new(zip: String) -> Self {
+        Self {
+            country: ShippingUsCountry {},
+            zip,
+            postcode: None,
+        }
+    }
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+pub struct ShippingUsCountry;
+impl ShippingUsCountry {
+    pub const VALUE: &'static str = "US";
+}
+::honig::const_impls!(ShippingUsCountry, VALUE);
+::honig::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct ShippingOtherwise {
+        pub country: String,
+        #[optional]
+        pub zip: String,
+        pub postcode: String,
+    }
+}
+pub use SmsType as SmsRequestType;
 /// One builder per struct, started by its `builder`. Each setter accepts anything that converts to the type
 /// of its field. `build` returns the first field that did not convert.
 pub mod builders {
     use super as types;
     ::honig::typestate_builder! {
-        EmailRequest => super::EmailRequest; required { email : R0 : ::honig::EmailStr =
-        "email" } optional {} fixed { type_ : types::EmailType {}, }
-    }
-    ::honig::typestate_builder! {
-        SmsRequest => super::SmsRequest; required { phone : R0 : String = "phone" }
-        optional {} fixed { type_ : types::SmsType {}, }
-    }
-    ::honig::typestate_builder! {
         Address => super::Address; required { street : R0 : String = "street" } optional
         {} fixed {}
     }
     ::honig::typestate_builder! {
-        IfThenEmail => super::IfThenEmail; required { email : R0 : ::honig::EmailStr =
-        "email" } optional {} fixed { type_ : types::IfThenEmailType {}, }
+        EmailRequest => super::EmailRequest; required { email : R0 : ::honig::EmailStr =
+        "email" } optional {} fixed { type_ : types::EmailRequestType {}, }
     }
     ::honig::typestate_builder! {
-        IfThenSms => super::IfThenSms; required { phone : R0 : String = "phone" }
-        optional {} fixed { type_ : types::IfThenSmsType {}, }
-    }
-    ::honig::typestate_builder! {
-        IfThenOtherwise => super::IfThenOtherwise; required { type_ : R0 : String =
-        "type" } optional {} fixed {}
+        SmsRequest => super::SmsRequest; required { phone : R0 : String = "phone" }
+        optional {} fixed { type_ : types::SmsRequestType {}, }
     }
     ::honig::typestate_builder! {
         ConstOneOfEmail => super::ConstOneOfEmail; required { email : R0 : String =
-        "email" } optional {} fixed { type_ : types::ConstOneOfEmailType {}, }
+        "email" } optional {} fixed { type_ : types::EmailType {}, }
+    }
+    ::honig::typestate_builder! {
+        ConstOneOfSms => super::ConstOneOfSms; required { phone : R0 : String = "phone" }
+        optional {} fixed { type_ : types::SmsType {}, }
+    }
+    ::honig::typestate_builder! {
+        ContactEmailOrMail => super::ContactEmailOrMail; required { via : R0 :
+        types::ContactEmailOrMailVia = "via", address : R1 : String = "address" }
+        optional {} fixed {}
+    }
+    ::honig::typestate_builder! {
+        ContactSms => super::ContactSms; required { phone : R0 : String = "phone" }
+        optional {} fixed { via : types::ContactSmsVia {}, }
+    }
+    ::honig::typestate_builder! {
+        ContactOtherwise => super::ContactOtherwise; required { via : R0 : String = "via"
+        } optional {} fixed {}
     }
     ::honig::typestate_builder! {
         DeliveryPickup => super::DeliveryPickup; required { pickup : R0 : bool =
@@ -589,6 +591,14 @@ pub mod builders {
         bool = "pickup" } optional {} fixed {}
     }
     ::honig::typestate_builder! {
+        IfThenEmail => super::IfThenEmail; required { email : R0 : ::honig::EmailStr =
+        "email" } optional {} fixed { type_ : types::IfThenEmailType {}, }
+    }
+    ::honig::typestate_builder! {
+        IfThenOtherwise => super::IfThenOtherwise; required { type_ : R0 : String =
+        "type" } optional {} fixed {}
+    }
+    ::honig::typestate_builder! {
         ShippingUs => super::ShippingUs; required { zip : R0 : String = "zip" } optional
         { postcode(postcode) : String = "postcode" => some, None } fixed { country :
         types::ShippingUsCountry {}, }
@@ -597,18 +607,5 @@ pub mod builders {
         ShippingOtherwise => super::ShippingOtherwise; required { country : R0 : String =
         "country", postcode : R1 : String = "postcode" } optional { zip(zip) : String =
         "zip" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        ContactEmailOrMail => super::ContactEmailOrMail; required { via : R0 :
-        types::ContactEmailOrMailVia = "via", address : R1 : String = "address" }
-        optional {} fixed {}
-    }
-    ::honig::typestate_builder! {
-        ContactSms => super::ContactSms; required { phone : R0 : String = "phone" }
-        optional {} fixed { via : types::ContactSmsVia {}, }
-    }
-    ::honig::typestate_builder! {
-        ContactOtherwise => super::ContactOtherwise; required { via : R0 : String = "via"
-        } optional {} fixed {}
     }
 }

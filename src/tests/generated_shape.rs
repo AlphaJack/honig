@@ -2619,3 +2619,21 @@ fn generating_removes_the_runtime_file_of_an_earlier_run() {
     crate::disk::write_module(&dir, &dir.join("mod.rs"), &files).unwrap();
     assert!(!crate::disk::is_file(&old) && crate::disk::is_file(&dir.join("mod.rs")));
 }
+
+/// Two schemas whose inline types derive one name (`FooBar.baz` and `Foo.barBaz` both give `FooBarBaz`) number it in
+/// the order of the schema names, so a reorder of `components/schemas` renames no type.
+#[test]
+fn a_reorder_of_schemas_renames_no_type() {
+    let inline = json!({"type": "object", "properties": {"id": {"type": "integer"}}});
+    let foo_bar = ("FooBar", json!({"type": "object", "properties": {"baz": inline}}));
+    let foo = ("Foo", json!({"type": "object", "properties": {"barBaz": inline}}));
+    let types = |order: [&(&str, serde_json::Value); 2]| {
+        let mut schemas = serde_json::Map::new();
+        schemas.extend(order.map(|(n, s)| ((*n).to_owned(), s.clone())));
+        let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": schemas}));
+        common::file(&common::generate("schema-order", &doc, &crate::emit::Options::default()), "types.rs").to_owned()
+    };
+    let (a, b) = (types([&foo_bar, &foo]), types([&foo, &foo_bar]));
+    assert!(a.contains("FooBarBaz2"), "the names collide: {a}");
+    assert_eq!(a, b);
+}

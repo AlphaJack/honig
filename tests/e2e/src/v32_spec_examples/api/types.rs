@@ -16,6 +16,41 @@ impl Address {
     }
 }
 ::honig::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct CollectionLinks {
+        pub linkset: Vec<CollectionLinksLinksetItem>,
+    }
+}
+impl CollectionLinks {
+    #[must_use]
+    pub const fn new(linkset: Vec<CollectionLinksLinksetItem>) -> Self {
+        Self { linkset }
+    }
+}
+::honig::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct Event {
+        #[optional]
+        pub event: String,
+        pub data: String,
+        #[optional]
+        pub id: String,
+        #[optional]
+        pub retry: EventRetry,
+    }
+}
+impl Event {
+    #[must_use]
+    pub const fn new(data: String) -> Self {
+        Self {
+            event: None,
+            data,
+            id: None,
+            retry: None,
+        }
+    }
+}
+::honig::object! {
     #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
     pub struct FormData {
         #[optional]
@@ -33,6 +68,52 @@ impl FormData {
             code: None,
             count: None,
             extra: None,
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct Log(pub(super) Vec<LogEntry>);
+::honig::checked_deserialize!(Log, Vec < LogEntry >);
+impl TryFrom<Vec<LogEntry>> for Log {
+    type Error = ::honig::BuildError;
+    fn try_from(value: Vec<LogEntry>) -> Result<Self, ::honig::BuildError> {
+        let mut violations: Vec<::honig::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            ::honig::__private::check_len(
+                out,
+                &::honig::InstanceLocation::Root,
+                value.len(),
+                None,
+                Some(100),
+                "items",
+            );
+        }
+        ::honig::__private::first(violations)
+            .map(|()| Self(value))
+            .map_err(::honig::BuildError::value)
+    }
+}
+::honig::checked_impls!(Log, Vec < LogEntry >);
+::honig::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct LogEntry {
+        #[optional]
+        pub timestamp: ::honig::DateTimeStr,
+        #[optional]
+        pub level: LogEntryLevel,
+        #[optional]
+        pub message: String,
+    }
+}
+impl LogEntry {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            timestamp: None,
+            level: None,
+            message: None,
         }
     }
 }
@@ -64,44 +145,47 @@ impl Product {
         }
     }
 }
+pub type SimpleLinkContext = Vec<SimpleLinkContextItem>;
 ::honig::object! {
+    #[unique_keys]
     #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-    pub struct LogEntry {
-        #[optional]
-        pub timestamp: ::honig::DateTimeStr,
-        #[optional]
-        pub level: LogEntryLevel,
-        #[optional]
-        pub message: String,
+    pub struct CollectionLinksLinksetItem {
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "::honig::__private::formats::read::<_, _, ::honig::__private::formats::Present<::honig::__private::formats::Text<::honig::__private::formats::format::Uri>>>"
+        )]
+        pub anchor: Option<::honig::url::Url>,
+        #[serde(flatten)]
+        pub additional_properties: std::collections::BTreeMap<String, SimpleLinkContext>,
     }
 }
-impl LogEntry {
+impl CollectionLinksLinksetItem {
     #[must_use]
     pub const fn new() -> Self {
         Self {
-            timestamp: None,
-            level: None,
-            message: None,
+            anchor: None,
+            additional_properties: std::collections::BTreeMap::new(),
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
-pub struct Log(pub(super) Vec<LogEntry>);
-::honig::checked_deserialize!(Log, Vec < LogEntry >);
-impl TryFrom<Vec<LogEntry>> for Log {
+pub struct EventRetry(pub(super) i64);
+impl TryFrom<i64> for EventRetry {
     type Error = ::honig::BuildError;
-    fn try_from(value: Vec<LogEntry>) -> Result<Self, ::honig::BuildError> {
+    fn try_from(value: i64) -> Result<Self, ::honig::BuildError> {
         let mut violations: Vec<::honig::Violation> = Vec::new();
         {
             let out = &mut violations;
-            ::honig::__private::check_len(
+            ::honig::__private::check_range(
                 out,
                 &::honig::InstanceLocation::Root,
-                value.len(),
-                None,
-                Some(100),
-                "items",
+                value,
+                ::honig::__private::Bounds {
+                    min: Some(0),
+                    ..::honig::__private::Bounds::NONE
+                },
             );
         }
         ::honig::__private::first(violations)
@@ -109,43 +193,15 @@ impl TryFrom<Vec<LogEntry>> for Log {
             .map_err(::honig::BuildError::value)
     }
 }
-::honig::checked_impls!(Log, Vec < LogEntry >);
-::honig::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-    pub struct Event {
-        #[optional]
-        pub event: String,
-        pub data: String,
-        #[optional]
-        pub id: String,
-        #[optional]
-        pub retry: EventRetry,
-    }
-}
-impl Event {
+impl EventRetry {
+    /// Returns the value, or `None` when it breaks a limit. In a constant, `.expect(..)` on it makes a
+    /// literal outside the limits a build error.
     #[must_use]
-    pub const fn new(data: String) -> Self {
-        Self {
-            event: None,
-            data,
-            id: None,
-            retry: None,
-        }
+    pub const fn new(value: i64) -> Option<Self> {
+        if value >= 0 { Some(Self(value)) } else { None }
     }
 }
-pub type SimpleLinkContext = Vec<SimpleLinkContextItem>;
-::honig::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-    pub struct CollectionLinks {
-        pub linkset: Vec<CollectionLinksLinksetItem>,
-    }
-}
-impl CollectionLinks {
-    #[must_use]
-    pub const fn new(linkset: Vec<CollectionLinksLinksetItem>) -> Self {
-        Self { linkset }
-    }
-}
+::honig::checked_num_impls!(EventRetry, i64);
 pub type FormDataCode = FormDataCode2;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
@@ -193,27 +249,7 @@ impl FormDataExtra {
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct LogEntryLevel(pub(super) i64);
-impl TryFrom<i64> for LogEntryLevel {
-    type Error = ::honig::BuildError;
-    fn try_from(value: i64) -> Result<Self, ::honig::BuildError> {
-        let mut violations: Vec<::honig::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            ::honig::__private::check_range(
-                out,
-                &::honig::InstanceLocation::Root,
-                value,
-                ::honig::__private::Bounds {
-                    min: Some(0),
-                    ..::honig::__private::Bounds::NONE
-                },
-            );
-        }
-        ::honig::__private::first(violations)
-            .map(|()| Self(value))
-            .map_err(::honig::BuildError::value)
-    }
-}
+::honig::checked_twin!(LogEntryLevel, EventRetry, i64);
 impl LogEntryLevel {
     /// Returns the value, or `None` when it breaks a limit. In a constant, `.expect(..)` on it makes a
     /// literal outside the limits a build error.
@@ -223,46 +259,10 @@ impl LogEntryLevel {
     }
 }
 ::honig::checked_num_impls!(LogEntryLevel, i64);
-#[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
-#[serde(transparent)]
-pub struct EventRetry(pub(super) i64);
-::honig::checked_twin!(EventRetry, LogEntryLevel, i64);
-impl EventRetry {
-    /// Returns the value, or `None` when it breaks a limit. In a constant, `.expect(..)` on it makes a
-    /// literal outside the limits a build error.
-    #[must_use]
-    pub const fn new(value: i64) -> Option<Self> {
-        if value >= 0 { Some(Self(value)) } else { None }
-    }
-}
-::honig::checked_num_impls!(EventRetry, i64);
 ::honig::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct SimpleLinkContextItem {
         pub href: ::honig::UriReferenceStr,
-    }
-}
-::honig::object! {
-    #[unique_keys]
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-    pub struct CollectionLinksLinksetItem {
-        #[serde(
-            default,
-            skip_serializing_if = "Option::is_none",
-            deserialize_with = "::honig::__private::formats::read::<_, _, ::honig::__private::formats::Present<::honig::__private::formats::Text<::honig::__private::formats::format::Uri>>>"
-        )]
-        pub anchor: Option<::honig::url::Url>,
-        #[serde(flatten)]
-        pub additional_properties: std::collections::BTreeMap<String, SimpleLinkContext>,
-    }
-}
-impl CollectionLinksLinksetItem {
-    #[must_use]
-    pub const fn new() -> Self {
-        Self {
-            anchor: None,
-            additional_properties: std::collections::BTreeMap::new(),
-        }
     }
 }
 ::honig::object! {
@@ -283,7 +283,7 @@ impl ParameterExamplesCookie {
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct ParameterExamplesCookieCode(pub(super) i64);
-::honig::checked_twin!(ParameterExamplesCookieCode, LogEntryLevel, i64);
+::honig::checked_twin!(ParameterExamplesCookieCode, EventRetry, i64);
 impl ParameterExamplesCookieCode {
     /// Returns the value, or `None` when it breaks a limit. In a constant, `.expect(..)` on it makes a
     /// literal outside the limits a build error.
@@ -1077,10 +1077,25 @@ pub mod builders {
         "street" => some, None, city(city) : String = "city" => some, None } fixed {}
     }
     ::honig::typestate_builder! {
+        CollectionLinks => super::CollectionLinks; required { linkset : R0 : Vec <
+        types::CollectionLinksLinksetItem > = "linkset" } optional {} fixed {}
+    }
+    ::honig::typestate_builder! {
+        Event => super::Event; required { data : R0 : String = "data" } optional {
+        event(event) : String = "event" => some, None, id(id) : String = "id" => some,
+        None, retry(retry) : types::EventRetry = "retry" => some, None } fixed {}
+    }
+    ::honig::typestate_builder! {
         FormData => super::FormData; required {} optional { code(code) :
         types::FormDataCodeChecked = "code" => some, None, count(count) : i64 = "count"
         => some, None, extra(extra) : types::FormDataExtra = "extra" => some, None }
         fixed {}
+    }
+    ::honig::typestate_builder! {
+        LogEntry => super::LogEntry; required {} optional { timestamp(timestamp) :
+        ::honig::DateTimeStr = "timestamp" => some, None, level(level) :
+        types::LogEntryLevel = "level" => some, None, message(message) : String =
+        "message" => some, None } fixed {}
     }
     ::honig::typestate_builder! {
         Product => super::Product; required {} optional { name(name) : String = "name" =>
@@ -1090,19 +1105,9 @@ pub mod builders {
         {}
     }
     ::honig::typestate_builder! {
-        LogEntry => super::LogEntry; required {} optional { timestamp(timestamp) :
-        ::honig::DateTimeStr = "timestamp" => some, None, level(level) :
-        types::LogEntryLevel = "level" => some, None, message(message) : String =
-        "message" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        Event => super::Event; required { data : R0 : String = "data" } optional {
-        event(event) : String = "event" => some, None, id(id) : String = "id" => some,
-        None, retry(retry) : types::EventRetry = "retry" => some, None } fixed {}
-    }
-    ::honig::typestate_builder! {
-        CollectionLinks => super::CollectionLinks; required { linkset : R0 : Vec <
-        types::CollectionLinksLinksetItem > = "linkset" } optional {} fixed {}
+        CollectionLinksLinksetItem => super::CollectionLinksLinksetItem; required {}
+        optional { anchor(anchor) : ::honig::url::Url = "anchor" => some, None } fixed {
+        additional_properties : std::collections::BTreeMap::new(), }
     }
     ::honig::typestate_builder! {
         FormDataExtra => super::FormDataExtra; required {} optional { info(info) : String
@@ -1111,11 +1116,6 @@ pub mod builders {
     ::honig::typestate_builder! {
         SimpleLinkContextItem => super::SimpleLinkContextItem; required { href : R0 :
         ::honig::UriReferenceStr = "href" } optional {} fixed {}
-    }
-    ::honig::typestate_builder! {
-        CollectionLinksLinksetItem => super::CollectionLinksLinksetItem; required {}
-        optional { anchor(anchor) : ::honig::url::Url = "anchor" => some, None } fixed {
-        additional_properties : std::collections::BTreeMap::new(), }
     }
     ::honig::typestate_builder! {
         ParameterExamplesCookie => super::ParameterExamplesCookie; required {} optional {

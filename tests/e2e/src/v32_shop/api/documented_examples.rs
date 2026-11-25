@@ -23,23 +23,169 @@ fn param<T: serde::de::DeserializeOwned>(
 #[test]
 fn documented_examples_decode() {
     let mut bad = vec![];
-    value::<i64>(&mut bad, "/components/schemas/User/properties/id/examples/0", "1");
-    value::<
-        String,
-    >(&mut bad, "/components/schemas/User/properties/name/examples/0", "\"Marc\"");
-    value::<
-        String,
-    >(&mut bad, "/components/schemas/User/properties/name/examples/1", "\"Cam\"");
-    value::<
-        String,
-    >(&mut bad, "/components/schemas/User/properties/name/examples/2", "\"Hans\"");
     value::<
         String,
     >(
         &mut bad,
-        "/components/schemas/Token/properties/token/examples/0",
-        "\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c\"",
+        "/components/schemas/BadRequestError/properties/type/examples/0",
+        "\"https://example.com/errors/bad-request\"",
     );
+    value::<
+        String,
+    >(
+        &mut bad,
+        "/components/schemas/BadRequestError/properties/title/examples/0",
+        "\"Bad Request\"",
+    );
+    value::<
+        i64,
+    >(
+        &mut bad,
+        "/components/schemas/BadRequestError/properties/status/examples/0",
+        "400",
+    );
+    value::<
+        String,
+    >(
+        &mut bad,
+        "/components/schemas/BadRequestError/properties/detail/examples/0",
+        "\"The request was invalid.\"",
+    );
+    value::<
+        String,
+    >(
+        &mut bad,
+        "/components/schemas/Conflict/properties/type/examples/0",
+        "\"https://example.com/errors/conflict\"",
+    );
+    value::<
+        String,
+    >(
+        &mut bad,
+        "/components/schemas/Conflict/properties/title/examples/0",
+        "\"Conflict\"",
+    );
+    value::<
+        i64,
+    >(&mut bad, "/components/schemas/Conflict/properties/status/examples/0", "409");
+    value::<
+        String,
+    >(
+        &mut bad,
+        "/components/schemas/Conflict/properties/detail/examples/0",
+        "\"The resource you are trying to access is in conflict.\"",
+    );
+    value::<
+        String,
+    >(
+        &mut bad,
+        "/components/schemas/ForbiddenError/properties/type/examples/0",
+        "\"https://example.com/errors/forbidden\"",
+    );
+    value::<
+        String,
+    >(
+        &mut bad,
+        "/components/schemas/ForbiddenError/properties/title/examples/0",
+        "\"Forbidden\"",
+    );
+    value::<
+        i64,
+    >(
+        &mut bad,
+        "/components/schemas/ForbiddenError/properties/status/examples/0",
+        "403",
+    );
+    value::<
+        String,
+    >(
+        &mut bad,
+        "/components/schemas/ForbiddenError/properties/detail/examples/0",
+        "\"You are not authorized to access this resource.\"",
+    );
+    value::<
+        String,
+    >(
+        &mut bad,
+        "/components/schemas/ImageUploadedMessage/properties/message/examples/0",
+        "\"Image uploaded successfully\"",
+    );
+    value::<
+        String,
+    >(
+        &mut bad,
+        "/components/schemas/ImageUploadedMessage/properties/imageUrl/examples/0",
+        "\"https://cdn.example.com/images/8f47c132-9d1f-4f83-b5a4-91db5ee757ab.jpg\"",
+    );
+    value::<
+        ::honig::DateTimeStr,
+    >(
+        &mut bad,
+        "/components/schemas/ImageUploadedMessage/properties/uploadedAt/examples/0",
+        "\"2024-01-15T14:30:00Z\"",
+    );
+    value::<
+        i64,
+    >(
+        &mut bad,
+        "/components/schemas/ImageUploadedMessage/properties/fileSize/examples/0",
+        "1048576",
+    );
+    value::<
+        String,
+    >(
+        &mut bad,
+        "/components/schemas/ImageUploadedMessage/properties/mimeType/examples/0",
+        "\"image/jpeg\"",
+    );
+    value::<
+        String,
+    >(
+        &mut bad,
+        "/components/schemas/ImageUploadedMessage/properties/mimeType/examples/1",
+        "\"image/png\"",
+    );
+    value::<
+        String,
+    >(
+        &mut bad,
+        "/components/schemas/NotFoundError/properties/type/examples/0",
+        "\"https://example.com/errors/not-found\"",
+    );
+    value::<
+        String,
+    >(
+        &mut bad,
+        "/components/schemas/NotFoundError/properties/title/examples/0",
+        "\"Not Found\"",
+    );
+    value::<
+        i64,
+    >(&mut bad, "/components/schemas/NotFoundError/properties/status/examples/0", "404");
+    value::<
+        String,
+    >(
+        &mut bad,
+        "/components/schemas/NotFoundError/properties/detail/examples/0",
+        "\"The resource you are trying to access does not exist.\"",
+    );
+    value::<
+        String,
+    >(
+        &mut bad,
+        "/components/schemas/PhotoBatchMeta/properties/photographer/examples/0",
+        "\"Studio North\"",
+    );
+    value::<
+        ::honig::DateTimeStr,
+    >(
+        &mut bad,
+        "/components/schemas/PhotoBatchMeta/properties/takenAt/examples/0",
+        "\"2024-01-15T14:30:00Z\"",
+    );
+    value::<
+        i64,
+    >(&mut bad, "/components/schemas/PhotoBatchMeta/properties/count/examples/0", "12");
     value::<i64>(&mut bad, "/components/schemas/Product/properties/id/examples/0", "1");
     value::<
         String,
@@ -128,23 +274,27 @@ fn documented_examples_decode() {
         "/components/schemas/Product/properties/failureCallbackUrl/examples/0",
         "\"https://example.com/webhook\"",
     );
-    value::<i64>(&mut bad, "/components/schemas/Variant/properties/id/examples/0", "1");
     value::<
-        String,
-    >(&mut bad, "/components/schemas/Variant/properties/name/examples/0", "\"Large\"");
-    value::<
-        Option<String>,
+        ::honig::UuidStr,
     >(
         &mut bad,
-        "/components/schemas/Variant/properties/description/examples/0",
-        "\"The large size, for desks wider than 120 cm.\"",
+        "/components/schemas/ProductEvent/properties/id/examples/0",
+        "\"123e4567-e89b-12d3-a456-426614174000\"",
     );
     value::<
-        f32,
-    >(&mut bad, "/components/schemas/Variant/properties/length/examples/0", "22.2");
+        types::ProductEventEvent,
+    >(
+        &mut bad,
+        "/components/schemas/ProductEvent/properties/event/examples/0",
+        "\"created\"",
+    );
     value::<
-        types::VariantType,
-    >(&mut bad, "/components/schemas/Variant/properties/type/examples/0", "\"size\"");
+        ::honig::DateTimeStr,
+    >(
+        &mut bad,
+        "/components/schemas/ProductEvent/properties/occurredAt/examples/0",
+        "\"2024-01-15T14:30:00Z\"",
+    );
     value::<
         String,
     >(
@@ -174,27 +324,6 @@ fn documented_examples_decode() {
         "\"-rating\"",
     );
     value::<
-        ::honig::UuidStr,
-    >(
-        &mut bad,
-        "/components/schemas/ProductEvent/properties/id/examples/0",
-        "\"123e4567-e89b-12d3-a456-426614174000\"",
-    );
-    value::<
-        types::ProductEventEvent,
-    >(
-        &mut bad,
-        "/components/schemas/ProductEvent/properties/event/examples/0",
-        "\"created\"",
-    );
-    value::<
-        ::honig::DateTimeStr,
-    >(
-        &mut bad,
-        "/components/schemas/ProductEvent/properties/occurredAt/examples/0",
-        "\"2024-01-15T14:30:00Z\"",
-    );
-    value::<
         String,
     >(&mut bad, "/components/schemas/ShopMessage/properties/lang/examples/0", "\"en\"");
     value::<
@@ -208,140 +337,36 @@ fn documented_examples_decode() {
         String,
     >(
         &mut bad,
-        "/components/schemas/PhotoBatchMeta/properties/photographer/examples/0",
-        "\"Studio North\"",
-    );
-    value::<
-        ::honig::DateTimeStr,
-    >(
-        &mut bad,
-        "/components/schemas/PhotoBatchMeta/properties/takenAt/examples/0",
-        "\"2024-01-15T14:30:00Z\"",
-    );
-    value::<
-        i64,
-    >(&mut bad, "/components/schemas/PhotoBatchMeta/properties/count/examples/0", "12");
-    value::<
-        String,
-    >(
-        &mut bad,
-        "/components/schemas/ImageUploadedMessage/properties/message/examples/0",
-        "\"Image uploaded successfully\"",
+        "/components/schemas/Token/properties/token/examples/0",
+        "\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c\"",
     );
     value::<
         String,
     >(
         &mut bad,
-        "/components/schemas/ImageUploadedMessage/properties/imageUrl/examples/0",
-        "\"https://cdn.example.com/images/8f47c132-9d1f-4f83-b5a4-91db5ee757ab.jpg\"",
+        "/components/schemas/TooManyRequestsError/properties/type/examples/0",
+        "\"https://example.com/errors/too-many-requests\"",
     );
     value::<
-        ::honig::DateTimeStr,
+        String,
     >(
         &mut bad,
-        "/components/schemas/ImageUploadedMessage/properties/uploadedAt/examples/0",
-        "\"2024-01-15T14:30:00Z\"",
+        "/components/schemas/TooManyRequestsError/properties/title/examples/0",
+        "\"Too Many Requests\"",
     );
     value::<
         i64,
     >(
         &mut bad,
-        "/components/schemas/ImageUploadedMessage/properties/fileSize/examples/0",
-        "1048576",
+        "/components/schemas/TooManyRequestsError/properties/status/examples/0",
+        "429",
     );
     value::<
         String,
     >(
         &mut bad,
-        "/components/schemas/ImageUploadedMessage/properties/mimeType/examples/0",
-        "\"image/jpeg\"",
-    );
-    value::<
-        String,
-    >(
-        &mut bad,
-        "/components/schemas/ImageUploadedMessage/properties/mimeType/examples/1",
-        "\"image/png\"",
-    );
-    value::<
-        String,
-    >(
-        &mut bad,
-        "/components/schemas/BadRequestError/properties/type/examples/0",
-        "\"https://example.com/errors/bad-request\"",
-    );
-    value::<
-        String,
-    >(
-        &mut bad,
-        "/components/schemas/BadRequestError/properties/title/examples/0",
-        "\"Bad Request\"",
-    );
-    value::<
-        i64,
-    >(
-        &mut bad,
-        "/components/schemas/BadRequestError/properties/status/examples/0",
-        "400",
-    );
-    value::<
-        String,
-    >(
-        &mut bad,
-        "/components/schemas/BadRequestError/properties/detail/examples/0",
-        "\"The request was invalid.\"",
-    );
-    value::<
-        String,
-    >(
-        &mut bad,
-        "/components/schemas/ForbiddenError/properties/type/examples/0",
-        "\"https://example.com/errors/forbidden\"",
-    );
-    value::<
-        String,
-    >(
-        &mut bad,
-        "/components/schemas/ForbiddenError/properties/title/examples/0",
-        "\"Forbidden\"",
-    );
-    value::<
-        i64,
-    >(
-        &mut bad,
-        "/components/schemas/ForbiddenError/properties/status/examples/0",
-        "403",
-    );
-    value::<
-        String,
-    >(
-        &mut bad,
-        "/components/schemas/ForbiddenError/properties/detail/examples/0",
-        "\"You are not authorized to access this resource.\"",
-    );
-    value::<
-        String,
-    >(
-        &mut bad,
-        "/components/schemas/NotFoundError/properties/type/examples/0",
-        "\"https://example.com/errors/not-found\"",
-    );
-    value::<
-        String,
-    >(
-        &mut bad,
-        "/components/schemas/NotFoundError/properties/title/examples/0",
-        "\"Not Found\"",
-    );
-    value::<
-        i64,
-    >(&mut bad, "/components/schemas/NotFoundError/properties/status/examples/0", "404");
-    value::<
-        String,
-    >(
-        &mut bad,
-        "/components/schemas/NotFoundError/properties/detail/examples/0",
-        "\"The resource you are trying to access does not exist.\"",
+        "/components/schemas/TooManyRequestsError/properties/detail/examples/0",
+        "\"Rate limit exceeded. Please try again later.\"",
     );
     value::<
         String,
@@ -375,30 +400,6 @@ fn documented_examples_decode() {
         String,
     >(
         &mut bad,
-        "/components/schemas/Conflict/properties/type/examples/0",
-        "\"https://example.com/errors/conflict\"",
-    );
-    value::<
-        String,
-    >(
-        &mut bad,
-        "/components/schemas/Conflict/properties/title/examples/0",
-        "\"Conflict\"",
-    );
-    value::<
-        i64,
-    >(&mut bad, "/components/schemas/Conflict/properties/status/examples/0", "409");
-    value::<
-        String,
-    >(
-        &mut bad,
-        "/components/schemas/Conflict/properties/detail/examples/0",
-        "\"The resource you are trying to access is in conflict.\"",
-    );
-    value::<
-        String,
-    >(
-        &mut bad,
         "/components/schemas/UnprocessableEntity/properties/type/examples/0",
         "\"https://example.com/errors/unprocessable-entity\"",
     );
@@ -423,33 +424,60 @@ fn documented_examples_decode() {
         "/components/schemas/UnprocessableEntity/properties/detail/examples/0",
         "\"The request was invalid.\"",
     );
+    value::<i64>(&mut bad, "/components/schemas/User/properties/id/examples/0", "1");
     value::<
         String,
+    >(&mut bad, "/components/schemas/User/properties/name/examples/0", "\"Marc\"");
+    value::<
+        String,
+    >(&mut bad, "/components/schemas/User/properties/name/examples/1", "\"Cam\"");
+    value::<
+        String,
+    >(&mut bad, "/components/schemas/User/properties/name/examples/2", "\"Hans\"");
+    value::<i64>(&mut bad, "/components/schemas/Variant/properties/id/examples/0", "1");
+    value::<
+        String,
+    >(&mut bad, "/components/schemas/Variant/properties/name/examples/0", "\"Large\"");
+    value::<
+        Option<String>,
     >(
         &mut bad,
-        "/components/schemas/TooManyRequestsError/properties/type/examples/0",
-        "\"https://example.com/errors/too-many-requests\"",
+        "/components/schemas/Variant/properties/description/examples/0",
+        "\"The large size, for desks wider than 120 cm.\"",
     );
     value::<
-        String,
+        f32,
+    >(&mut bad, "/components/schemas/Variant/properties/length/examples/0", "22.2");
+    value::<
+        types::VariantType,
+    >(&mut bad, "/components/schemas/Variant/properties/type/examples/0", "\"size\"");
+    value::<
+        i64,
     >(
         &mut bad,
-        "/components/schemas/TooManyRequestsError/properties/title/examples/0",
-        "\"Too Many Requests\"",
+        "/components/schemas/PaginatedResource/properties/meta/properties/limit/examples/0",
+        "10",
     );
     value::<
         i64,
     >(
         &mut bad,
-        "/components/schemas/TooManyRequestsError/properties/status/examples/0",
-        "429",
+        "/components/schemas/PaginatedResource/properties/meta/properties/offset/examples/0",
+        "0",
     );
     value::<
-        String,
+        i64,
     >(
         &mut bad,
-        "/components/schemas/TooManyRequestsError/properties/detail/examples/0",
-        "\"Rate limit exceeded. Please try again later.\"",
+        "/components/schemas/PaginatedResource/properties/meta/properties/total/examples/0",
+        "100",
+    );
+    value::<
+        Option<String>,
+    >(
+        &mut bad,
+        "/components/schemas/PaginatedResource/properties/meta/properties/next/examples/0",
+        "\"/products?limit=10&offset=10\"",
     );
     value::<
         types::ProductDimensionsWeight,
@@ -527,34 +555,6 @@ fn documented_examples_decode() {
         &mut bad,
         "/components/schemas/Variant/properties/shipping/properties/distance/examples/0",
         "9376",
-    );
-    value::<
-        i64,
-    >(
-        &mut bad,
-        "/components/schemas/PaginatedResource/properties/meta/properties/limit/examples/0",
-        "10",
-    );
-    value::<
-        i64,
-    >(
-        &mut bad,
-        "/components/schemas/PaginatedResource/properties/meta/properties/offset/examples/0",
-        "0",
-    );
-    value::<
-        i64,
-    >(
-        &mut bad,
-        "/components/schemas/PaginatedResource/properties/meta/properties/total/examples/0",
-        "100",
-    );
-    value::<
-        Option<String>,
-    >(
-        &mut bad,
-        "/components/schemas/PaginatedResource/properties/meta/properties/next/examples/0",
-        "\"/products?limit=10&offset=10\"",
     );
     value::<
         i64,
@@ -740,15 +740,6 @@ fn documented_examples_decode() {
     );
     value::<
         String,
-    >(&mut bad, "/components/schemas/User/properties/name/examples/0", "\"Marc\"");
-    value::<
-        String,
-    >(&mut bad, "/components/schemas/User/properties/name/examples/1", "\"Cam\"");
-    value::<
-        String,
-    >(&mut bad, "/components/schemas/User/properties/name/examples/2", "\"Hans\"");
-    value::<
-        String,
     >(
         &mut bad,
         "/components/schemas/Credentials/properties/password/examples/0",
@@ -849,22 +840,6 @@ fn documented_examples_decode() {
         "\"https://example.com/webhook\"",
     );
     value::<
-        String,
-    >(&mut bad, "/components/schemas/Variant/properties/name/examples/0", "\"Large\"");
-    value::<
-        Option<String>,
-    >(
-        &mut bad,
-        "/components/schemas/Variant/properties/description/examples/0",
-        "\"The large size, for desks wider than 120 cm.\"",
-    );
-    value::<
-        f32,
-    >(&mut bad, "/components/schemas/Variant/properties/length/examples/0", "22.2");
-    value::<
-        types::VariantType,
-    >(&mut bad, "/components/schemas/Variant/properties/type/examples/0", "\"size\"");
-    value::<
         ::honig::UuidStr,
     >(
         &mut bad,
@@ -885,6 +860,31 @@ fn documented_examples_decode() {
         "/components/schemas/ProductEvent/properties/occurredAt/examples/0",
         "\"2024-01-15T14:30:00Z\"",
     );
+    value::<
+        String,
+    >(&mut bad, "/components/schemas/User/properties/name/examples/0", "\"Marc\"");
+    value::<
+        String,
+    >(&mut bad, "/components/schemas/User/properties/name/examples/1", "\"Cam\"");
+    value::<
+        String,
+    >(&mut bad, "/components/schemas/User/properties/name/examples/2", "\"Hans\"");
+    value::<
+        String,
+    >(&mut bad, "/components/schemas/Variant/properties/name/examples/0", "\"Large\"");
+    value::<
+        Option<String>,
+    >(
+        &mut bad,
+        "/components/schemas/Variant/properties/description/examples/0",
+        "\"The large size, for desks wider than 120 cm.\"",
+    );
+    value::<
+        f32,
+    >(&mut bad, "/components/schemas/Variant/properties/length/examples/0", "22.2");
+    value::<
+        types::VariantType,
+    >(&mut bad, "/components/schemas/Variant/properties/type/examples/0", "\"size\"");
     value::<
         f32,
     >(

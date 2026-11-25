@@ -127,24 +127,31 @@ impl<'a> Builder<'a> {
     /// Registers and converts every `components.schemas` entry and keeps their names.
     pub(crate) fn components(&mut self) {
         let Some(Value::Object(schemas)) = pointer(&self.doc.root, "/components/schemas").cloned() else { return };
-        let mut ids = vec![];
+        // Names reserve and schemas fill in the order of their names: a derived name that two schemas share numbers
+        // the same for any document order.
+        let mut sorted: Vec<&String> = schemas.keys().collect();
+        sorted.sort_unstable();
+        let ids: BTreeMap<&String, TypeId> = sorted
+            .into_iter()
+            .map(|name| (name, self.reserve(&Name::new(name), &join("/components/schemas", name))))
+            .collect();
+        let mut fills = BTreeMap::new();
         for (name, schema) in &schemas {
-            let ptr = join("/components/schemas", name);
-            let id = self.reserve(&Name::new(name), &ptr);
+            let Some(&id) = ids.get(name) else { continue };
             // A component that only points at a schema without a name of its own (`#/x-ext/<hash>` of a bundler)
-            // is that schema under the name of the component. References to either reach it. The first claims it.
-            // A later one is an alias.
+            // is that schema under the name of the component. References to either reach it. The first in the
+            // document claims it, as its name is the tag of an implicit discriminator mapping. A later one is an alias.
             let ptr = match self.unnamed_target(schema) {
                 Some(target) if !self.by_ptr.contains_key(&target) => {
                     self.by_ptr.insert(target.clone(), id);
                     self.claimed.insert(target.clone(), name.clone());
                     target
                 }
-                Some(_) | None => ptr,
+                Some(_) | None => join("/components/schemas", name),
             };
-            ids.push((id, ptr));
+            fills.insert(name, (id, ptr));
         }
-        for (id, ptr) in ids {
+        for (id, ptr) in fills.into_values() {
             let schema = pointer(&self.doc.root, &ptr).cloned().unwrap_or(Value::Bool(true));
             self.fill(id, &schema, &ptr);
         }
@@ -1382,10 +1389,11 @@ mod tests {
         b.components();
         let s = b.finish();
         let names: Vec<&Name> = s.defs.iter().map(|d| &d.name).collect();
-        assert_eq!(names, ["Page", "Item", "Again", "Gadget", "Product"].map(Name::new).iter().collect::<Vec<_>>());
+        // In the order of their names. `Item` claims `b2` all the same: it comes before `Again` in the document.
+        assert_eq!(names, ["Again", "Gadget", "Item", "Page", "Product"].map(Name::new).iter().collect::<Vec<_>>());
         let Kind::Struct(page) = &by_name(&s, "Page").kind else { panic!() };
-        assert_eq!(page.fields[0].ty, Ty::Vec(Box::new(Ty::Named(TypeId(1)))));
-        assert_matches!(by_name(&s, "Again").kind, Kind::Alias(Ty::Named(TypeId(1))));
+        assert_eq!(page.fields[0].ty, Ty::Vec(Box::new(Ty::Named(TypeId(2)))));
+        assert_matches!(by_name(&s, "Again").kind, Kind::Alias(Ty::Named(TypeId(2))));
         // The implicit discriminator mapping is the name of the component and not the pointer of the bundler.
         let Kind::Union(product) = &by_name(&s, "Product").kind else { panic!() };
         let variants: Vec<(Name, &[String])> =

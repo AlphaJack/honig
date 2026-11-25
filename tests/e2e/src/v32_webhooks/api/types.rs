@@ -2,19 +2,6 @@
 pub use ::honig::DateTimeStr;
 ::honig::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-    pub struct Product {
-        pub id: i64,
-        pub name: String,
-    }
-}
-impl Product {
-    #[must_use]
-    pub const fn new(id: i64, name: String) -> Self {
-        Self { id, name }
-    }
-}
-::honig::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct Event {
         pub kind: EventKind,
         #[optional]
@@ -25,6 +12,19 @@ impl Event {
     #[must_use]
     pub const fn new(kind: EventKind) -> Self {
         Self { kind, at: None }
+    }
+}
+::honig::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct Product {
+        pub id: i64,
+        pub name: String,
+    }
+}
+impl Product {
+    #[must_use]
+    pub const fn new(id: i64, name: String) -> Self {
+        Self { id, name }
     }
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -54,12 +54,12 @@ impl SubscribeBody {
 pub mod builders {
     use super as types;
     ::honig::typestate_builder! {
-        Product => super::Product; required { id : R0 : i64 = "id", name : R1 : String =
-        "name" } optional {} fixed {}
-    }
-    ::honig::typestate_builder! {
         Event => super::Event; required { kind : R0 : types::EventKind = "kind" }
         optional { at(at) : ::honig::DateTimeStr = "at" => some, None } fixed {}
+    }
+    ::honig::typestate_builder! {
+        Product => super::Product; required { id : R0 : i64 = "id", name : R1 : String =
+        "name" } optional {} fixed {}
     }
     ::honig::typestate_builder! {
         SubscribeBody => super::SubscribeBody; required { callback_url : R0 :

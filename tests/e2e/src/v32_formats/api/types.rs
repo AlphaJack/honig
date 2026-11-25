@@ -6,15 +6,9 @@ pub use ::honig::{
 };
 ::honig::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-    pub struct StoreNetwork {
-        pub first: std::net::Ipv4Addr,
-        pub last: std::net::Ipv6Addr,
-    }
-}
-impl StoreNetwork {
-    #[must_use]
-    pub const fn new(first: std::net::Ipv4Addr, last: std::net::Ipv6Addr) -> Self {
-        Self { first, last }
+    pub struct Card {
+        pub method: CardMethod,
+        pub amount: CardAmount,
     }
 }
 ::honig::object! {
@@ -98,9 +92,15 @@ impl StoreNetwork {
 }
 ::honig::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-    pub struct Card {
-        pub method: CardMethod,
-        pub amount: CardAmount,
+    pub struct StoreNetwork {
+        pub first: std::net::Ipv4Addr,
+        pub last: std::net::Ipv6Addr,
+    }
+}
+impl StoreNetwork {
+    #[must_use]
+    pub const fn new(first: std::net::Ipv4Addr, last: std::net::Ipv6Addr) -> Self {
+        Self { first, last }
     }
 }
 ::honig::object! {
@@ -110,6 +110,37 @@ impl StoreNetwork {
         pub amount: TransferAmount,
     }
 }
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+pub struct CardMethod;
+impl CardMethod {
+    pub const VALUE: &'static str = "Card";
+}
+::honig::const_impls!(CardMethod, VALUE);
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize)]
+#[serde(transparent)]
+pub struct CardAmount(pub(super) ::honig::Decimal);
+impl TryFrom<::honig::Decimal> for CardAmount {
+    type Error = ::honig::BuildError;
+    fn try_from(value: ::honig::Decimal) -> Result<Self, ::honig::BuildError> {
+        let mut violations: Vec<::honig::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            ::honig::__private::check_decimal_range(
+                out,
+                &::honig::InstanceLocation::Root,
+                value.as_str(),
+                ::honig::__private::Bounds {
+                    min: Some("0"),
+                    ..::honig::__private::Bounds::NONE
+                },
+            );
+        }
+        ::honig::__private::first(violations)
+            .map(|()| Self(value))
+            .map_err(::honig::BuildError::value)
+    }
+}
+::honig::checked_decimal_impls!(CardAmount);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct EventPort(pub(super) u16);
@@ -143,31 +174,7 @@ impl EventPort {
     }
 }
 ::honig::checked_num_impls!(EventPort, u16);
-#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize)]
-#[serde(transparent)]
-pub struct EventAmount(pub(super) ::honig::Decimal);
-impl TryFrom<::honig::Decimal> for EventAmount {
-    type Error = ::honig::BuildError;
-    fn try_from(value: ::honig::Decimal) -> Result<Self, ::honig::BuildError> {
-        let mut violations: Vec<::honig::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            ::honig::__private::check_decimal_range(
-                out,
-                &::honig::InstanceLocation::Root,
-                value.as_str(),
-                ::honig::__private::Bounds {
-                    min: Some("0"),
-                    ..::honig::__private::Bounds::NONE
-                },
-            );
-        }
-        ::honig::__private::first(violations)
-            .map(|()| Self(value))
-            .map_err(::honig::BuildError::value)
-    }
-}
-::honig::checked_decimal_impls!(EventAmount);
+pub type EventAmount = CardAmount;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize)]
 #[serde(transparent)]
 pub struct EventSum(pub(super) ::honig::Decimal);
@@ -306,26 +313,19 @@ impl EventPayloadContent {
     }
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
-pub struct CardMethod;
-impl CardMethod {
-    pub const VALUE: &'static str = "Card";
-}
-::honig::const_impls!(CardMethod, VALUE);
-pub type CardAmount = EventAmount;
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct TransferMethod;
 impl TransferMethod {
     pub const VALUE: &'static str = "Transfer";
 }
 ::honig::const_impls!(TransferMethod, VALUE);
-pub type TransferAmount = EventAmount;
+pub type TransferAmount = CardAmount;
 /// One builder per struct, started by its `builder`. Each setter accepts anything that converts to the type
 /// of its field. `build` returns the first field that did not convert.
 pub mod builders {
     use super as types;
     ::honig::typestate_builder! {
-        StoreNetwork => super::StoreNetwork; required { first : R0 : std::net::Ipv4Addr =
-        "first", last : R1 : std::net::Ipv6Addr = "last" } optional {} fixed {}
+        Card => super::Card; required { amount : R0 : types::CardAmount = "amount" }
+        optional {} fixed { method : types::CardMethod {}, }
     }
     ::honig::typestate_builder! {
         Event => super::Event; required { id : R0 : ::honig::UuidStr = "id", at : R1 :
@@ -356,8 +356,8 @@ pub mod builders {
         types::EventPayload = "payload" => some, None } fixed {}
     }
     ::honig::typestate_builder! {
-        Card => super::Card; required { amount : R0 : types::CardAmount = "amount" }
-        optional {} fixed { method : types::CardMethod {}, }
+        StoreNetwork => super::StoreNetwork; required { first : R0 : std::net::Ipv4Addr =
+        "first", last : R1 : std::net::Ipv6Addr = "last" } optional {} fixed {}
     }
     ::honig::typestate_builder! {
         Transfer => super::Transfer; required { amount : R0 : types::TransferAmount =

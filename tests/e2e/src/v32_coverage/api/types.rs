@@ -12,6 +12,68 @@
         pub bin: i64,
     }
 }
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct Crop(pub(super) CropVariants);
+::honig::checked_deserialize!(Crop, CropVariants, once);
+impl Crop {
+    fn checked(
+        value: CropVariants,
+        json: &::honig::__private::Content<'_>,
+    ) -> Result<Self, ::honig::BuildError> {
+        let mut violations: Vec<::honig::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                let hits = [json.matches::<String>(), json.matches::<CropVariant1>()]
+                    .into_iter()
+                    .filter(|hit| *hit)
+                    .count();
+                if hits != 1 {
+                    ::honig::__private::violation(
+                        out,
+                        &::honig::InstanceLocation::Root,
+                        format!("matches {hits} of `oneOf`, not exactly one"),
+                    );
+                }
+            }
+        }
+        ::honig::__private::first(violations)
+            .map(|()| Self(value))
+            .map_err(::honig::BuildError::value)
+    }
+}
+::honig::checked_json!(Crop, CropVariants);
+::honig::checked_impls!(Crop, CropVariants);
+::honig::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct ImageNote {
+        pub kind: ImageNoteKind,
+        pub url: String,
+        #[serde(default = "ImageNote::default_width")]
+        pub width: Pixels,
+        #[optional]
+        pub crop: Crop,
+    }
+}
+impl ImageNote {
+    #[must_use]
+    pub const fn new(url: String) -> Self {
+        Self {
+            kind: ImageNoteKind {},
+            url,
+            width: Self::default_width(),
+            crop: None,
+        }
+    }
+}
+impl ImageNote {
+    #[doc(hidden)]
+    #[must_use]
+    pub const fn default_width() -> Pixels {
+        64i64
+    }
+}
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Note(pub(super) NoteVariants);
@@ -41,6 +103,7 @@ impl Note {
 }
 ::honig::checked_json!(Note, NoteVariants);
 ::honig::checked_impls!(Note, NoteVariants);
+pub type Pixels = i64;
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(transparent)]
 pub struct TextNote(pub(super) TextNoteFields);
@@ -78,69 +141,37 @@ impl TextNote {
 }
 ::honig::checked_json!(TextNote, TextNoteFields);
 ::honig::checked_impls!(TextNote, TextNoteFields);
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CropVariant1 {
+    Integer(i64),
+    Variant2(CropVariant1Variant2),
+}
+::honig::union_serialize!(CropVariant1 { Integer, Variant2 });
+::honig::by_kind_deserialize!(
+    CropVariant1 { Integer => Integer, Object => Variant2 }; Null | Bool | Number |
+    String | Array => none
+);
 ::honig::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-    pub struct ImageNote {
-        pub kind: ImageNoteKind,
-        pub url: String,
-        #[serde(default = "ImageNote::default_width")]
-        pub width: Pixels,
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct CropVariant1Variant2 {
         #[optional]
-        pub crop: Crop,
+        pub x: i64,
+        #[optional]
+        pub y: i64,
     }
 }
-impl ImageNote {
+impl CropVariant1Variant2 {
     #[must_use]
-    pub const fn new(url: String) -> Self {
-        Self {
-            kind: ImageNoteKind {},
-            url,
-            width: Self::default_width(),
-            crop: None,
-        }
+    pub const fn new() -> Self {
+        Self { x: None, y: None }
     }
 }
-impl ImageNote {
-    #[doc(hidden)]
-    #[must_use]
-    pub const fn default_width() -> Pixels {
-        64i64
-    }
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+pub struct ImageNoteKind;
+impl ImageNoteKind {
+    pub const VALUE: &'static str = "image";
 }
-pub type Pixels = i64;
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(transparent)]
-pub struct Crop(pub(super) CropVariants);
-::honig::checked_deserialize!(Crop, CropVariants, once);
-impl Crop {
-    fn checked(
-        value: CropVariants,
-        json: &::honig::__private::Content<'_>,
-    ) -> Result<Self, ::honig::BuildError> {
-        let mut violations: Vec<::honig::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                let hits = [json.matches::<String>(), json.matches::<CropVariant1>()]
-                    .into_iter()
-                    .filter(|hit| *hit)
-                    .count();
-                if hits != 1 {
-                    ::honig::__private::violation(
-                        out,
-                        &::honig::InstanceLocation::Root,
-                        format!("matches {hits} of `oneOf`, not exactly one"),
-                    );
-                }
-            }
-        }
-        ::honig::__private::first(violations)
-            .map(|()| Self(value))
-            .map_err(::honig::BuildError::value)
-    }
-}
-::honig::checked_json!(Crop, CropVariants);
-::honig::checked_impls!(Crop, CropVariants);
+::honig::const_impls!(ImageNoteKind, VALUE);
 /// `TextNote`
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(transparent)]
@@ -221,39 +252,8 @@ impl NoteImageNote {
         64i64
     }
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
-pub struct NoteImageNoteKind;
-impl NoteImageNoteKind {
-    pub const VALUE: &'static str = "image";
-}
-::honig::const_impls!(NoteImageNoteKind, VALUE);
+pub use ImageNoteKind as NoteImageNoteKind;
 pub use NoteTextNoteKind as TextNoteKind;
-pub use NoteImageNoteKind as ImageNoteKind;
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CropVariant1 {
-    Integer(i64),
-    Variant2(CropVariant1Variant2),
-}
-::honig::union_serialize!(CropVariant1 { Integer, Variant2 });
-::honig::by_kind_deserialize!(
-    CropVariant1 { Integer => Integer, Object => Variant2 }; Null | Bool | Number |
-    String | Array => none
-);
-::honig::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-    pub struct CropVariant1Variant2 {
-        #[optional]
-        pub x: i64,
-        #[optional]
-        pub y: i64,
-    }
-}
-impl CropVariant1Variant2 {
-    #[must_use]
-    pub const fn new() -> Self {
-        Self { x: None, y: None }
-    }
-}
 ::honig::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct ArchiveConflict {
@@ -364,6 +364,61 @@ impl Not3 {
         }
     }
 }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CropVariants {
+    String(String),
+    Variant1(CropVariant1),
+}
+::honig::union_serialize!(CropVariants { String, Variant1 });
+impl<'de> serde::Deserialize<'de> for CropVariants {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let v = <::honig::__private::Content<
+            'de,
+        > as serde::Deserialize>::deserialize(d)?;
+        let fit_0 = v.kind() == ::honig::__private::Kind::String;
+        let mut first: Option<String> = None;
+        let mut matches = 0usize;
+        let mut found: Option<Self> = None;
+        if fit_0 {
+            match v.decode_ref::<String>() {
+                Ok(x) => {
+                    matches += 1;
+                    found.get_or_insert(Self::String(x));
+                }
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
+            }
+        }
+        {
+            match v.decode_ref::<CropVariant1>() {
+                Ok(x) => {
+                    matches += 1;
+                    found.get_or_insert(Self::Variant1(x));
+                }
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
+            }
+        }
+        match (matches, found) {
+            (1, Some(one)) => return Ok(one),
+            (n, Some(_)) => {
+                return Err(
+                    serde::de::Error::custom(
+                        format!("matches {n} of `oneOf`, not exactly one"),
+                    ),
+                );
+            }
+            (_, None) => {}
+        }
+        Err(
+            serde::de::Error::custom(
+                first.unwrap_or_else(|| "matches no variant".to_owned()),
+            ),
+        )
+    }
+}
 #[derive(Debug, Clone, PartialEq)]
 pub enum NoteVariants {
     TextNote(NoteTextNote),
@@ -422,61 +477,6 @@ impl TextNoteFields {
             point: None,
             rgb: None,
         }
-    }
-}
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CropVariants {
-    String(String),
-    Variant1(CropVariant1),
-}
-::honig::union_serialize!(CropVariants { String, Variant1 });
-impl<'de> serde::Deserialize<'de> for CropVariants {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let v = <::honig::__private::Content<
-            'de,
-        > as serde::Deserialize>::deserialize(d)?;
-        let fit_0 = v.kind() == ::honig::__private::Kind::String;
-        let mut first: Option<String> = None;
-        let mut matches = 0usize;
-        let mut found: Option<Self> = None;
-        if fit_0 {
-            match v.decode_ref::<String>() {
-                Ok(x) => {
-                    matches += 1;
-                    found.get_or_insert(Self::String(x));
-                }
-                Err(e) => {
-                    first.get_or_insert(e.to_string());
-                }
-            }
-        }
-        {
-            match v.decode_ref::<CropVariant1>() {
-                Ok(x) => {
-                    matches += 1;
-                    found.get_or_insert(Self::Variant1(x));
-                }
-                Err(e) => {
-                    first.get_or_insert(e.to_string());
-                }
-            }
-        }
-        match (matches, found) {
-            (1, Some(one)) => return Ok(one),
-            (n, Some(_)) => {
-                return Err(
-                    serde::de::Error::custom(
-                        format!("matches {n} of `oneOf`, not exactly one"),
-                    ),
-                );
-            }
-            (_, None) => {}
-        }
-        Err(
-            serde::de::Error::custom(
-                first.unwrap_or_else(|| "matches no variant".to_owned()),
-            ),
-        )
     }
 }
 ::honig::object! {
@@ -622,16 +622,20 @@ pub mod builders {
         = "bin" } optional {} fixed {}
     }
     ::honig::typestate_builder! {
+        ImageNote => super::ImageNote; required { url : R0 : String = "url" } optional {
+        width(width) : types::Pixels = "width" => value,
+        super::ImageNote::default_width(), crop(crop) : types::Crop = "crop" => some,
+        None } fixed { kind : types::ImageNoteKind {}, }
+    }
+    ::honig::typestate_builder! {
         TextNote => super::TextNoteFields, try_from super::TextNote; required { text : R0
         : String = "text" } optional { kind(kind) : types::TextNoteKind = "kind" => some,
         None, point(point) : [f64; 2] = "point" => some, None, rgb(rgb) :
         types::TextNoteRgb = "rgb" => some, None } fixed {}
     }
     ::honig::typestate_builder! {
-        ImageNote => super::ImageNote; required { url : R0 : String = "url" } optional {
-        width(width) : types::Pixels = "width" => value,
-        super::ImageNote::default_width(), crop(crop) : types::Crop = "crop" => some,
-        None } fixed { kind : types::ImageNoteKind {}, }
+        CropVariant1Variant2 => super::CropVariant1Variant2; required {} optional { x(x)
+        : i64 = "x" => some, None, y(y) : i64 = "y" => some, None } fixed {}
     }
     ::honig::typestate_builder! {
         NoteTextNote => super::NoteTextNoteFields, try_from super::NoteTextNote; required
@@ -646,10 +650,6 @@ pub mod builders {
         super::NoteImageNote::default_width(), crop(crop) : types::Crop = "crop" => some,
         None, text(text) : String = "text" => some, None, size(size) : i64 = "size" =>
         some, None } fixed { kind : types::NoteImageNoteKind {}, }
-    }
-    ::honig::typestate_builder! {
-        CropVariant1Variant2 => super::CropVariant1Variant2; required {} optional { x(x)
-        : i64 = "x" => some, None, y(y) : i64 = "y" => some, None } fixed {}
     }
     ::honig::typestate_builder! {
         ArchiveConflict => super::ArchiveConflict; required { code : R0 : i64 = "code",
