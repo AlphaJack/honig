@@ -166,6 +166,8 @@ Where the field type is known, `try_into` builds the value. A spec `default` is 
 {{#include ../../../tests/e2e/tests/v32_catalog/schemas.rs:try-into}}
 ```
 
+A `default` that its own schema refuses fails generation. JSON Schema leaves a `default` unchecked, but a field that starts at it would hold a value that its type cannot hold. The seven tests of the JSON Schema test suite that expect such a `default` to pass are listed as known failures in `tests/fixtures/json-schema-test-suite.known`.
+
 A builder converts every field and returns the first one that does not convert, from `build`. So the whole value needs one `?`. Each setter accepts anything that converts to the type of its field: a number for a checked number, a `&str` for a string, a checked string or an enum:
 
 ```rust
