@@ -10,54 +10,10 @@ use crate::emit::rust::space::Space;
 use crate::ir::types::{Field, Kind, Struct, Ty};
 
 /// Returns the literal `v` as an expression of type `t` (`qualify`: `types::` paths)
-/// if it fits. That is scalars and string/integer enums through aliases.
+/// if it fits. That is scalars and string/integer enums through aliases. A default that its schema refuses never gets
+/// here: it fails generation.
 pub(crate) fn default_expr(space: &Space<'_>, t: &Ty, v: &serde_json::Value, qualify: bool) -> Option<TokenStream> {
-    if let Some(e) = literal_expr(space, t, v, qualify) {
-        return Some(e);
-    }
-    // A default that a literal of the type would write but that is no value of it: the crate does not compile, and the
-    // error says why. A type with no literal (a decimal, a library format) keeps no default instead.
-    literal_type(space, t).then(|| {
-        let why = lit(&format!("the `default` {v} of the description is no value of this field's type"));
-        quote!(compile_error!(#why))
-    })
-}
-
-/// Can a default of type `t` be written as a literal: a scalar, a string or integer enum, or a checked type of one?
-pub(super) fn literal_type(space: &Space<'_>, t: &Ty) -> bool {
-    match space.types.unalias(t) {
-        Ty::String
-        | Ty::Bool
-        | Ty::I8
-        | Ty::I16
-        | Ty::I32
-        | Ty::I64
-        | Ty::U8
-        | Ty::U16
-        | Ty::U32
-        | Ty::U64
-        | Ty::F32
-        | Ty::F64 => true,
-        Ty::Named(id) => match &space.types.get(*id).kind {
-            Kind::StrEnum(_) | Kind::IntEnum(_) => true,
-            Kind::Checked(c) => literal_type(space, &c.base),
-            Kind::Struct(_) | Kind::Union(_) | Kind::Alias(_) | Kind::Newtype(_) | Kind::Const(_) | Kind::Pending => {
-                false
-            }
-        },
-        Ty::Decimal
-        | Ty::Bytes
-        | Ty::Binary
-        | Ty::Format(_)
-        | Ty::Any
-        | Ty::Unit
-        | Ty::Vec(_)
-        | Ty::Array(..)
-        | Ty::Map(_)
-        | Ty::Option(_)
-        | Ty::Indirect(_)
-        | Ty::Tuple(_) => false,
-    }
+    literal_expr(space, t, v, qualify)
 }
 
 /// Returns [`default_expr`] when the default is a literal of `t`.
