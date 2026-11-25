@@ -43,7 +43,7 @@ pub trait BodySource: MaybeSend + 'static {
     /// buffer sized from `Content-Length`. This default joins the pieces. It keeps a lone piece as it is.
     fn read_all(mut self: Pin<Box<Self>>, limit: usize) -> ReadAll {
         Box::pin(async move {
-            let mut out: Vec<u8> = vec![];
+            let (mut first, mut out) = (None::<bytes::Bytes>, Vec::new());
             while let Some(piece) = std::future::poll_fn(|cx| self.as_mut().poll_piece(cx)).await {
                 let piece = piece.map_err(|e| match e {
                     ClientError::TooLarge(_) => BodyError::TooLarge,
@@ -55,16 +55,19 @@ pub trait BodySource: MaybeSend + 'static {
                     | ClientError::MissingCredentials(_)
                     | ClientError::UnexpectedStatus { .. }) => BodyError::Unreadable(other.to_string()),
                 })?;
-                if out.len() + piece.len() > limit {
+                if first.as_ref().map_or(0, bytes::Bytes::len) + out.len() + piece.len() > limit {
                     return Err(BodyError::TooLarge);
                 }
-                if out.is_empty() {
-                    out = Vec::from(piece);
-                } else {
-                    out.extend_from_slice(&piece);
+                match first.take() {
+                    None if out.is_empty() => first = Some(piece),
+                    None => out.extend_from_slice(&piece),
+                    Some(before) => {
+                        out.extend_from_slice(&before);
+                        out.extend_from_slice(&piece);
+                    }
                 }
             }
-            Ok(out)
+            Ok(first.unwrap_or_else(|| out.into()))
         })
     }
 }
@@ -76,7 +79,7 @@ pub async fn next_piece(source: &mut Pin<Box<dyn BodySource>>) -> Option<Result<
 }
 
 /// A whole body collected by [`BodySource::read_all`].
-pub type ReadAll = crate::transport::Pending<'static, Result<Vec<u8>, BodyError>>;
+pub type ReadAll = crate::transport::Pending<'static, Result<bytes::Bytes, BodyError>>;
 
 /// Why a request body could not be collected whole.
 #[derive(Debug, Clone, PartialEq, Eq)]
