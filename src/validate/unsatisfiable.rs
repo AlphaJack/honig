@@ -150,4 +150,25 @@ mod tests {
         assert_eq!(count(&json!({"type": "integer", "minimum": -4, "maximum": -1, "multipleOf": 5})), 1);
         assert_eq!(count(&json!({"type": "integer", "minimum": -5, "maximum": -1, "multipleOf": 5})), 0, "-5 remains");
     }
+
+    /// Every integer `format` has its own range: a bound one past it leaves no value, the bound at its edge leaves one.
+    #[test]
+    fn each_integer_format_has_its_range() {
+        let past = [
+            ("int16", json!({"minimum": 32_768})),
+            ("int32", json!({"minimum": 2_147_483_648_u64})),
+            ("int64", json!({"minimum": 9_223_372_036_854_775_808_u64})),
+            ("double-int", json!({"minimum": 9_223_372_036_854_775_808_u64})),
+            ("uint16", json!({"minimum": 65_536})),
+            ("uint32", json!({"minimum": 4_294_967_296_u64})),
+            ("uint64", json!({"maximum": -1})),
+            ("uint", json!({"maximum": -1})),
+        ];
+        for (format, mut bound) in past {
+            bound["type"] = json!("integer");
+            bound["format"] = json!(format);
+            assert_eq!(count(&bound), 1, "{bound}");
+        }
+        assert_eq!(count(&json!({"type": "integer", "format": "uint16", "minimum": 65_535})), 0, "65535 remains");
+    }
 }
