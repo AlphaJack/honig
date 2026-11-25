@@ -165,8 +165,20 @@ pub(crate) fn one_variant_per_scope(b: &mut Builder<'_>, schemes: &[SecuritySche
         let mut seen: std::collections::BTreeMap<String, &str> = std::collections::BTreeMap::new();
         for name in names {
             if let Some(first) = seen.insert(Name::new(name).key(), name) {
+                // At the second scope, in the flow that declares it; at the scheme for one that only a requirement
+                // lists.
+                let at = format!("/components/securitySchemes/{}", escape_token(&scheme.name));
+                let flows = json::pointer(&b.doc.root, &format!("{at}/flows")).and_then(Value::as_object);
+                let flow = flows
+                    .into_iter()
+                    .flatten()
+                    .find(|(_, f)| f.pointer(&format!("/scopes/{}", escape_token(name))).is_some());
+                let at = flow.map_or_else(
+                    || at.clone(),
+                    |(f, _)| format!("{at}/flows/{}/scopes/{}", escape_token(f), escape_token(name)),
+                );
                 b.diags.error(
-                    format!("/components/securitySchemes/{}", escape_token(&scheme.name)),
+                    at,
                     format!("the scopes `{first}` and `{name}` are one variant of its scope enum (`{}`)", scheme.name),
                 );
             }

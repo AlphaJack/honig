@@ -451,7 +451,8 @@ fn two_scopes_of_one_variant_fail_generation() {
     let path =
         common::write("sec-scope-variants", &doc(&secured_op(&json!([{"oauth": ["read:user"]}])), &components), &[]);
     let err = crate::generate::generate(&path, &Options::default()).expect_err("must refuse");
-    assert!(err.iter().any(|d| d.pointer == "/components/securitySchemes/oauth"), "{:#?}", err.0);
+    let at = "/components/securitySchemes/oauth/flows/implicit/scopes/read_user";
+    assert!(err.iter().any(|d| d.pointer == at), "the second scope: {:#?}", err.0);
 }
 
 /// A required `Authorization` header parameter is ignored by OAS: a server built from it would never ask for the
