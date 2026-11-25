@@ -2775,3 +2775,28 @@ fn a_format_without_a_type_is_checked_on_strings() {
             .collect();
     assert!(types.contains("ifletserde_json::Value::String(text)=&value{::honig::__private::check_format(out,&::honig::InstanceLocation::Root,text,\"email\",);}"), "{types}");
 }
+
+/// A tag that each branch pins through `allOf` members makes a tagged union when the pin is `MAX_SCHEMA_DEPTH` deep or
+/// less. One level deeper the pin is not seen: the union counts the branches that a value matches, as `oneOf` says.
+#[test]
+fn a_tag_pinned_deep_in_all_of_is_seen_up_to_the_depth_limit() {
+    let item = |depth: usize| {
+        let pin = |tag: &str| {
+            let own = json!({"type": "object", "required": ["kind"], "properties": {"kind": {"const": tag}}});
+            (0..depth).fold(own, |x, _| json!({"allOf": [x]}))
+        };
+        let union = json!({"oneOf": [{"$ref": "#/components/schemas/Book"}, {"$ref": "#/components/schemas/Gadget"}],
+            "discriminator": {"propertyName": "kind"}});
+        let doc = common::spec(
+            "3.2.0",
+            &json!({}),
+            &json!({"schemas": {"Book": pin("Book"), "Gadget": pin("Gadget"),
+            "Item": union}}),
+        );
+        common::file(&common::generate("deep-pin", &doc, &crate::emit::Options::default()), "types.rs").to_owned()
+    };
+    let tagged = item(8);
+    assert!(tagged.contains("pub enum Item {") && tagged.contains("::honig::tagged_deserialize!(Item);"), "{tagged}");
+    let counted = item(9);
+    assert!(counted.contains("pub struct Item(pub(super) ItemVariants);"), "{counted}");
+}
