@@ -262,7 +262,7 @@ jobs:
           - bench: scaling-runtime
             paths: honig benches tests/bench-support :!honig/tests
             valgrind: true
-            run: cargo bench -p honig --bench scaling --features cookie,multipart,server,xml --locked
+            run: cargo bench -p honig --bench scaling --features cookie,multipart,server,regress,xml --locked
           - bench: scaling-generator
             paths: src benches tests/bench-support :!src/tests :!src/tests.rs
             valgrind: true
