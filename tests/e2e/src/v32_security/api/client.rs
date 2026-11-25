@@ -13,6 +13,15 @@ impl<T> Client<T> {
             credentials: runtime::Credentials::new(),
         }
     }
+    const WITH: &[(&str, &str)] = &[
+        ("bearer", "Client::with_bearer"),
+        ("oauth", "Client::with_oauth"),
+        ("oidc", "Client::with_oidc"),
+        ("key", "Client::with_key"),
+        ("query_key", "Client::with_query_key"),
+        ("session", "Client::with_session"),
+        ("login", "Client::with_login"),
+    ];
     #[must_use]
     pub fn with_bearer(mut self, value: impl Into<String>) -> Self {
         self.credentials.insert("bearer".to_owned(), value.into());
@@ -100,7 +109,7 @@ impl<T: runtime::Transport> Client<T> {
         let path = String::from("/public");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -122,7 +131,7 @@ impl<T: runtime::Transport> Client<T> {
         let path = String::from("/me");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
-        runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
+        runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0, Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -144,7 +153,7 @@ impl<T: runtime::Transport> Client<T> {
         let path = String::from("/optional");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
-        runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_1)?;
+        runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_1, Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -166,7 +175,7 @@ impl<T: runtime::Transport> Client<T> {
         let path = String::from("/read");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
-        runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_2)?;
+        runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_2, Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -188,7 +197,7 @@ impl<T: runtime::Transport> Client<T> {
         let path = String::from("/write");
         let query = Vec::new();
         let mut req = runtime::new_request("POST", path, query)?;
-        runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_3)?;
+        runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_3, Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -210,7 +219,7 @@ impl<T: runtime::Transport> Client<T> {
         let path = String::from("/both");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
-        runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_4)?;
+        runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_4, Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -232,7 +241,7 @@ impl<T: runtime::Transport> Client<T> {
         let path = String::from("/login");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
-        runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_5)?;
+        runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_5, Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -254,7 +263,7 @@ impl<T: runtime::Transport> Client<T> {
         let path = String::from("/cert");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
-        runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_6)?;
+        runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_6, Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -276,7 +285,7 @@ impl<T: runtime::Transport> Client<T> {
         let path = String::from("/oidc");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
-        runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_7)?;
+        runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_7, Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();

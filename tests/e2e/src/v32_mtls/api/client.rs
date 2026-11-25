@@ -13,6 +13,11 @@ impl<T> Client<T> {
             credentials: runtime::Credentials::new(),
         }
     }
+    const WITH: &[(&str, &str)] = &[
+        ("bearer", "Client::with_bearer"),
+        ("api_key", "Client::with_api_key"),
+        ("basic-auth", "Client::with_basic_auth"),
+    ];
     #[must_use]
     pub fn with_bearer(mut self, value: impl Into<String>) -> Self {
         self.credentials.insert("bearer".to_owned(), value.into());
@@ -37,7 +42,7 @@ impl<T: runtime::Transport> Client<T> {
         let path = String::from("/private");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
-        runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
+        runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0, Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -59,7 +64,7 @@ impl<T: runtime::Transport> Client<T> {
         let path = String::from("/token");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
-        runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_1)?;
+        runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_1, Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -81,7 +86,7 @@ impl<T: runtime::Transport> Client<T> {
         let path = String::from("/keyed");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
-        runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_2)?;
+        runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_2, Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();

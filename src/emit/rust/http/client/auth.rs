@@ -24,6 +24,16 @@ pub(crate) fn setter_name(api: &Api, scheme: &str) -> proc_macro2::Ident {
     format_ident!("with_{}", snake(&Name::new(scheme)))
 }
 
+/// Returns `WITH`: each scheme by name with the setter of `owner` that sets its credential, for the error that names
+/// the setter to call.
+pub(crate) fn setter_table(api: &Api, owner: &str) -> TokenStream {
+    let rows = api.schemes.iter().filter(|s| s.kind != SchemeKind::MutualTls).map(|s| {
+        let (n, f) = (lit(&s.name), lit(&format!("{owner}::{}", setter_name(api, &s.name))));
+        quote!((#n, #f))
+    });
+    quote!(const WITH: &[(&str, &str)] = &[#(#rows),*];)
+}
+
 /// Returns one typed setter per security scheme. A misspelt scheme is a compile
 /// error. Basic auth splits the user and password apart.
 pub(crate) fn credential_setters(api: &Api) -> Vec<TokenStream> {

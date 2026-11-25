@@ -13,6 +13,7 @@ impl<T> Client<T> {
             credentials: runtime::Credentials::new(),
         }
     }
+    const WITH: &[(&str, &str)] = &[];
 }
 impl<T: runtime::Transport> Client<T> {
     pub async fn subscribe(
@@ -28,7 +29,7 @@ impl<T: runtime::Transport> Client<T> {
             "application/json",
             runtime::json_encode(&p.body)?,
         );
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -57,6 +58,7 @@ impl<T> WebhookClient<T> {
             credentials: runtime::Credentials::new(),
         }
     }
+    const WITH: &[(&str, &str)] = &[];
 }
 impl<T: runtime::Transport> WebhookClient<T> {
     pub async fn new_product(
@@ -73,7 +75,7 @@ impl<T: runtime::Transport> WebhookClient<T> {
             "application/json",
             runtime::json_encode(&p.body)?,
         );
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -104,7 +106,7 @@ impl<T: runtime::Transport> WebhookClient<T> {
             "application/json",
             runtime::json_encode(&p.body)?,
         );
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
