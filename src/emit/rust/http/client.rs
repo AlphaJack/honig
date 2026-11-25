@@ -43,6 +43,7 @@ pub(crate) fn client(api: &Api, space: &Space<'_>, opts: &crate::emit::Options) 
     let sec = Securities::new(api);
     let ops = api.http.operations.iter().filter(called).map(|op| client_op(space, api, &sec, op, false));
     let setters = credential_setters(api);
+    let with = api.http.operations.iter().any(|op| called(&op)).then(|| setter_table(api, "Client"));
     let servers_doc = servers_doc(api);
     let tokens = token_methods(api);
     let devices = device_methods(api);
@@ -87,6 +88,7 @@ pub(crate) fn client(api: &Api, space: &Space<'_>, opts: &crate::emit::Options) 
                 Self { transport, #no_credentials }
             }
 
+            #with
             #(#setters)*
         }
 
@@ -106,6 +108,7 @@ pub(crate) fn webhook_client(space: &Space<'_>, api: &Api, sec: &Securities) -> 
     let hooks: Vec<TokenStream> =
         api.http.operations.iter().filter(|o| !is_path(o)).map(|op| client_op(space, api, sec, op, true)).collect();
     let setters = credential_setters(api);
+    let with = setter_table(api, "WebhookClient");
     (!hooks.is_empty()).then(|| {
         quote! {
             /// Sends the webhooks of the API and the callbacks (`callbacks`) of its operations.
@@ -120,6 +123,7 @@ pub(crate) fn webhook_client(space: &Space<'_>, api: &Api, sec: &Securities) -> 
                     Self { transport, credentials: runtime::Credentials::new() }
                 }
 
+                #with
                 #(#setters)*
             }
 
@@ -239,7 +243,7 @@ pub(crate) fn client_op(space: &Space<'_>, api: &Api, sec: &Securities, op: &Ope
         let mut req = runtime::new_request(#method, path, query)?;
         #accept
         #headers_and_body
-        runtime::apply_auth(&mut req, &self.credentials, #security)?;
+        runtime::apply_auth(&mut req, &self.credentials, #security, Self::WITH)?;
         runtime::propagate_trace(&mut req);
     };
     let stream = (!hook).then(|| stream_method(space, op, &p, &prelude, &respond)).flatten();

@@ -7,7 +7,8 @@ use crate::auth::{Credentials, KeyIn, Requirement, Scheme};
 use crate::base64::base64;
 use crate::{ClientError, Message, Request, params::pct};
 
-/// Applies the first requirement whose schemes all have credentials.
+/// Applies the first requirement whose schemes all have credentials. `with` pairs each scheme by name with the client
+/// method that sets its credential.
 ///
 /// An empty requirement (`{}`) means that credentials are optional. It sends none. So it is the last resort and the
 /// credentials that you configured are sent.
@@ -16,7 +17,12 @@ use crate::{ClientError, Message, Request, params::pct};
 /// - [`ClientError::MissingCredentials`] when the client has the credentials of no requirement and none is optional: a
 ///   server would answer 401, so the request is not sent.
 /// - A credential that a header or the query cannot carry: it contains a line break or another control character.
-pub fn apply_auth(req: &mut Request, creds: &Credentials, requirements: &[&[Requirement]]) -> Result<(), ClientError> {
+pub fn apply_auth(
+    req: &mut Request,
+    creds: &Credentials,
+    requirements: &[&[Requirement]],
+    with: &[(&str, &str)],
+) -> Result<(), ClientError> {
     let Some(alt) = requirements
         .iter()
         .filter(|alt| !alt.is_empty())
@@ -26,11 +32,13 @@ pub fn apply_auth(req: &mut Request, creds: &Credentials, requirements: &[&[Requ
         if optional || requirements.is_empty() {
             return Ok(());
         }
-        let alternatives: Vec<String> = requirements
-            .iter()
-            .map(|alt| alt.iter().map(|(s, _)| format!("`{}`", s.name())).collect::<Vec<_>>().join(" + "))
-            .collect();
-        return Err(ClientError::MissingCredentials(alternatives.join(" or ")));
+        let listed = |sep: &str, item: &dyn Fn(&str) -> Option<String>| {
+            let alt = |alt: &&[Requirement]| alt.iter().filter_map(|(s, _)| item(s.name())).collect::<Vec<_>>();
+            requirements.iter().map(|a| alt(a).join(sep)).collect::<Vec<_>>().join(" or ")
+        };
+        let setter = |name: &str| with.iter().find(|(n, _)| *n == name).map(|(_, f)| format!("`{f}`"));
+        let (names, setters) = (listed(" + ", &|n| Some(format!("`{n}`"))), listed(" and ", &setter));
+        return Err(ClientError::MissingCredentials(format!("{names}: call {setters}")));
     };
     for (s, _) in *alt {
         let Some(c) = creds.get(s.name()) else {
@@ -72,10 +80,15 @@ mod tests {
         let session: &[Requirement] = &[(Scheme::ApiKey("session", KeyIn::Query, "s"), &[])];
         let creds =
             |names: &[&str]| -> Credentials { names.iter().map(|n| ((*n).to_owned(), "v".to_owned())).collect() };
-        let err = apply_auth(&mut request(), &creds(&[]), &[key, session]).unwrap_err();
-        assert!(matches!(&err, ClientError::MissingCredentials(w) if w == "`key` or `session`"), "{err}");
-        assert!(apply_auth(&mut request(), &creds(&["session"]), &[key, session]).is_ok());
-        assert!(apply_auth(&mut request(), &creds(&[]), &[key, &[]]).is_ok(), "an optional alternative sends none");
-        assert!(apply_auth(&mut request(), &creds(&[]), &[]).is_ok(), "no security needs none");
+        let with = &[("key", "Client::with_key"), ("session", "Client::with_session")];
+        let err = apply_auth(&mut request(), &creds(&[]), &[key, session], with).unwrap_err();
+        let wanted = "`key` or `session`: call `Client::with_key` or `Client::with_session`";
+        assert!(matches!(&err, ClientError::MissingCredentials(w) if w == wanted), "{err}");
+        assert!(apply_auth(&mut request(), &creds(&["session"]), &[key, session], with).is_ok());
+        assert!(
+            apply_auth(&mut request(), &creds(&[]), &[key, &[]], with).is_ok(),
+            "an optional alternative sends none"
+        );
+        assert!(apply_auth(&mut request(), &creds(&[]), &[], with).is_ok(), "no security needs none");
     }
 }

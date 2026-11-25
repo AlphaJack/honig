@@ -13,6 +13,7 @@ impl<T> Client<T> {
             credentials: runtime::Credentials::new(),
         }
     }
+    const WITH: &[(&str, &str)] = &[];
 }
 impl<T: runtime::Transport> Client<T> {
     pub async fn upload(
@@ -51,7 +52,7 @@ impl<T: runtime::Transport> Client<T> {
             &parts,
         )?;
         runtime::Message::set_body(&mut req, ct, bytes);
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -79,7 +80,7 @@ impl<T: runtime::Transport> Client<T> {
             &p.part_types.choose(&[("icon", "image/png, image/jpeg")])?,
         )?;
         runtime::Message::set_body(&mut req, ct, bytes);
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -108,7 +109,7 @@ impl<T: runtime::Transport> Client<T> {
             &[("scan", "Content-Transfer-Encoding", "base64".to_owned())],
         )?;
         runtime::Message::set_body(&mut req, ct, bytes);
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -135,7 +136,7 @@ impl<T: runtime::Transport> Client<T> {
             let (ct, bytes) = runtime::multipart_encode(body, &[])?;
             runtime::Message::set_body(&mut req, ct, bytes);
         }
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();

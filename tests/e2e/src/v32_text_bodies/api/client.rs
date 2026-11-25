@@ -13,6 +13,7 @@ impl<T> Client<T> {
             credentials: runtime::Credentials::new(),
         }
     }
+    const WITH: &[(&str, &str)] = &[];
 }
 impl<T: runtime::Transport> Client<T> {
     pub async fn add_note(
@@ -29,7 +30,7 @@ impl<T: runtime::Transport> Client<T> {
             "text/plain",
             runtime::text_encode_as(p.body)?,
         );
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -74,7 +75,7 @@ impl<T: runtime::Transport> Client<T> {
             "text/plain",
             runtime::text_encode_as(p.body)?,
         );
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();

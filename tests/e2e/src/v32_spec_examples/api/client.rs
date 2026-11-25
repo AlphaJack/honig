@@ -14,6 +14,7 @@ impl<T> Client<T> {
             credentials: runtime::Credentials::new(),
         }
     }
+    const WITH: &[(&str, &str)] = &[];
 }
 impl<T: runtime::Transport> Client<T> {
     pub async fn form_with_xml(
@@ -31,7 +32,7 @@ impl<T: runtime::Transport> Client<T> {
                 runtime::form_encode_with(body, &[], &[("extra", "application/xml")])?,
             );
         }
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -86,7 +87,7 @@ impl<T: runtime::Transport> Client<T> {
             runtime::Enc::FORM,
         )?;
         runtime::set_cookies(&mut req, cookies)?;
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -110,7 +111,7 @@ impl<T: runtime::Transport> Client<T> {
         let mut query: Vec<String> = Vec::new();
         runtime::encode_querystring(&mut query, &runtime::to_value(&p.metadata)?, true);
         let mut req = runtime::new_request("GET", path, query)?;
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -134,7 +135,7 @@ impl<T: runtime::Transport> Client<T> {
         let mut query: Vec<String> = Vec::new();
         runtime::encode_querystring(&mut query, &runtime::to_value(&p.json)?, false);
         let mut req = runtime::new_request("GET", path, query)?;
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -161,7 +162,7 @@ impl<T: runtime::Transport> Client<T> {
             let (ct, bytes) = runtime::multipart_encode(body, &[])?;
             runtime::Message::set_body(&mut req, ct, bytes);
         }
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -210,7 +211,7 @@ impl<T: runtime::Transport> Client<T> {
             )?;
             runtime::Message::set_body(&mut req, ct, bytes);
         }
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -240,7 +241,7 @@ impl<T: runtime::Transport> Client<T> {
             let (ct, bytes) = runtime::multipart_encode(body, &[])?;
             runtime::Message::set_body(&mut req, ct, bytes);
         }
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -271,7 +272,7 @@ impl<T: runtime::Transport> Client<T> {
             )?;
             runtime::Message::set_body(&mut req, ct, bytes);
         }
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -313,7 +314,7 @@ impl<T: runtime::Transport> Client<T> {
             )?;
             runtime::Message::set_body(&mut req, ct, bytes);
         }
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -344,7 +345,7 @@ impl<T: runtime::Transport> Client<T> {
             )?;
             runtime::Message::set_body(&mut req, ct, bytes);
         }
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -367,7 +368,7 @@ impl<T: runtime::Transport> Client<T> {
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "multipart/mixed")?;
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -401,7 +402,7 @@ impl<T: runtime::Transport> Client<T> {
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "multipart/mixed")?;
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send_streaming(&self.transport, req).await?;
         let status = resp.status().as_u16();
@@ -444,7 +445,7 @@ impl<T: runtime::Transport> Client<T> {
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "multipart/byteranges")?;
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -478,7 +479,7 @@ impl<T: runtime::Transport> Client<T> {
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "multipart/byteranges")?;
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send_streaming(&self.transport, req).await?;
         let status = resp.status().as_u16();
@@ -522,7 +523,7 @@ impl<T: runtime::Transport> Client<T> {
         let mut query: Vec<String> = Vec::new();
         runtime::encode_querystring(&mut query, &runtime::to_value(&p.selector)?, false);
         let mut req = runtime::new_request("GET", path, query)?;
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -545,7 +546,7 @@ impl<T: runtime::Transport> Client<T> {
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "application/json")?;
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -585,7 +586,7 @@ impl<T: runtime::Transport> Client<T> {
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "application/linkset+json")?;
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -612,7 +613,7 @@ impl<T: runtime::Transport> Client<T> {
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "application/linkset")?;
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -642,7 +643,7 @@ impl<T: runtime::Transport> Client<T> {
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "application/json")?;
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -684,7 +685,7 @@ impl<T: runtime::Transport> Client<T> {
                 }
             },
         )?;
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -764,7 +765,7 @@ impl<T: runtime::Transport> Client<T> {
                 }
             },
         )?;
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send_streaming(&self.transport, req).await?;
         let status = resp.status().as_u16();
@@ -842,7 +843,7 @@ impl<T: runtime::Transport> Client<T> {
                 }
             },
         )?;
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
@@ -955,7 +956,7 @@ impl<T: runtime::Transport> Client<T> {
                 }
             },
         )?;
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send_streaming(&self.transport, req).await?;
         let status = resp.status().as_u16();
@@ -1029,7 +1030,7 @@ impl<T: runtime::Transport> Client<T> {
             p.body,
             runtime::Framing::Sse,
         )?;
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();

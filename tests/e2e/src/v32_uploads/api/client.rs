@@ -13,6 +13,7 @@ impl<T> Client<T> {
             credentials: runtime::Credentials::new(),
         }
     }
+    const WITH: &[(&str, &str)] = &[];
 }
 impl<T: runtime::Transport> Client<T> {
     pub async fn put_file(
@@ -26,7 +27,7 @@ impl<T: runtime::Transport> Client<T> {
         let mut req = runtime::new_request("PUT", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "application/json")?;
         runtime::set_blob(&mut req, "application/octet-stream", p.body);
-        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
