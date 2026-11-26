@@ -6,7 +6,7 @@ Each operation of the description is a method of the generated `Client`. It acce
 {{#include ../../../examples/shop/tests/client.rs:client}}
 ```
 
-`Params::new` accepts the path parameters in URL order. Then it accepts the other required parameters and then a required body. The URL fixes the argument order. So a reordered description cannot swap two arguments silently. With no arguments `Params::default()` is the same value.
+`Params::new` accepts the path parameters in URL order. Then it accepts the other required parameters and then a required body. It exists only when no two of them have one type, an alias counting as the type that it names. So a reordered description cannot swap two arguments silently: a swap is a type error, or there is no `new` and the builder names each value. With no arguments `Params::default()` is the same value.
 
 A method accepts its `Params` or a reference to them. So `&params` keeps them for a retry. JSON, XML, form and multipart bodies are encoded from the reference with no copy.
 

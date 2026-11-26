@@ -513,17 +513,15 @@ fn is_required_param(space: &Space<'_>, p: &Param) -> bool {
     p.location == Location::Path || (!p.ty.is_option() && spec_default(space, p).is_none())
 }
 
-/// Can `Params::new` accept the required values by position? Only when no two of them have the same type: then a swap
-/// is a type error. A required value of a checked type is made with its own `try_from` first.
+/// Can `Params::new` accept the required values by position? Only when no two of them have one type, aliases followed
+/// ([`Space::distinct`]): then a swap is a type error. A required value of a checked type is made with its own
+/// `try_from` first. A body of several media types is an enum of its own, which no parameter has.
 fn params_new_is_safe(space: &Space<'_>, op: &Operation) -> bool {
-    let mut types: Vec<String> = new_args(space, op).iter().map(|p| ty(space, &p.ty, true).to_string()).collect();
-    if let Some(b) = op.body.as_ref().filter(|b| b.required) {
-        types.push(body_ty(space, &b.contents, "Body").to_string());
+    let mut types: Vec<&Ty> = new_args(space, op).iter().map(|p| &p.ty).collect();
+    if let Some([one]) = op.body.as_ref().filter(|b| b.required).map(|b| b.contents.as_slice()) {
+        types.push(&one.ty);
     }
-    let count = types.len();
-    types.sort();
-    types.dedup();
-    types.len() == count
+    space.distinct(&types)
 }
 
 /// Returns `builders::Params`: each parameter by name through `::honig::typestate_builder!`, with `Params::builder()`.

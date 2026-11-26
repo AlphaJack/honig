@@ -74,6 +74,24 @@ impl<'a> Space<'a> {
         }
     }
 
+    /// Returns `ty` with every alias in it replaced by the type that it names: `Vec<Sku>` is `Vec<String>` when
+    /// `Sku` is an alias of `String`.
+    pub(crate) fn expanded(&self, ty: &Ty) -> Ty {
+        let mut t = self.types.unalias(ty).clone();
+        for child in t.children_mut() {
+            let e = self.expanded(child);
+            *child = e;
+        }
+        t
+    }
+
+    /// Do no two of `tys` expand to one type ([`Space::expanded`])? Then two arguments of them cannot swap: whatever
+    /// order the description gives them, a swap is a type error.
+    pub(crate) fn distinct(&self, tys: &[&Ty]) -> bool {
+        let all: Vec<Ty> = tys.iter().map(|t| self.expanded(t)).collect();
+        all.iter().enumerate().all(|(i, a)| all.iter().skip(i + 1).all(|b| a != b))
+    }
+
     /// Does the definition `id` lie on a cycle of references: can a value of it contain another?
     pub(crate) fn cyclic(&self, id: TypeId) -> bool {
         marked(&self.cyclic, id)

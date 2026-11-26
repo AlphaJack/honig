@@ -733,13 +733,11 @@ fn structure(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, s: &St
 }
 
 /// Can `new` accept the required fields of `s` by position? Only when it cannot fail and no two of them can swap: no
-/// argument is of a checked type, and no two have the same type. Otherwise the builder is the one constructor.
+/// argument is of a checked type, and no two have one type, aliases followed ([`Space::distinct`]). Otherwise the
+/// builder is the one constructor.
 fn new_is_safe(space: &Space<'_>, s: &Struct) -> bool {
     let args: Vec<&Field> = s.fields.iter().filter(|f| is_arg(space, f)).collect();
-    let mut types: Vec<String> = args.iter().map(|f| field_ty(space, f).to_string()).collect();
-    types.sort();
-    types.dedup();
-    types.len() == args.len() && !args.iter().any(|f| holds_checked(space, &f.ty))
+    space.distinct(&args.iter().map(|f| &f.ty).collect::<Vec<_>>()) && !args.iter().any(|f| holds_checked(space, &f.ty))
 }
 
 /// Returns `new(required...)`: every required field without a spec default in document order. The rest start empty or

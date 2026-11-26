@@ -11,7 +11,7 @@ A schema with `readOnly` or `writeOnly` properties becomes two types:
 
 Each is required in Rust where the schema requires it. A missing password is a compile error and not a runtime check. Types that contain one split too. An example is `Session` and `SessionRequest`.
 
-Every struct has a builder that accepts each property by name: `build` exists once every required one is set, so leaving one out is a compile error, and the order of the properties in the description does not matter. A struct also has `new` when that cannot go wrong: no required property is of a checked type and no two have the same type, so a swap is a type error. `new` accepts the required properties; a property with a `default` starts at it, and any other optional property starts empty:
+Every struct has a builder that accepts each property by name: `build` exists once every required one is set, so leaving one out is a compile error, and the order of the properties in the description does not matter. A struct also has `new` when that cannot go wrong: no required property is of a checked type and no two have the same type, an alias counting as the type that it names (`Sku` and `Title` both aliases of `String` are one type), so a swap is a type error. `new` accepts the required properties; a property with a `default` starts at it, and any other optional property starts empty:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_catalog/schemas.rs:new}}
