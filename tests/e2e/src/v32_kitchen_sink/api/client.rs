@@ -162,10 +162,10 @@ impl<T: ::honig::Transport> Client<T> {
     #[deprecated = "the security scheme is deprecated"]
     pub async fn authorize_password_oauth(
         &mut self,
-        username: &str,
-        password: &str,
         client_id: &str,
         client_secret: Option<&str>,
+        username: &str,
+        password: &str,
         scopes: &[ops::OauthScope],
     ) -> Result<::honig::Token, ::honig::ClientError> {
         let token = ::honig::__private::password_grant(
@@ -184,10 +184,10 @@ impl<T: ::honig::Transport> Client<T> {
     #[deprecated = "the security scheme is deprecated"]
     pub async fn exchange_code_oauth(
         &mut self,
-        code: &str,
-        redirect_uri: &str,
         client_id: &str,
         client_secret: Option<&str>,
+        code: &str,
+        redirect_uri: &str,
         pkce: &::honig::Pkce,
     ) -> Result<::honig::Token, ::honig::ClientError> {
         let token = ::honig::__private::exchange_code(
@@ -206,9 +206,9 @@ impl<T: ::honig::Transport> Client<T> {
     #[deprecated = "the security scheme is deprecated"]
     pub async fn refresh_oauth(
         &mut self,
-        refresh_token: &str,
         client_id: &str,
         client_secret: Option<&str>,
+        refresh_token: &str,
     ) -> Result<::honig::Token, ::honig::ClientError> {
         let token = ::honig::__private::refresh_token(
                 &self.transport,

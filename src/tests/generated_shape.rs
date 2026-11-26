@@ -2950,3 +2950,28 @@ fn aliases_of_one_type_give_no_positional_new() {
     let ops = common::file(&files, "operations.rs");
     assert!(!ops.contains("fn new(sku"), "{ops}");
 }
+
+/// Every `OAuth` helper of the client takes the client id first and its secret second: the place of the two does not
+/// change from one flow to the next.
+#[test]
+fn every_oauth_flow_takes_the_client_first() {
+    let token = "https://id.example/token";
+    let flows = json!({
+        "password": {"tokenUrl": token, "refreshUrl": token, "scopes": {}},
+        "authorizationCode": {"authorizationUrl": "https://id.example/authorize", "tokenUrl": token, "scopes": {}},
+    });
+    let doc = common::spec(
+        "3.2.0",
+        &json!({"/a": {"get": {"operationId": "a", "security": [{"app": []}], "responses": {"204": {"description": "ok"}}}}}),
+        &json!({"securitySchemes": {"app": {"type": "oauth2", "flows": flows}}}),
+    );
+    let client = common::file(&common::generate("oauth-order", &doc, &crate::emit::Options::default()), "client.rs")
+        .split_whitespace()
+        .collect::<String>();
+    for f in ["authorize_password_app", "exchange_code_app", "refresh_app"] {
+        assert!(
+            client.contains(&format!("fn{f}(&mutself,client_id:&str,client_secret:Option<&str>,")),
+            "{f}: {client}"
+        );
+    }
+}

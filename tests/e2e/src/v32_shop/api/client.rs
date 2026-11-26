@@ -168,10 +168,10 @@ impl<T: ::honig::Transport> Client<T> {
     }
     pub async fn authorize_password_o_auth2(
         &mut self,
-        username: &str,
-        password: &str,
         client_id: &str,
         client_secret: Option<&str>,
+        username: &str,
+        password: &str,
         scopes: &[ops::OAuth2Scope],
     ) -> Result<::honig::Token, ::honig::ClientError> {
         let token = ::honig::__private::password_grant(
@@ -189,10 +189,10 @@ impl<T: ::honig::Transport> Client<T> {
     }
     pub async fn exchange_code_o_auth2(
         &mut self,
-        code: &str,
-        redirect_uri: &str,
         client_id: &str,
         client_secret: Option<&str>,
+        code: &str,
+        redirect_uri: &str,
         pkce: &::honig::Pkce,
     ) -> Result<::honig::Token, ::honig::ClientError> {
         let token = ::honig::__private::exchange_code(
@@ -210,9 +210,9 @@ impl<T: ::honig::Transport> Client<T> {
     }
     pub async fn refresh_o_auth2(
         &mut self,
-        refresh_token: &str,
         client_id: &str,
         client_secret: Option<&str>,
+        refresh_token: &str,
     ) -> Result<::honig::Token, ::honig::ClientError> {
         let token = ::honig::__private::refresh_token(
                 &self.transport,
