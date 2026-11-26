@@ -170,17 +170,16 @@ pub(crate) fn reserved(names: &[&str]) -> BTreeSet<String> {
 
 /// Makes `name` unique within `taken` by appending 2, 3, ... to its last word. Then record it.
 pub(crate) fn unique(name: Name, taken: &mut BTreeSet<String>) -> Name {
-    if taken.insert(name.key()) {
+    let key = name.key();
+    if taken.insert(key.clone()) {
         return name;
     }
+    // The key of `name.numbered(i)` is the key of `name` and `i`: no word is capitalized again for each try.
     let mut i = 2;
-    loop {
-        let candidate = name.numbered(i);
-        if taken.insert(candidate.key()) {
-            return candidate;
-        }
+    while !taken.insert(format!("{key}{i}")) {
         i += 1;
     }
+    name.numbered(i)
 }
 
 /// Returns a unique name within `taken` for each `(name, wire)`, in the order given. Colliding names are numbered in
