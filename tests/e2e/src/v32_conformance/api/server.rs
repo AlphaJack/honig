@@ -469,7 +469,7 @@ fn get_item_encode(
 ) -> Result<::honig::Response, ::honig::ClientError> {
     Ok(
         match resp {
-            ops::get_item::Response::Success { status, body } => {
+            ops::get_item::Response::Successful { status, body } => {
                 ::honig::__private::body_response(
                     status.as_u16(),
                     "application/json",

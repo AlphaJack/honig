@@ -2998,3 +2998,16 @@ fn a_response_is_built_from_each_of_its_values() {
     let alike = ops(json!({"X-Total": header("integer"), "X-Page": header("integer")}));
     assert!(!alike.contains("fnok("), "{alike}");
 }
+
+/// A status range is a variant named by its class as RFC 9110 section 15 names it: `2XX` is `Successful`.
+#[test]
+fn a_2xx_range_is_successful() {
+    let doc = common::spec(
+        "3.2.0",
+        &json!({"/a": {"get": {"operationId": "a", "responses": {"2XX": {"description": "ok"}}}}}),
+        &json!({}),
+    );
+    let files = common::generate("successful", &doc, &crate::emit::Options::default());
+    let ops = common::file(&files, "operations.rs");
+    assert!(ops.contains("Successful { status: SuccessfulStatus }"), "{ops}");
+}

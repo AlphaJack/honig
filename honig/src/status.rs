@@ -31,7 +31,7 @@ pub fn reason(code: u16) -> Option<&'static str> {
 
 /// The phrases of the status classes `1XX` to `5XX` by their first digit.
 pub const CLASSES: &[(u16, &str)] =
-    &[(1, "Informational"), (2, "Success"), (3, "Redirection"), (4, "Client Error"), (5, "Server Error")];
+    &[(1, "Informational"), (2, "Successful"), (3, "Redirection"), (4, "Client Error"), (5, "Server Error")];
 
 /// Returns the phrase of a status class by its first digit.
 #[must_use]
