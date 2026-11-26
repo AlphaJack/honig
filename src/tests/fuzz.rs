@@ -568,6 +568,16 @@ impl V {
     }
 }
 
+/// Returns `values` without one equal to an earlier one: a `oneOf` whose every branch has a twin accepts no value.
+fn distinct(values: impl Iterator<Item = Value>) -> Vec<Value> {
+    values.fold(vec![], |mut kept, x| {
+        if !kept.contains(&x) {
+            kept.push(x);
+        }
+        kept
+    })
+}
+
 fn schema(api: &Api, s: &S, v: V) -> Value {
     match s {
         S::Str { values, format } => {
@@ -608,7 +618,7 @@ fn schema(api: &Api, s: &S, v: V) -> Value {
             json!({"allOf": [{"$ref": format!("{}{}", v.schemas_ptr(), api.schemas[*base].name)}, object(api, props, v)]})
         }
         S::AnyOf(branches) => json!({"anyOf": branches.iter().map(|b| schema(api, b, v)).collect::<Vec<_>>()}),
-        S::Union(branches) => json!({"oneOf": branches.iter().map(|b| schema(api, b, v)).collect::<Vec<_>>()}),
+        S::Union(branches) => json!({"oneOf": distinct(branches.iter().map(|b| schema(api, b, v)))}),
         S::Shared(first, second) => json!({"allOf": [object(api, first, v), object(api, second, v)]}),
         S::Unevaluated(branches) => json!({
             "anyOf": branches.iter().map(|b| schema(api, b, v)).collect::<Vec<_>>(),

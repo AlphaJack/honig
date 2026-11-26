@@ -1599,3 +1599,45 @@ fn a_reference_that_an_id_sends_nowhere_names_the_id() {
     );
     assert!(message.contains("remove the `$id`"), "{message}");
 }
+
+/// A `oneOf` whose every branch is the same schema as another, but for annotations, refuses every value: each value
+/// matches two or none. Generation fails. A tag pinned in each branch, or a required property of one, tells them apart.
+#[test]
+fn a_one_of_of_the_same_schema_twice_fails() {
+    let item = |title: &str, extra: Value| {
+        let mut s = json!({"title": title, "type": "object", "required": ["kind"],
+            "properties": {"kind": {"type": "string"}, "name": {"type": "string"}}});
+        s["properties"].as_object_mut().unwrap().extend(extra.as_object().unwrap().clone());
+        s
+    };
+    let made = |book: Value, gadget: Value| {
+        let schemas = json!({"Book": book, "Gadget": gadget, "Item": {
+            "oneOf": [{"$ref": "#/components/schemas/Book"}, {"$ref": "#/components/schemas/Gadget"}],
+            "discriminator": {"propertyName": "kind"}}});
+        let path = common::write("same-branches", &doc(&json!({}), &json!({"schemas": schemas})), &[]);
+        crate::generate::generate(&path, &Options::default())
+    };
+    let Err(d) = made(item("Book", json!({})), item("Gadget", json!({}))) else {
+        panic!("the same schema twice generates")
+    };
+    assert!(
+        d.0.iter().any(|d| d.pointer == "/components/schemas/Item/oneOf"
+            && d.message.contains("each branch is the same schema as another")),
+        "{:?}",
+        d.0
+    );
+    let pinned = |tag: &str| json!({"kind": {"const": tag}});
+    made(item("Book", pinned("book")), item("Gadget", pinned("gadget"))).unwrap_or_else(|d| panic!("{:?}", d.0));
+    let mut book = item("Book", json!({"isbn": {"type": "string"}}));
+    book["required"] = json!(["kind", "isbn"]);
+    made(book, item("Gadget", json!({}))).unwrap_or_else(|d| panic!("{:?}", d.0));
+    // One pair of twins leaves the other branches: the `oneOf` still accepts an integer, with a warning.
+    let flag = json!({"schemas": {"Flag": {"oneOf": [{"type": "boolean"}, {"type": "boolean"}, {"type": "integer"}]}}});
+    let path = common::write("same-branches-some", &doc(&json!({}), &flag), &[]);
+    let made = crate::generate::generate(&path, &Options::default()).unwrap_or_else(|d| panic!("{:?}", d.0));
+    assert!(
+        made.diagnostics.iter().any(|d| d.message.contains("#0 and #1 are the same schema")),
+        "{:?}",
+        made.diagnostics
+    );
+}
