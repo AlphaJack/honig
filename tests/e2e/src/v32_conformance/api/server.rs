@@ -6,7 +6,7 @@ pub trait Api: Send + Sync + Sized + 'static {
     type Bearer: Clone + Send + Sync + 'static;
     /// What `verify_` finds for a credential of `cookieKey`.
     type CookieKey: Clone + Send + Sync + 'static;
-    /// Answers a request that the server refuses itself (no route, bad input, missing credentials, a handler `Err`) in the error body of the description. No standard defines its fields, so this maps them: `rejection.json(&body)` sends `body` with the status of the reason, and `rejection.message()` is the detail.
+    /// Answers a request that the server refuses itself (no route, bad input, missing credentials, a handler `Err`) in the error body of the description. No standard defines its fields, so this maps them: `rejection.json(&body)` sends `body` with the status of the reason as `application/json`, and `rejection.message()` is the detail. `rejection.problem()` goes out as `application/problem+json` instead.
     fn error_response(rejection: ::honig::Rejection<Operation>) -> ::honig::Response;
     /// Checks a credential of `bearer`: who is calling, or `None` when it is not valid (401).
     fn verify_bearer(

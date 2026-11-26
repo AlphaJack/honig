@@ -99,7 +99,8 @@ fn error_response_method(operation: &TokenStream, filled: bool) -> TokenStream {
     } else {
         " Answers a request that the server refuses itself (no route, bad input, missing credentials, a handler `Err`) \
          in the error body of the description. No standard defines its fields, so this maps them: \
-         `rejection.json(&body)` sends `body` with the status of the reason, and `rejection.message()` is the detail."
+         `rejection.json(&body)` sends `body` with the status of the reason as `application/json`, and \
+         `rejection.message()` is the detail. `rejection.problem()` goes out as `application/problem+json` instead."
     };
     quote! {
         #[doc = #doc]

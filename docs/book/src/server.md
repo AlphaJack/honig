@@ -111,6 +111,12 @@ server can still replace `error_response` with its own, for example to record ea
 {{#include ../../../tests/e2e/tests/v32_scopes.rs:problem-instance}}
 ```
 
+`problem()` always goes out as `application/problem+json`. A description that declares its error body under
+`application/json`, even with the members of the RFC (`type`, `title`, `status`, `detail`), gets no default
+`error_response`: the server fills by name only the media type that the RFC defines. Send that body with
+`rejection.json(&body)`, which keeps the declared `application/json`. A strict client refuses a media type that the
+description does not declare.
+
 {{#include generated/error-rendering.md}}
 
 The members of an error body that the server fills:
