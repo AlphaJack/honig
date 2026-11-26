@@ -1064,7 +1064,7 @@ fn list_products_encode(
                 }
                 r
             }
-            ops::list_products::Response::Success { status } => {
+            ops::list_products::Response::Successful { status } => {
                 ::honig::__private::new_response(status.as_u16())
             }
             ops::list_products::Response::Default { status, body } => {

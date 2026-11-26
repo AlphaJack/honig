@@ -46,7 +46,7 @@ impl api::Api for Server {
         _: ops::get_item::Params,
         _: &api::Context<'_, ops::get_item::Security<Self>>,
     ) -> impl Future<Output = Result<ops::get_item::Response, api::ApiError>> + Send {
-        ok(ops::get_item::Response::Success { status: ops::get_item::SuccessStatus::Created, body: "x".into() })
+        ok(ops::get_item::Response::Successful { status: ops::get_item::SuccessfulStatus::Created, body: "x".into() })
     }
     fn post_closed(
         &self,
@@ -230,7 +230,10 @@ fn the_client_reads_a_status_range_with_its_actual_status() {
     let got = honig::block_on(client.get_item(ops::get_item::Params::new("1".to_owned())));
     assert_eq!(
         got.ok(),
-        Some(ops::get_item::Response::Success { status: ops::get_item::SuccessStatus::Created, body: "x".to_owned() })
+        Some(ops::get_item::Response::Successful {
+            status: ops::get_item::SuccessfulStatus::Created,
+            body: "x".to_owned()
+        })
     );
     let missing = Client::new(support::loopback(|_| {
         let mut r = honig::__private::new_response(404);

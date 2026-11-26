@@ -334,16 +334,17 @@ pub mod list_products {
             x_total: Option<i64>,
         },
         /// Other success
-        Success { status: SuccessStatus },
+        Successful { status: SuccessfulStatus },
         /// Error
         Default { status: DefaultStatus, body: types::Error },
     }
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::status_enum!(
-        #[doc = "The statuses of `Success`."] SuccessStatus { Created = 201, Accepted =
-        202, NonAuthoritativeInformation = 203, NoContent = 204, ResetContent = 205,
-        PartialContent = 206, MultiStatus = 207, AlreadyReported = 208, ImUsed = 226 }
+        #[doc = "The statuses of `Successful`."] SuccessfulStatus { Created = 201,
+        Accepted = 202, NonAuthoritativeInformation = 203, NoContent = 204, ResetContent
+        = 205, PartialContent = 206, MultiStatus = 207, AlreadyReported = 208, ImUsed =
+        226 }
     );
     ::honig::status_enum!(
         #[doc = "The statuses of `Default`."] DefaultStatus { MultipleChoices = 300,
@@ -365,7 +366,7 @@ pub mod list_products {
     ::honig::response_error!(
         Response {
             Self::Ok { .. } => "status 200 (Ok)",
-            Self::Success { status,.. } => format_args!("status {} (Success)", status.as_u16()),
+            Self::Successful { status,.. } => format_args!("status {} (Successful)", status.as_u16()),
             Self::Default { status,.. } => format_args!("status {} (Default)", status.as_u16()),
         }
     );
@@ -379,10 +380,10 @@ pub mod list_products {
         ) -> Self {
             Self::Ok { body, x_next, x_total }
         }
-        /// Returns `Success` from each of its values.
+        /// Returns `Successful` from each of its values.
         #[must_use]
-        pub const fn success(status: SuccessStatus) -> Self {
-            Self::Success { status }
+        pub const fn successful(status: SuccessfulStatus) -> Self {
+            Self::Successful { status }
         }
         /// Returns `Default` from each of its values.
         #[must_use]
@@ -394,7 +395,7 @@ pub mod list_products {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<Self, Box<Self>> {
             match self {
-                success @ (Self::Ok { .. } | Self::Success { .. }) => Ok(success),
+                success @ (Self::Ok { .. } | Self::Successful { .. }) => Ok(success),
                 other @ Self::Default { .. } => Err(Box::new(other)),
             }
         }

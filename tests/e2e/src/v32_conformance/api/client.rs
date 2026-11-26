@@ -120,14 +120,14 @@ impl<T: ::honig::Transport> Client<T> {
         let status = head.status.as_u16();
         if (200..300).contains(&status) {
             {
-                let Ok(typed) = ops::get_item::SuccessStatus::try_from(status) else {
+                let Ok(typed) = ops::get_item::SuccessfulStatus::try_from(status) else {
                     return Err(::honig::ClientError::UnexpectedStatus {
                         status: head.status,
                         body,
                     });
                 };
                 ::honig::__private::check_media_of(&head, &body, &["application/json"])?;
-                Ok(ops::get_item::Response::Success {
+                Ok(ops::get_item::Response::Successful {
                     status: typed,
                     body: ::honig::__private::json_decode(Some(status), &body)?,
                 })

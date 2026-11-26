@@ -611,13 +611,14 @@ impl<T: ::honig::Transport> Client<T> {
                 })
             }
             s if (200..300).contains(&s) => {
-                let Ok(typed) = ops::list_products::SuccessStatus::try_from(status) else {
+                let Ok(typed) = ops::list_products::SuccessfulStatus::try_from(status)
+                else {
                     return Err(::honig::ClientError::UnexpectedStatus {
                         status: head.status,
                         body,
                     });
                 };
-                Ok(ops::list_products::Response::Success {
+                Ok(ops::list_products::Response::Successful {
                     status: typed,
                 })
             }
@@ -766,14 +767,15 @@ impl<T: ::honig::Transport> Client<T> {
             let status = head.status.as_u16();
             if (200..300).contains(&status) {
                 {
-                    let Ok(typed) = ops::list_products::SuccessStatus::try_from(status)
-                    else {
+                    let Ok(typed) = ops::list_products::SuccessfulStatus::try_from(
+                        status,
+                    ) else {
                         return Err(::honig::ClientError::UnexpectedStatus {
                             status: head.status,
                             body,
                         });
                     };
-                    Ok(ops::list_products::Response::Success {
+                    Ok(ops::list_products::Response::Successful {
                         status: typed,
                     })
                 }
