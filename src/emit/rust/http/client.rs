@@ -68,9 +68,10 @@ pub(crate) fn client(api: &Api, space: &Space<'_>, opts: &crate::emit::Options) 
     let uses_types =
         api.http.operations.iter().filter(called).filter_map(stream_target).any(|(_, item, _)| mentions(item).0);
     let types_import = crate::emit::rust::http::shared::types_import(uses_types);
+    let ops_import = crate::emit::rust::http::shared::ops_import(api);
     quote! {
         #header
-        use super::operations as ops;
+        #ops_import
         #types_import
 
         #servers_doc

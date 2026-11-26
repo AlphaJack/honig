@@ -281,6 +281,16 @@ pub(crate) fn param_start(space: &Space<'_>, p: &Param) -> TokenStream {
     spec_default(space, p).unwrap_or_else(|| quote!(None))
 }
 
+/// Returns `use super::operations as ops;` when `api` has an operation: the client and the server refer to `ops` only
+/// through one.
+pub(crate) fn ops_import(api: &Api) -> Option<TokenStream> {
+    (!api.http.operations.is_empty()).then(|| {
+        quote!(
+            use super::operations as ops;
+        )
+    })
+}
+
 /// Returns `use super::types;` when `needed`: a module of `api` that refers to a generated type.
 pub(crate) fn types_import(needed: bool) -> Option<TokenStream> {
     needed.then(|| {

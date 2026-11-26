@@ -133,9 +133,10 @@ pub(crate) fn server(api: &Api, space: &Space<'_>, opts: &crate::emit::Options) 
         )
     });
     let error_response = (!path_ops.is_empty()).then(|| error_response_method(&quote!(Operation), filled));
+    let ops_import = crate::emit::rust::http::shared::ops_import(api);
     quote! {
         #header
-        use super::operations as ops;
+        #ops_import
         use std::future::Future;
 
         pub trait Api: Send + Sync + Sized + 'static {
