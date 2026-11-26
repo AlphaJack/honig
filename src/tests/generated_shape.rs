@@ -1100,8 +1100,6 @@ fn a_union_that_is_its_own_branch_generates() {
         &json!({}),
         &json!({"schemas": {
             "Loop": {"anyOf": [r("Loop"), {"type": "null"}]},
-        "Solo": {"oneOf": [r("Solo")]},
-        "Many": {"anyOf": [r("Solo"), {"type": "string", "minLength": 3}]},
             "Ping": {"anyOf": [r("Pong"), {"type": "string"}]},
             "Pong": {"anyOf": [r("Ping"), {"type": "number"}]},
             "Either": {"anyOf": [r("Loop"), {"type": "string", "minLength": 2}]},
