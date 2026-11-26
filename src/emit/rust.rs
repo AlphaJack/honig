@@ -193,7 +193,7 @@ pub(crate) fn trees(api: &Api, opts: &super::Options) -> Trees {
         trees.push(("client.rs", http::client(api, space, opts)));
     }
     if opts.server {
-        trees.push(("server.rs", http::server(api, space, opts.allow_unimplemented)));
+        trees.push(("server.rs", http::server(api, space, opts)));
     }
     if let Some(examples) = examples {
         trees.push(("documented_examples.rs", examples));

@@ -107,7 +107,9 @@ fn error_response_method(operation: &TokenStream, filled: bool) -> TokenStream {
     }
 }
 
-pub(crate) fn server(api: &Api, space: &Space<'_>, allow_unimplemented: bool) -> TokenStream {
+pub(crate) fn server(api: &Api, space: &Space<'_>, opts: &crate::emit::Options) -> TokenStream {
+    let allow_unimplemented = opts.allow_unimplemented;
+    let header = opts.rust.binary.then(|| quote!(#![allow(dead_code, reason = "a binary serves part of the API: its webhooks and callbacks may go unused")]));
     let methods = api.http.operations.iter().filter(|o| is_path(o)).map(|op| api_method(op, allow_unimplemented));
     let filled = all_filled(api, space);
     let router = router(api);
@@ -131,6 +133,7 @@ pub(crate) fn server(api: &Api, space: &Space<'_>, allow_unimplemented: bool) ->
     });
     let error_response = (!path_ops.is_empty()).then(|| error_response_method(&quote!(Operation), filled));
     quote! {
+        #header
         use super::operations as ops;
         use std::future::Future;
 
