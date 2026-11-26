@@ -24,4 +24,6 @@ format-uri-reference: uri-reference format annotation: invalid uri-reference str
 format-uri-template: uri-template format annotation: invalid uri-template string is only an annotation by default	refuses a valid instance: is not a valid uri-template at line 1 column 52
 format-uri: uri format annotation: invalid uri string is only an annotation by default	refuses a valid instance: is not a valid uri at line 1 column 31
 format-uuid: uuid format annotation: invalid uuid string is only an annotation by default	refuses a valid instance: is not a valid uuid at line 1 column 43
+oneOf: oneOf with boolean schemas, all false: any value is invalid	does not generate: each branch is the same schema as another, so a value matches two or none and `oneOf` refuses every value: tell them apa
+oneOf: oneOf with boolean schemas, all true: any value is invalid	does not generate: each branch is the same schema as another, so a value matches two or none and `oneOf` refuses every value: tell them apa
 vocabulary: schema that uses custom metaschema with no validation vocabulary: no validation: invalid number, but it still validates	refuses a valid instance: 1 is less than the minimum 10 at line 1 column 26

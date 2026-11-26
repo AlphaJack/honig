@@ -5,6 +5,9 @@
 //! validation outcome": `oneOf` still means exactly one. Branches `Book` and `Gadget` that share every property both
 //! match `{"kind": "book", "name": "Dune"}`, and the value is invalid. A branch that sets the discriminating property
 //! with `const` (or a one-value `enum`) cannot match another branch's tag. A warning lists the branches that do not.
+//!
+//! Two branches of a `oneOf` that are the same schema, but for annotations, refuse every value of that schema: each such
+//! value matches both. A warning says so. When every branch has such a twin, the `oneOf` refuses every value: an error.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -15,18 +18,26 @@ use crate::json::{Doc, join};
 use crate::walk::{self, Obj, Visit};
 
 /// Warns about each discriminated `oneOf` with a branch that does not pin its tag, and about each union with two
-/// object branches that nothing tells apart.
+/// object branches that nothing tells apart. Reports each `oneOf` whose every branch has a twin.
 pub(crate) fn check(doc: &Doc, diags: &mut Diagnostics) {
-    let mut found = Found { doc, out: vec![] };
+    let mut found = Found { doc, out: vec![], errors: vec![] };
     walk::walk(&mut doc.root.clone(), &mut found);
     for (ptr, message) in found.out {
         diags.warning(&ptr, message);
     }
+    for (ptr, message) in found.errors {
+        diags.error(&ptr, message);
+    }
 }
+
+/// Keywords that never change which values a schema accepts.
+const ANNOTATIONS: [&str; 8] =
+    ["title", "description", "summary", "examples", "example", "deprecated", "$comment", "externalDocs"];
 
 struct Found<'a> {
     doc: &'a Doc,
     out: Vec<(String, String)>,
+    errors: Vec<(String, String)>,
 }
 
 /// What tells an object branch apart: its properties, the required ones and the `const` and `type` of each. Being closed
@@ -120,6 +131,33 @@ impl Found<'_> {
         }
     }
 
+    /// Returns the branches of the `oneOf` of `s` that are the same schema as an earlier one once their `$ref`s are
+    /// followed and their annotations dropped, each with that earlier one, and whether every branch has such a twin.
+    fn twins(&self, s: &Obj) -> (Vec<(String, String)>, bool) {
+        let Some(branches) = s.get("oneOf").and_then(Value::as_array) else { return (vec![], false) };
+        let plain: Vec<Value> = branches.iter().map(|b| self.plain(b)).collect();
+        let twin_of = |i: usize| (0..plain.len()).find(|j| *j != i && plain[*j] == plain[i]);
+        let pairs = (0..plain.len())
+            .filter_map(|i| twin_of(i).filter(|j| *j < i).map(|j| (name(&branches[j], j), name(&branches[i], i))))
+            .collect();
+        (pairs, !plain.is_empty() && (0..plain.len()).all(|i| twin_of(i).is_some()))
+    }
+
+    /// Returns `branch` with its `$ref`s to whole schemas followed and its annotations dropped.
+    fn plain(&self, branch: &Value) -> Value {
+        let mut seen = vec![];
+        let mut b = branch;
+        while let Some(r) = b.get("$ref").and_then(Value::as_str)
+            && b.as_object().is_some_and(|o| o.keys().all(|k| k == "$ref" || annotation(k)))
+            && !seen.contains(&r)
+            && let Some(t) = self.doc.get(r)
+        {
+            seen.push(r);
+            b = t;
+        }
+        without_annotations(b, "")
+    }
+
     /// Returns whether the branch through `$ref`s and `allOf` members fixes `prop` to one value. `seen` contains the
     /// `$ref`s on the way: one met again is a cycle, which fixes nothing more.
     fn pins(&self, branch: &Value, prop: &str, seen: &mut Vec<String>) -> bool {
@@ -141,6 +179,29 @@ impl Found<'_> {
     }
 }
 
+/// Is `key` a keyword that never changes which values a schema accepts?
+fn annotation(key: &str) -> bool {
+    ANNOTATIONS.contains(&key) || key.starts_with("x-")
+}
+
+/// Returns `v`, found under the key `parent`, without its annotations. Data and the names of a map of schemas stay.
+fn without_annotations(v: &Value, parent: &str) -> Value {
+    let names = matches!(parent, "properties" | "patternProperties" | "$defs" | "definitions" | "dependentSchemas");
+    match v {
+        Value::Object(o) => Value::Object(
+            (o.iter())
+                .filter(|(k, _)| names || !annotation(k))
+                .map(|(k, x)| {
+                    let x = if crate::json::is_data(parent, k) { x.clone() } else { without_annotations(x, k) };
+                    (k.clone(), x)
+                })
+                .collect(),
+        ),
+        Value::Array(a) => Value::Array(a.iter().map(|x| without_annotations(x, parent)).collect()),
+        Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => v.clone(),
+    }
+}
+
 /// Returns how a message names branch `i`: its `$ref` or its position.
 fn name(branch: &Value, i: usize) -> String {
     branch.get("$ref").and_then(Value::as_str).map_or_else(|| format!("#{i}"), String::from)
@@ -148,6 +209,22 @@ fn name(branch: &Value, i: usize) -> String {
 
 impl Visit for Found<'_> {
     fn schema(&mut self, s: &mut Obj, ptr: &str) {
+        let (twins, all) = self.twins(s);
+        if all {
+            self.errors.push((
+                join(ptr, "oneOf"),
+                "each branch is the same schema as another, so a value matches two or none and `oneOf` refuses every \
+                 value: tell them apart with a `const` tag or a required property"
+                    .to_owned(),
+            ));
+            return;
+        }
+        for (a, b) in twins {
+            self.out.push((
+                join(ptr, "oneOf"),
+                format!("{a} and {b} are the same schema, so `oneOf` refuses every value of it: remove one"),
+            ));
+        }
         self.alike(s, ptr);
         let Some(prop) = s.get("discriminator").and_then(|d| d.get("propertyName")).and_then(Value::as_str) else {
             return;
