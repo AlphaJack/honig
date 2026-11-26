@@ -41,6 +41,13 @@ impl api::Api for Server {
     ) -> impl Future<Output = Result<ops::inherits::Response, api::ApiError>> + Send {
         ok(ops::inherits::Response::NoContent)
     }
+    fn ping(
+        &self,
+        _: ops::ping::Params,
+        _: &api::Context<'_>,
+    ) -> impl Future<Output = Result<ops::ping::Response, api::ApiError>> + Send {
+        ok(ops::ping::Response::Successful { status: ops::ping::SuccessfulStatus::Accepted })
+    }
     fn get_item(
         &self,
         _: ops::get_item::Params,
@@ -251,4 +258,12 @@ fn the_client_reads_a_status_range_with_its_actual_status() {
             body: std::collections::BTreeMap::new()
         })
     );
+}
+
+/// `into_result` of a `2XX` range gives the response itself: its status is part of the success.
+#[test]
+fn into_result_of_a_status_range_keeps_the_status() {
+    let client = Client::new(api::Server::new(Server).into_service());
+    let got = honig::block_on(client.ping(ops::ping::Params::default())).map(ops::ping::Response::into_result);
+    assert_eq!(got.ok(), Some(Ok(ops::ping::Response::Successful { status: ops::ping::SuccessfulStatus::Accepted })));
 }

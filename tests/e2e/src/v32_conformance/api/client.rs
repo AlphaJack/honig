@@ -85,6 +85,38 @@ impl<T: ::honig::Transport> Client<T> {
             })
         }
     }
+    pub async fn ping(
+        &self,
+        _p: impl ::honig::__private::IntoArg<'_, ops::ping::Params>,
+    ) -> Result<ops::ping::Response, ::honig::ClientError> {
+        let path = String::from("/ping");
+        let query = Vec::new();
+        let mut req = ::honig::__private::new_request("GET", path, query)?;
+        ::honig::__private::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
+        ::honig::__private::propagate_trace(&mut req);
+        let resp = ::honig::send(&self.transport, req).await?;
+        let (head, body) = resp.into_parts();
+        let (body, _) = body.into_parts();
+        let status = head.status.as_u16();
+        if (200..300).contains(&status) {
+            {
+                let Ok(typed) = ops::ping::SuccessfulStatus::try_from(status) else {
+                    return Err(::honig::ClientError::UnexpectedStatus {
+                        status: head.status,
+                        body,
+                    });
+                };
+                Ok(ops::ping::Response::Successful {
+                    status: typed,
+                })
+            }
+        } else {
+            Err(::honig::ClientError::UnexpectedStatus {
+                status: head.status,
+                body,
+            })
+        }
+    }
     pub async fn get_item(
         &self,
         p: impl ::honig::__private::IntoArg<'_, ops::get_item::Params>,

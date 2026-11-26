@@ -29,6 +29,11 @@ paths:
     get:
       operationId: inherits
       responses: {"204": {description: ok}}
+  /ping:
+    get:
+      operationId: ping
+      security: []
+      responses: {"2XX": {description: any success}}
   /items/{id}:
     parameters:
       - {name: id, in: path, required: true, schema: {type: string}}
