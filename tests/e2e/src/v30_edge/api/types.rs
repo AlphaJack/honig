@@ -205,7 +205,7 @@ impl TryFrom<String> for MoneyCurrency {
 ::honig::checked_str_impls!(MoneyCurrency);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
-pub struct CustomerName(pub(super) String);
+pub struct CustomerName(pub(super) ::std::borrow::Cow<'static, str>);
 impl TryFrom<String> for CustomerName {
     type Error = ::honig::BuildError;
     fn try_from(value: String) -> Result<Self, ::honig::BuildError> {
@@ -223,14 +223,23 @@ impl TryFrom<String> for CustomerName {
             );
         }
         ::honig::__private::first(violations)
-            .map(|()| Self(value))
+            .map(|()| Self(value.into()))
             .map_err(::honig::BuildError::value)
+    }
+}
+impl CustomerName {
+    /// Returns `value`, or `None` when its length breaks a limit. In a constant, `.expect(..)` on it makes a
+    /// literal outside the limits a build error.
+    #[must_use]
+    pub const fn from_static(value: &'static str) -> Option<Self> {
+        let n = ::honig::__private::char_count(value) as u64;
+        if n >= 1u64 { Some(Self(::std::borrow::Cow::Borrowed(value))) } else { None }
     }
 }
 ::honig::checked_str_impls!(CustomerName);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
-pub struct CardLast4(pub(super) String);
+pub struct CardLast4(pub(super) ::std::borrow::Cow<'static, str>);
 impl TryFrom<String> for CardLast4 {
     type Error = ::honig::BuildError;
     fn try_from(value: String) -> Result<Self, ::honig::BuildError> {
@@ -248,8 +257,17 @@ impl TryFrom<String> for CardLast4 {
             );
         }
         ::honig::__private::first(violations)
-            .map(|()| Self(value))
+            .map(|()| Self(value.into()))
             .map_err(::honig::BuildError::value)
+    }
+}
+impl CardLast4 {
+    /// Returns `value`, or `None` when its length breaks a limit. In a constant, `.expect(..)` on it makes a
+    /// literal outside the limits a build error.
+    #[must_use]
+    pub const fn from_static(value: &'static str) -> Option<Self> {
+        let n = ::honig::__private::char_count(value) as u64;
+        if n == 4u64 { Some(Self(::std::borrow::Cow::Borrowed(value))) } else { None }
     }
 }
 ::honig::checked_str_impls!(CardLast4);

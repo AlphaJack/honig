@@ -1940,7 +1940,7 @@ impl TryFrom<String> for SlugVariant2 {
 ::honig::checked_str_impls!(SlugVariant2);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
-pub struct NarrowStampAt(pub(super) String);
+pub struct NarrowStampAt(pub(super) ::std::borrow::Cow<'static, str>);
 impl TryFrom<String> for NarrowStampAt {
     type Error = ::honig::BuildError;
     fn try_from(value: String) -> Result<Self, ::honig::BuildError> {
@@ -1958,14 +1958,23 @@ impl TryFrom<String> for NarrowStampAt {
             );
         }
         ::honig::__private::first(violations)
-            .map(|()| Self(value))
+            .map(|()| Self(value.into()))
             .map_err(::honig::BuildError::value)
+    }
+}
+impl NarrowStampAt {
+    /// Returns `value`, or `None` when its length breaks a limit. In a constant, `.expect(..)` on it makes a
+    /// literal outside the limits a build error.
+    #[must_use]
+    pub const fn from_static(value: &'static str) -> Option<Self> {
+        let n = ::honig::__private::char_count(value) as u64;
+        if n <= 5u64 { Some(Self(::std::borrow::Cow::Borrowed(value))) } else { None }
     }
 }
 ::honig::checked_str_impls!(NarrowStampAt);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
-pub struct CodeVariant1(pub(super) String);
+pub struct CodeVariant1(pub(super) ::std::borrow::Cow<'static, str>);
 impl TryFrom<String> for CodeVariant1 {
     type Error = ::honig::BuildError;
     fn try_from(value: String) -> Result<Self, ::honig::BuildError> {
@@ -1983,8 +1992,17 @@ impl TryFrom<String> for CodeVariant1 {
             );
         }
         ::honig::__private::first(violations)
-            .map(|()| Self(value))
+            .map(|()| Self(value.into()))
             .map_err(::honig::BuildError::value)
+    }
+}
+impl CodeVariant1 {
+    /// Returns `value`, or `None` when its length breaks a limit. In a constant, `.expect(..)` on it makes a
+    /// literal outside the limits a build error.
+    #[must_use]
+    pub const fn from_static(value: &'static str) -> Option<Self> {
+        let n = ::honig::__private::char_count(value) as u64;
+        if n <= 3u64 { Some(Self(::std::borrow::Cow::Borrowed(value))) } else { None }
     }
 }
 ::honig::checked_str_impls!(CodeVariant1);
@@ -2347,8 +2365,17 @@ impl ::honig::__private::XmlShape for BundleVariant1 {
 pub type EntryLines = Vec<Line>;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
-pub struct LineNote(pub(super) String);
+pub struct LineNote(pub(super) ::std::borrow::Cow<'static, str>);
 ::honig::checked_twin!(LineNote, CodeVariant1, String);
+impl LineNote {
+    /// Returns `value`, or `None` when its length breaks a limit. In a constant, `.expect(..)` on it makes a
+    /// literal outside the limits a build error.
+    #[must_use]
+    pub const fn from_static(value: &'static str) -> Option<Self> {
+        let n = ::honig::__private::char_count(value) as u64;
+        if n <= 3u64 { Some(Self(::std::borrow::Cow::Borrowed(value))) } else { None }
+    }
+}
 ::honig::checked_str_impls!(LineNote);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct RefusalObject;
@@ -2364,12 +2391,21 @@ pub enum ProblemCode {
 ::honig::str_enum_impls!(ProblemCode { Invalid => "INVALID", Taken => "TAKEN" });
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
-pub struct BadgeLabel(pub(super) String);
+pub struct BadgeLabel(pub(super) ::std::borrow::Cow<'static, str>);
 ::honig::checked_twin!(BadgeLabel, NarrowStampAt, String);
+impl BadgeLabel {
+    /// Returns `value`, or `None` when its length breaks a limit. In a constant, `.expect(..)` on it makes a
+    /// literal outside the limits a build error.
+    #[must_use]
+    pub const fn from_static(value: &'static str) -> Option<Self> {
+        let n = ::honig::__private::char_count(value) as u64;
+        if n <= 5u64 { Some(Self(::std::borrow::Cow::Borrowed(value))) } else { None }
+    }
+}
 ::honig::checked_str_impls!(BadgeLabel);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
-pub struct LoginPassword(pub(super) String);
+pub struct LoginPassword(pub(super) ::std::borrow::Cow<'static, str>);
 impl TryFrom<String> for LoginPassword {
     type Error = ::honig::BuildError;
     fn try_from(value: String) -> Result<Self, ::honig::BuildError> {
@@ -2387,8 +2423,17 @@ impl TryFrom<String> for LoginPassword {
             );
         }
         ::honig::__private::first(violations)
-            .map(|()| Self(value))
+            .map(|()| Self(value.into()))
             .map_err(::honig::BuildError::value)
+    }
+}
+impl LoginPassword {
+    /// Returns `value`, or `None` when its length breaks a limit. In a constant, `.expect(..)` on it makes a
+    /// literal outside the limits a build error.
+    #[must_use]
+    pub const fn from_static(value: &'static str) -> Option<Self> {
+        let n = ::honig::__private::char_count(value) as u64;
+        if n >= 8u64 { Some(Self(::std::borrow::Cow::Borrowed(value))) } else { None }
     }
 }
 ::honig::checked_str_impls!(LoginPassword);
@@ -2469,7 +2514,7 @@ impl ::honig::__private::XmlShape for MetaObject {
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
-pub struct ShipmentInternationalLabel(pub(super) String);
+pub struct ShipmentInternationalLabel(pub(super) ::std::borrow::Cow<'static, str>);
 impl TryFrom<String> for ShipmentInternationalLabel {
     type Error = ::honig::BuildError;
     fn try_from(value: String) -> Result<Self, ::honig::BuildError> {
@@ -2487,8 +2532,17 @@ impl TryFrom<String> for ShipmentInternationalLabel {
             );
         }
         ::honig::__private::first(violations)
-            .map(|()| Self(value))
+            .map(|()| Self(value.into()))
             .map_err(::honig::BuildError::value)
+    }
+}
+impl ShipmentInternationalLabel {
+    /// Returns `value`, or `None` when its length breaks a limit. In a constant, `.expect(..)` on it makes a
+    /// literal outside the limits a build error.
+    #[must_use]
+    pub const fn from_static(value: &'static str) -> Option<Self> {
+        let n = ::honig::__private::char_count(value) as u64;
+        if n >= 4u64 { Some(Self(::std::borrow::Cow::Borrowed(value))) } else { None }
     }
 }
 ::honig::checked_str_impls!(ShipmentInternationalLabel);
@@ -2659,8 +2713,17 @@ impl TryFrom<LabelsFields> for ShipmentInternationalLabels {
 ::honig::checked_impls!(ShipmentInternationalLabels, LabelsFields);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
-pub struct LabelsPattern1(pub(super) String);
+pub struct LabelsPattern1(pub(super) ::std::borrow::Cow<'static, str>);
 ::honig::checked_twin!(LabelsPattern1, CodeVariant1, String);
+impl LabelsPattern1 {
+    /// Returns `value`, or `None` when its length breaks a limit. In a constant, `.expect(..)` on it makes a
+    /// literal outside the limits a build error.
+    #[must_use]
+    pub const fn from_static(value: &'static str) -> Option<Self> {
+        let n = ::honig::__private::char_count(value) as u64;
+        if n <= 3u64 { Some(Self(::std::borrow::Cow::Borrowed(value))) } else { None }
+    }
+}
 ::honig::checked_str_impls!(LabelsPattern1);
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(transparent)]
@@ -2941,8 +3004,17 @@ impl TryFrom<f64> for UserScore {
 ::honig::checked_num_impls!(UserScore, f64);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
-pub struct UserTagsItem(pub(super) String);
+pub struct UserTagsItem(pub(super) ::std::borrow::Cow<'static, str>);
 ::honig::checked_twin!(UserTagsItem, CodeVariant1, String);
+impl UserTagsItem {
+    /// Returns `value`, or `None` when its length breaks a limit. In a constant, `.expect(..)` on it makes a
+    /// literal outside the limits a build error.
+    #[must_use]
+    pub const fn from_static(value: &'static str) -> Option<Self> {
+        let n = ::honig::__private::char_count(value) as u64;
+        if n <= 3u64 { Some(Self(::std::borrow::Cow::Borrowed(value))) } else { None }
+    }
+}
 ::honig::checked_str_impls!(UserTagsItem);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum UserRole {
@@ -2996,14 +3068,32 @@ impl UserLoyaltyVariant1 {
 ::honig::checked_num_impls!(UserLoyaltyVariant1, i64);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
-pub struct UserLoyaltyVariant2(pub(super) String);
+pub struct UserLoyaltyVariant2(pub(super) ::std::borrow::Cow<'static, str>);
 ::honig::checked_twin!(UserLoyaltyVariant2, CodeVariant1, String);
+impl UserLoyaltyVariant2 {
+    /// Returns `value`, or `None` when its length breaks a limit. In a constant, `.expect(..)` on it makes a
+    /// literal outside the limits a build error.
+    #[must_use]
+    pub const fn from_static(value: &'static str) -> Option<Self> {
+        let n = ::honig::__private::char_count(value) as u64;
+        if n <= 3u64 { Some(Self(::std::borrow::Cow::Borrowed(value))) } else { None }
+    }
+}
 ::honig::checked_str_impls!(UserLoyaltyVariant2);
 pub type UserNote = UserNote2;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
-pub struct UserNote2(pub(super) String);
+pub struct UserNote2(pub(super) ::std::borrow::Cow<'static, str>);
 ::honig::checked_twin!(UserNote2, NarrowStampAt, String);
+impl UserNote2 {
+    /// Returns `value`, or `None` when its length breaks a limit. In a constant, `.expect(..)` on it makes a
+    /// literal outside the limits a build error.
+    #[must_use]
+    pub const fn from_static(value: &'static str) -> Option<Self> {
+        let n = ::honig::__private::char_count(value) as u64;
+        if n <= 5u64 { Some(Self(::std::borrow::Cow::Borrowed(value))) } else { None }
+    }
+}
 ::honig::checked_str_impls!(UserNote2);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum GetModeOk {
@@ -4105,7 +4195,7 @@ impl ShipmentInternationalFields {
     #[must_use]
     pub fn default_label() -> ShipmentInternationalLabel {
         ShipmentInternationalLabel {
-            0: "none".to_owned(),
+            0: ::std::borrow::Cow::Borrowed("none"),
         }
     }
 }
@@ -4235,7 +4325,7 @@ impl ShipmentOtherwiseFields {
     #[must_use]
     pub fn default_label() -> ShipmentOtherwiseLabel {
         ShipmentOtherwiseLabel {
-            0: "none".to_owned(),
+            0: ::std::borrow::Cow::Borrowed("none"),
         }
     }
 }

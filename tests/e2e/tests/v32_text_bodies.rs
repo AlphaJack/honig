@@ -71,6 +71,18 @@ fn the_client_builds_and_decodes_text_bodies_of_their_types() {
     honig::block_on(client.set_mood(mood)).expect("sent").into_result().expect("204");
 }
 
+/// A body checked by its length alone builds in a constant: `from_static` counts the characters at compile time, and a
+/// literal too long is `None`, so `.expect` on it does not compile.
+#[test]
+fn a_length_checked_text_is_a_constant() {
+    const GREETING: types::AddNoteBody = types::AddNoteBody::from_static("h\u{e9}!").expect("3 characters");
+    assert_eq!(GREETING.as_str(), "h\u{e9}!");
+    assert_eq!(GREETING, types::AddNoteBody::try_from("h\u{e9}!").expect("3 characters"));
+    assert_eq!(serde_json::to_string(&GREETING).unwrap(), "\"h\u{e9}!\"");
+    assert!(types::AddNoteBody::from_static("hello!").is_none(), "6 characters, maxLength 5");
+    assert_eq!(String::from(GREETING), "h\u{e9}!");
+}
+
 /// Text that is not UTF-8 is no text: the server answers 400 instead of replacing the bytes.
 #[test]
 fn a_text_body_that_is_not_utf8_is_refused() {
