@@ -153,25 +153,40 @@ pub(crate) fn security_enum(api: &Api, op: &Operation) -> Option<TokenStream> {
     }
     let tr = trait_of(op);
     let mut seen: Vec<String> = Vec::new();
-    let variants = security_variants(api, op).into_iter().filter_map(|(variant, schemes)| {
-        if seen.contains(&variant) {
-            return None;
-        }
-        seen.push(variant.clone());
-        let v = ident(&variant);
-        if schemes.is_empty() {
-            return Some(quote!(/// No credentials: the `security` of the operation allows an anonymous request.
+    let mut clones = vec![];
+    let variants: Vec<TokenStream> = (security_variants(api, op).into_iter())
+        .filter_map(|(variant, schemes)| {
+            if seen.contains(&variant) {
+                return None;
+            }
+            seen.push(variant.clone());
+            let v = ident(&variant);
+            if schemes.is_empty() {
+                clones.push(quote!(Self::#v => Self::#v,));
+                return Some(quote!(/// No credentials: the `security` of the operation allows an anonymous request.
                 #v,));
-        }
-        let fields = schemes.iter().map(|s| ident(s));
-        let doc =
-            lit(&format!(" The alternative of `{}`, with what each `verify_` method found.", schemes.join("` and `")));
-        Some(quote!(#[doc = #doc] #v(#(A::#fields),*),))
-    });
+            }
+            let values: Vec<_> = (0..schemes.len()).map(|i| quote::format_ident!("v{i}")).collect();
+            clones.push(quote!(Self::#v(#(#values),*) => Self::#v(#(#values.clone()),*),));
+            let fields = schemes.iter().map(|s| ident(s));
+            let doc = lit(&format!(
+                " The alternative of `{}`, with what each `verify_` method found.",
+                schemes.join("` and `")
+            ));
+            Some(quote!(#[doc = #doc] #v(#(A::#fields),*),))
+        })
+        .collect();
+    // A derive would demand `A: Clone`, the whole `Api`: each value is `Clone` already.
     Some(quote! {
         /// Who is calling: the alternative of the operation's `security` that the request passed.
         pub enum Security<A: super::super::server::#tr> {
             #(#variants)*
+        }
+
+        impl<A: super::super::server::#tr> Clone for Security<A> {
+            fn clone(&self) -> Self {
+                match self { #(#clones)* }
+            }
         }
     })
 }

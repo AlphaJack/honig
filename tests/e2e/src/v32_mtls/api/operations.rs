@@ -54,6 +54,13 @@ pub mod private {
         /// The alternative of `Cert`, with what each `verify_` method found.
         Cert(A::Cert),
     }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Cert(v0) => Self::Cert(v0.clone()),
+            }
+        }
+    }
 }
 pub mod token {
     pub const METHOD: &str = "GET";
@@ -88,6 +95,13 @@ pub mod token {
         /// The alternative of `Bearer`, with what each `verify_` method found.
         Bearer(A::Bearer),
     }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Bearer(v0) => Self::Bearer(v0.clone()),
+            }
+        }
+    }
 }
 pub mod keyed {
     pub const METHOD: &str = "GET";
@@ -121,5 +135,14 @@ pub mod keyed {
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `ApiKey` and `BasicAuth`, with what each `verify_` method found.
         ApiKeyAndBasicAuth(A::ApiKey, A::BasicAuth),
+    }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::ApiKeyAndBasicAuth(v0, v1) => {
+                    Self::ApiKeyAndBasicAuth(v0.clone(), v1.clone())
+                }
+            }
+        }
     }
 }

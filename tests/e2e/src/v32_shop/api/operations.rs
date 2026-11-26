@@ -414,6 +414,22 @@ pub mod create_product {
         /// The alternative of `OpenIdConnect`, with what each `verify_` method found.
         OpenIdConnect(A::OpenIdConnect),
     }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::BearerAuth(v0) => Self::BearerAuth(v0.clone()),
+                Self::BasicAuth(v0) => Self::BasicAuth(v0.clone()),
+                Self::ApiKeyQuery(v0) => Self::ApiKeyQuery(v0.clone()),
+                Self::ApiKeyHeader(v0) => Self::ApiKeyHeader(v0.clone()),
+                Self::ApiKeyHeaderAndApiKeyQuery(v0, v1) => {
+                    Self::ApiKeyHeaderAndApiKeyQuery(v0.clone(), v1.clone())
+                }
+                Self::ApiKeyCookie(v0) => Self::ApiKeyCookie(v0.clone()),
+                Self::OAuth2(v0) => Self::OAuth2(v0.clone()),
+                Self::OpenIdConnect(v0) => Self::OpenIdConnect(v0.clone()),
+            }
+        }
+    }
     pub mod links {
         /// Retrieve the product using the ID returned in the response.
         #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -862,6 +878,22 @@ pub mod update_product {
         /// The alternative of `OpenIdConnect`, with what each `verify_` method found.
         OpenIdConnect(A::OpenIdConnect),
     }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::BearerAuth(v0) => Self::BearerAuth(v0.clone()),
+                Self::BasicAuth(v0) => Self::BasicAuth(v0.clone()),
+                Self::ApiKeyQuery(v0) => Self::ApiKeyQuery(v0.clone()),
+                Self::ApiKeyHeader(v0) => Self::ApiKeyHeader(v0.clone()),
+                Self::ApiKeyHeaderAndApiKeyQuery(v0, v1) => {
+                    Self::ApiKeyHeaderAndApiKeyQuery(v0.clone(), v1.clone())
+                }
+                Self::ApiKeyCookie(v0) => Self::ApiKeyCookie(v0.clone()),
+                Self::OAuth2(v0) => Self::OAuth2(v0.clone()),
+                Self::OpenIdConnect(v0) => Self::OpenIdConnect(v0.clone()),
+            }
+        }
+    }
     pub mod links {
         /// Retrieve the product using the ID returned in the response.
         #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -948,6 +980,22 @@ pub mod delete_product {
         /// The alternative of `OpenIdConnect`, with what each `verify_` method found.
         OpenIdConnect(A::OpenIdConnect),
     }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::BearerAuth(v0) => Self::BearerAuth(v0.clone()),
+                Self::BasicAuth(v0) => Self::BasicAuth(v0.clone()),
+                Self::ApiKeyQuery(v0) => Self::ApiKeyQuery(v0.clone()),
+                Self::ApiKeyHeader(v0) => Self::ApiKeyHeader(v0.clone()),
+                Self::ApiKeyHeaderAndApiKeyQuery(v0, v1) => {
+                    Self::ApiKeyHeaderAndApiKeyQuery(v0.clone(), v1.clone())
+                }
+                Self::ApiKeyCookie(v0) => Self::ApiKeyCookie(v0.clone()),
+                Self::OAuth2(v0) => Self::OAuth2(v0.clone()),
+                Self::OpenIdConnect(v0) => Self::OpenIdConnect(v0.clone()),
+            }
+        }
+    }
 }
 /// Duplicate an existing product using the `WebDAV-style` COPY method. This demonstrates how `OpenAPI` 3.2 describes custom HTTP methods.
 pub mod copy_product {
@@ -1030,6 +1078,22 @@ pub mod copy_product {
         OAuth2(A::OAuth2),
         /// The alternative of `OpenIdConnect`, with what each `verify_` method found.
         OpenIdConnect(A::OpenIdConnect),
+    }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::BearerAuth(v0) => Self::BearerAuth(v0.clone()),
+                Self::BasicAuth(v0) => Self::BasicAuth(v0.clone()),
+                Self::ApiKeyQuery(v0) => Self::ApiKeyQuery(v0.clone()),
+                Self::ApiKeyHeader(v0) => Self::ApiKeyHeader(v0.clone()),
+                Self::ApiKeyHeaderAndApiKeyQuery(v0, v1) => {
+                    Self::ApiKeyHeaderAndApiKeyQuery(v0.clone(), v1.clone())
+                }
+                Self::ApiKeyCookie(v0) => Self::ApiKeyCookie(v0.clone()),
+                Self::OAuth2(v0) => Self::OAuth2(v0.clone()),
+                Self::OpenIdConnect(v0) => Self::OpenIdConnect(v0.clone()),
+            }
+        }
     }
     pub mod links {
         /// Retrieve the product using the ID returned in the response.
@@ -1176,6 +1240,22 @@ pub mod upload_image {
         OAuth2(A::OAuth2),
         /// The alternative of `OpenIdConnect`, with what each `verify_` method found.
         OpenIdConnect(A::OpenIdConnect),
+    }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::BearerAuth(v0) => Self::BearerAuth(v0.clone()),
+                Self::BasicAuth(v0) => Self::BasicAuth(v0.clone()),
+                Self::ApiKeyQuery(v0) => Self::ApiKeyQuery(v0.clone()),
+                Self::ApiKeyHeader(v0) => Self::ApiKeyHeader(v0.clone()),
+                Self::ApiKeyHeaderAndApiKeyQuery(v0, v1) => {
+                    Self::ApiKeyHeaderAndApiKeyQuery(v0.clone(), v1.clone())
+                }
+                Self::ApiKeyCookie(v0) => Self::ApiKeyCookie(v0.clone()),
+                Self::OAuth2(v0) => Self::OAuth2(v0.clone()),
+                Self::OpenIdConnect(v0) => Self::OpenIdConnect(v0.clone()),
+            }
+        }
     }
 }
 /// Subscribe to a live feed of product changes. The response is an open stream rather than a single document, so each media type uses `itemSchema` (new in `OpenAPI` 3.2) to describe one event at a time. Server-Sent Events (`text/event-stream`), JSON Lines (`application/jsonl`) and JSON Text Sequences (`application/json-seq`) are all offered.
@@ -1357,6 +1437,22 @@ pub mod upload_photos {
         /// The alternative of `OpenIdConnect`, with what each `verify_` method found.
         OpenIdConnect(A::OpenIdConnect),
     }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::BearerAuth(v0) => Self::BearerAuth(v0.clone()),
+                Self::BasicAuth(v0) => Self::BasicAuth(v0.clone()),
+                Self::ApiKeyQuery(v0) => Self::ApiKeyQuery(v0.clone()),
+                Self::ApiKeyHeader(v0) => Self::ApiKeyHeader(v0.clone()),
+                Self::ApiKeyHeaderAndApiKeyQuery(v0, v1) => {
+                    Self::ApiKeyHeaderAndApiKeyQuery(v0.clone(), v1.clone())
+                }
+                Self::ApiKeyCookie(v0) => Self::ApiKeyCookie(v0.clone()),
+                Self::OAuth2(v0) => Self::OAuth2(v0.clone()),
+                Self::OpenIdConnect(v0) => Self::OpenIdConnect(v0.clone()),
+            }
+        }
+    }
 }
 /// Add a product or a variant, anything the shop sells.
 pub mod create_item {
@@ -1419,6 +1515,22 @@ pub mod create_item {
         OAuth2(A::OAuth2),
         /// The alternative of `OpenIdConnect`, with what each `verify_` method found.
         OpenIdConnect(A::OpenIdConnect),
+    }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::BearerAuth(v0) => Self::BearerAuth(v0.clone()),
+                Self::BasicAuth(v0) => Self::BasicAuth(v0.clone()),
+                Self::ApiKeyQuery(v0) => Self::ApiKeyQuery(v0.clone()),
+                Self::ApiKeyHeader(v0) => Self::ApiKeyHeader(v0.clone()),
+                Self::ApiKeyHeaderAndApiKeyQuery(v0, v1) => {
+                    Self::ApiKeyHeaderAndApiKeyQuery(v0.clone(), v1.clone())
+                }
+                Self::ApiKeyCookie(v0) => Self::ApiKeyCookie(v0.clone()),
+                Self::OAuth2(v0) => Self::OAuth2(v0.clone()),
+                Self::OpenIdConnect(v0) => Self::OpenIdConnect(v0.clone()),
+            }
+        }
     }
 }
 /// Create a user account.
@@ -1814,6 +1926,20 @@ pub mod get_me {
         ApiKeyQuery(A::ApiKeyQuery),
         /// The alternative of `ApiKeyHeader` and `ApiKeyQuery`, with what each `verify_` method found.
         ApiKeyHeaderAndApiKeyQuery(A::ApiKeyHeader, A::ApiKeyQuery),
+    }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::BasicAuth(v0) => Self::BasicAuth(v0.clone()),
+                Self::OAuth2(v0) => Self::OAuth2(v0.clone()),
+                Self::BearerAuth(v0) => Self::BearerAuth(v0.clone()),
+                Self::ApiKeyHeader(v0) => Self::ApiKeyHeader(v0.clone()),
+                Self::ApiKeyQuery(v0) => Self::ApiKeyQuery(v0.clone()),
+                Self::ApiKeyHeaderAndApiKeyQuery(v0, v1) => {
+                    Self::ApiKeyHeaderAndApiKeyQuery(v0.clone(), v1.clone())
+                }
+            }
+        }
     }
 }
 pub mod new_product_post {

@@ -241,9 +241,11 @@ impl api::Api for Server {
         _: ops::optional::Params,
         ctx: &api::Context<'_, ops::optional::Security<Self>>,
     ) -> Answer<ops::optional::Response> {
-        self.record(match &ctx.security {
+        // The caller is owned, as a handler moves it into a task that outlives the request.
+        let caller: ops::optional::Security<Self> = ctx.security.clone();
+        self.record(match caller {
             ops::optional::Security::Anonymous => Seen::Anonymous,
-            ops::optional::Security::Bearer(who) => Seen::Principal(who.clone()),
+            ops::optional::Security::Bearer(who) => Seen::Principal(who),
         });
         Ok(ops::optional::Response::NoContent)
     }

@@ -64,6 +64,13 @@ pub mod list_issues {
         /// The alternative of `Pat`, with what each `verify_` method found.
         Pat(A::Pat),
     }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Pat(v0) => Self::Pat(v0.clone()),
+            }
+        }
+    }
 }
 pub mod create_issue {
     pub const METHOD: &str = "POST";
@@ -97,6 +104,13 @@ pub mod create_issue {
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `Pat`, with what each `verify_` method found.
         Pat(A::Pat),
+    }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Pat(v0) => Self::Pat(v0.clone()),
+            }
+        }
     }
 }
 pub mod open {
