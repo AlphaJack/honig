@@ -12,6 +12,7 @@
 #![warn(clippy::too_long_first_doc_paragraph)]
 #![warn(clippy::use_self)]
 #![warn(clippy::wildcard_enum_match_arm)]
+#![recursion_limit = "256"]
 pub mod v20_collection_formats {
     pub mod api;
 }
@@ -100,6 +101,9 @@ pub mod v32_webhooks {
     pub mod api;
 }
 pub mod v32_webhooks_only {
+    pub mod api;
+}
+pub mod v32_wide {
     pub mod api;
 }
 pub mod v32_xml {
