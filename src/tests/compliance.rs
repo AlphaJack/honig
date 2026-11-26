@@ -1501,3 +1501,75 @@ fn enum_names_by_position_warn() {
     assert!(warned(json!(["One", "Two"])), "a list");
     assert!(!warned(json!({"1": "One", "2": "Two"})), "an object");
 }
+
+/// A schema that applies itself to the same value accepts no value where it meets itself again, with a warning
+/// (JSON Schema 2020-12 section 9.4.1). Through `oneOf` or `not` that meaning does not hold: an error. Neither
+/// generation nor the generated check runs without end.
+#[test]
+fn a_schema_that_applies_itself_ends() {
+    let me = json!({"$ref": "#/components/schemas/T"});
+    let int = json!({"type": "integer"});
+    let made = |schemas: &Value| {
+        let path = common::write("self-applying", &doc(&json!({}), &json!({"schemas": schemas})), &[]);
+        crate::generate::generate(&path, &Options::default())
+    };
+    let integer = |schemas: Value| {
+        let made = made(&schemas).unwrap_or_else(|d| panic!("{schemas}: {:?}", d.0));
+        assert!(made.diagnostics.iter().any(|d| d.message.contains("9.4.1")), "{schemas}: a warning");
+        let types = common::file(&made.files, "types.rs").to_owned();
+        assert!(types.contains("pub type T = i64;"), "{schemas}: {types}");
+    };
+    integer(json!({"T": {"anyOf": [me, int]}}));
+    integer(json!({"T": {"anyOf": [{"allOf": [me]}, int]}}));
+    let refused = |schemas: Value, why: &str| {
+        let Err(d) = made(&schemas) else { panic!("{schemas} generates") };
+        assert!(d.0.iter().any(|d| d.message.contains(why)), "{schemas}: {:?}", d.0);
+    };
+    let u = json!({"$ref": "#/components/schemas/U"});
+    refused(json!({"T": {"oneOf": [me, int]}}), "through `oneOf`");
+    refused(json!({"T": {"oneOf": [{"allOf": [me]}, int]}}), "through `oneOf`");
+    refused(json!({"T": {"oneOf": [u, int]}, "U": {"oneOf": [me, {"type": "string"}]}}), "through `oneOf`");
+    refused(json!({"T": {"type": "integer", "not": me}}), "through `not`");
+    refused(json!({"T": {"allOf": [me]}}), "accepts no value");
+    refused(json!({"T": u, "U": me}), "accepts no value");
+    refused(json!({"T": {"if": me, "then": int}}), "through `if`");
+    let warned = |schemas: Value| {
+        let made = made(&schemas).unwrap_or_else(|d| panic!("{schemas}: {:?}", d.0));
+        assert!(made.diagnostics.iter().any(|d| d.message.contains("9.4.1")), "{schemas}: a warning");
+    };
+    warned(json!({"T": {"if": {"type": "string"}, "then": me, "else": int}}));
+    warned(json!({"T": {"type": "object", "dependentSchemas": {"sku": me}}}));
+}
+
+/// Two schemas that apply each other each keep the other's meaning up to where they meet themselves again:
+/// `T: anyOf [U, integer]` and `U: anyOf [T, string]` both accept a string or an integer.
+#[test]
+fn schemas_that_apply_each_other_keep_both_meanings() {
+    let schemas = json!({
+        "T": {"anyOf": [{"$ref": "#/components/schemas/U"}, {"type": "integer"}]},
+        "U": {"anyOf": [{"$ref": "#/components/schemas/T"}, {"type": "string"}]},
+    });
+    let path = common::write("apply-each-other", &doc(&json!({}), &json!({"schemas": schemas})), &[]);
+    let made = crate::generate::generate(&path, &Options::default()).unwrap_or_else(|d| panic!("{:?}", d.0));
+    let types = common::file(&made.files, "types.rs").to_owned();
+    assert!(types.contains("TVariants { Integer => Integer, String => Variant1 };"), "{types}");
+    assert!(types.contains("UVariants { Integer => Variant1, String => String };"), "{types}");
+}
+
+/// A ring of 30 schemas that apply each other generates. A dozen that each apply all others would take the factorial
+/// of a dozen copies: an error, at once.
+#[test]
+fn many_schemas_that_apply_each_other_end() {
+    let to = |i: usize| json!({"$ref": format!("#/components/schemas/S{i}")});
+    let made = |schemas: serde_json::Map<String, Value>| {
+        let path = common::write("apply-many", &doc(&json!({}), &json!({"schemas": schemas})), &[]);
+        crate::generate::generate(&path, &Options::default())
+    };
+    let ring = (0..30).map(|i| (format!("S{i}"), json!({"anyOf": [to((i + 1) % 30), {"type": "integer"}]})));
+    made(ring.collect()).unwrap_or_else(|d| panic!("{:?}", d.0));
+    let all_others =
+        |i: usize| (0..12).filter(|j| *j != i).map(to).chain([json!({"type": "integer"})]).collect::<Vec<_>>();
+    let clique = (0..12).map(|i| (format!("S{i}"), json!({"anyOf": all_others(i)})));
+    let Err(d) = made(clique.collect()) else { panic!("a dozen schemas that apply each other generate") };
+    assert!(d.0.iter().any(|d| d.message.contains("too many ways")), "{:?}", d.0);
+}

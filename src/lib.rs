@@ -17,6 +17,7 @@ mod emit;
 mod error;
 mod fixtures;
 mod generate;
+mod in_place;
 mod ir;
 mod json;
 mod load;

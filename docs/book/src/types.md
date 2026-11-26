@@ -29,6 +29,8 @@ String and integer enums are closed. Each listed value is a variant. Any other v
 
 A `oneOf` or `anyOf` is closed too: a value that no branch accepts fails decoding. An `anyOf` is the first branch that decodes, keywords and all. So when one value can match two object branches of an `anyOf`, or of a `oneOf` without a discriminator, honig warns: the first keeps the value and drops what the other declares. A required property that the other branch lacks or types otherwise, a `const` tag, or `additionalProperties: false` on one tells them apart. A discriminated `oneOf` whose branches only an unpinned discriminator property tells apart gets a warning too: pin it with `const` in each branch. A `oneOf` decodes every branch and accepts the value only when exactly one does. A union has an `Other(serde_json::Value)` variant only when the schema itself accepts any value. That is a branch of `{}`, or keywords such as `properties` without a `type`. Then any value of another kind is valid.
 
+A schema that refers back to itself through `allOf`, `anyOf`, `then`, `else` or `dependentSchemas` alone, and not through `properties` or `items`, would be checked again on the same value without end. JSON Schema leaves its meaning undefined (2020-12 section 9.4.1). honig warns and reads the reference back as a schema that accepts no value: `Amount: {anyOf: [{$ref: Amount}, {type: integer}]}` is an integer. When nothing is left, as in `{allOf: [{$ref: Amount}]}`, generation fails. So does a reference back through `oneOf`, `not` or `if`, where a branch that accepts nothing would change what the others mean.
+
 ## Values the description does not list
 
 Two settings decide what happens to a property or a value that the description does not list. They answer different questions:

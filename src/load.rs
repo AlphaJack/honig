@@ -139,13 +139,14 @@ pub(crate) fn validate_path(path: &Path) -> Diagnostics {
     validate::newer_fields(&bundled, version, &mut diagnostics);
     // Upgrading is internal here: only its errors are problems of the document.
     let mut upgrade_notes = Diagnostics::default();
-    let Some(value) = upgrade::to_v32(bundled, &mut upgrade_notes) else {
+    let Some(mut value) = upgrade::to_v32(bundled, &mut upgrade_notes) else {
         diagnostics.extend(upgrade_notes);
         return diagnostics;
     };
     for d in upgrade_notes.iter().filter(|d| d.level == crate::diag::Level::Error) {
         diagnostics.push(d.clone());
     }
+    crate::in_place::cut(&mut value, &mut diagnostics);
     match spec::from_value(value.clone()) {
         Ok(model) => validate::v32::validate_as(&model, &Doc::new(value), version, &mut diagnostics),
         Err(d) => diagnostics.push(d),
@@ -162,9 +163,10 @@ fn process(value: Value, base: resolve::Base<'_>, mut diagnostics: Diagnostics) 
     if let Some(version) = source {
         validate::newer_fields(&value, version, &mut diagnostics);
     }
-    let Some(value) = upgrade::to_v32(value, &mut diagnostics) else {
+    let Some(mut value) = upgrade::to_v32(value, &mut diagnostics) else {
         return Loaded::failed(diagnostics);
     };
+    crate::in_place::cut(&mut value, &mut diagnostics);
     let model = match spec::from_value(value.clone()) {
         Ok(m) => m,
         Err(d) => {
