@@ -19,6 +19,7 @@ mod paths;
 mod scaling;
 mod sizes;
 mod string_code;
+mod swaps;
 mod systems;
 
 /// The workspace's folder.

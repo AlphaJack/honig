@@ -2922,3 +2922,31 @@ fn a_description_without_operations_imports_none() {
         assert!(!text.contains("use super::operations as ops;"), "{file}: {text}");
     }
 }
+
+/// Two aliases of one type swap without a type error: a struct or an operation that needs both gets no positional
+/// `new`, whatever order the description gives them. Its builder names each value.
+#[test]
+fn aliases_of_one_type_give_no_positional_new() {
+    let alias = |n: &str| json!({"$ref": format!("#/components/schemas/{n}")});
+    let doc = common::spec(
+        "3.2.0",
+        &json!({"/products/{sku}": {"post": {
+            "operationId": "rename",
+            "parameters": [
+                {"name": "sku", "in": "path", "required": true, "schema": alias("Sku")},
+                {"name": "title", "in": "query", "required": true, "schema": alias("Title")},
+            ],
+            "responses": {"204": {"description": "ok"}},
+        }}}),
+        &json!({"schemas": {
+            "Sku": {"type": "string"},
+            "Title": {"type": "string"},
+            "Listing": {"type": "object", "required": ["sku", "title"], "properties": {"sku": alias("Sku"), "title": alias("Title")}},
+        }}),
+    );
+    let files = common::generate("alias-swap", &doc, &crate::emit::Options::default());
+    let types = common::file(&files, "types.rs");
+    assert!(types.contains("pub type Sku = String;") && !types.contains("fn new(sku"), "{types}");
+    let ops = common::file(&files, "operations.rs");
+    assert!(!ops.contains("fn new(sku"), "{ops}");
+}

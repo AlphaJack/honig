@@ -103,6 +103,15 @@ paths:
           description: Created.
 components:
   schemas:
+    # Two aliases of `string`: values of them swap without a type error, so a struct of both gets no positional `new`.
+    Sku: {type: string}
+    Title: {type: string}
+    Listing:
+      type: object
+      required: [sku, title]
+      properties:
+        sku: {$ref: '#/components/schemas/Sku'}
+        title: {$ref: '#/components/schemas/Title'}
     # A pattern beside a typed format runs on the text before the format parses it.
     LegacyId: {type: string, format: uuid, pattern: '^0'}
     # A limit beside a type of yours runs on the JSON value before it converts.
