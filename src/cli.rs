@@ -445,8 +445,10 @@ fn init(spec: &str, args: &Args) -> Result<ExitCode, Failure> {
     crate::disk::write(&args.manifest, &out)?;
     args.say(format_args!("added [package.metadata.honig.api] to {}", args.manifest.display()));
     if manifest.runtime().is_none() {
-        let version = crate::emit::rust::RUNTIME_VERSION;
-        args.say(format_args!("next: cargo add {}@={version} -F client,server", settings::RUNTIME));
+        // The features that `generate` will ask for. A description that does not generate yet needs the halves.
+        let written = settings::Manifest::load(&args.manifest)?;
+        let needed = generate_modules(&written, None, args)?.map_or_else(|| vec!["client", "server"], |p| p.runtime);
+        args.say(format_args!("next: {}", crate::manifest::add_line(&needed)));
     }
     for line in serde_lines(&manifest) {
         args.say(format_args!("next: {line}"));
