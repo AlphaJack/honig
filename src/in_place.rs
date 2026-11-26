@@ -12,6 +12,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use serde_json::{Map, Value};
 
 use crate::diag::Diagnostics;
+use crate::ir::types::scc;
 use crate::json::{Doc, escape_token, is_data, join, percent_decode, pointer, unescape_token};
 
 /// A `$ref` that a schema applies to its own value.
@@ -118,55 +119,20 @@ fn in_place<'a>(o: &'a Map<String, Value>, at: &str) -> Vec<(&'static str, Strin
     out
 }
 
-/// Returns the groups of schemas that apply each other to the same value in a cycle (Tarjan's algorithm, with a
-/// stack of its own: a chain of `$ref`s may be as long as the description).
+/// Returns the groups of schemas that apply each other to the same value in a cycle.
 fn cycles(graph: &BTreeMap<String, Vec<Edge>>) -> Vec<BTreeSet<String>> {
-    const UNSEEN: usize = usize::MAX;
     let keys: Vec<&String> = graph.keys().collect();
     let id: BTreeMap<&str, usize> = keys.iter().enumerate().map(|(i, k)| (k.as_str(), i)).collect();
     let next: Vec<Vec<usize>> =
         (graph.values()).map(|edges| edges.iter().filter_map(|e| id.get(e.to.as_str()).copied()).collect()).collect();
-    let (mut index, mut low, mut on_stack) = (vec![UNSEEN; keys.len()], vec![0; keys.len()], vec![false; keys.len()]);
-    let (mut stack, mut groups, mut counter) = (vec![], vec![], 0);
-    for root in 0..keys.len() {
-        if index[root] != UNSEEN {
-            continue;
-        }
-        let mut work = vec![(root, 0)];
-        while let Some((v, i)) = work.pop() {
-            if i == 0 {
-                (index[v], low[v], on_stack[v]) = (counter, counter, true);
-                counter += 1;
-                stack.push(v);
-            }
-            if let Some(&w) = next[v].get(i) {
-                work.push((v, i + 1));
-                if index[w] == UNSEEN {
-                    work.push((w, 0));
-                } else if on_stack[w] {
-                    low[v] = low[v].min(index[w]);
-                }
-                continue;
-            }
-            if low[v] == index[v] {
-                let mut group = BTreeSet::new();
-                while let Some(q) = stack.pop() {
-                    on_stack[q] = false;
-                    group.insert(keys[q].clone());
-                    if q == v {
-                        break;
-                    }
-                }
-                if group.len() > 1 || next[v].contains(&v) {
-                    groups.push(group);
-                }
-            }
-            if let Some(&(parent, _)) = work.last() {
-                low[parent] = low[parent].min(low[v]);
-            }
-        }
+    let mut groups: BTreeMap<usize, Vec<usize>> = BTreeMap::new();
+    for (v, c) in scc(keys.len(), &next).into_iter().enumerate() {
+        groups.entry(c).or_default().push(v);
     }
-    groups
+    (groups.into_values())
+        .filter(|g| g.len() > 1 || g.iter().any(|v| next[*v].contains(v)))
+        .map(|g| g.into_iter().map(|v| keys[v].clone()).collect())
+        .collect()
 }
 
 /// How many copies of a schema one group may inline. Each schema of a group is expanded once per way through the
