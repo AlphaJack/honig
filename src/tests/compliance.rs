@@ -1573,3 +1573,29 @@ fn many_schemas_that_apply_each_other_end() {
     let Err(d) = made(clique.collect()) else { panic!("a dozen schemas that apply each other generate") };
     assert!(d.0.iter().any(|d| d.message.contains("too many ways")), "{:?}", d.0);
 }
+
+/// A `$ref` inside a schema with an `$id` resolves against that `$id` (JSON Schema 2020-12 section 8.2.1):
+/// `#/components/schemas/Product` there refers into the schema itself. Where it has no such place, the error names the
+/// `$id` and says what to do.
+#[test]
+fn a_reference_that_an_id_sends_nowhere_names_the_id() {
+    let page = json!({
+        "$id": "https://example.com/schemas/ProductPage",
+        "type": "object",
+        "properties": {"items": {"type": "array", "items": {"$ref": "#/components/schemas/Product"}}},
+    });
+    let paths = json!({"/products": {"get": {"operationId": "list", "responses": {"200": {"description": "ok",
+        "content": {"application/json": {"schema": page}}}}}}});
+    let products = json!({"schemas": {"Product": {"type": "object", "properties": {"sku": {"type": "string"}}}}});
+    let path = common::write("id-base", &doc(&paths, &products), &[]);
+    let Err(d) = crate::generate::generate(&path, &Options::default()) else { panic!("the reference resolves") };
+    let message = d.0.iter().find(|d| d.pointer.ends_with("/items/items/$ref")).map(|d| d.message.as_str());
+    let message = message.unwrap_or_else(|| panic!("{:?}", d.0));
+    assert!(
+        message.starts_with(
+            "`#/components/schemas/Product` resolves against the `$id` `https://example.com/schemas/ProductPage`"
+        ),
+        "{message}"
+    );
+    assert!(message.contains("remove the `$id`"), "{message}");
+}
