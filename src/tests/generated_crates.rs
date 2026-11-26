@@ -67,6 +67,39 @@ gloo-net = { version = "0.6", default-features = false, features = ["http"] }
     }
 }
 
+/// A binary that serves an API with webhooks and callbacks builds without warnings: it may serve only part of the API,
+/// so its unused webhook and callback items are no dead code.
+#[test]
+#[ignore = "compiles generated crates"]
+fn a_binary_server_builds_without_warnings() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let out = root.join("target").join("gen-tests").join("binary-server");
+    std::fs::remove_dir_all(&out).ok();
+    let manifest = "[package]\nname = \"binary-server\"\nversion = \"0.1.0\"\nedition = \"2024\"\npublish = false\n\n\
+                    [dependencies]\nserde = { version = \"1\", features = [\"derive\"] }\nserde_json = \"1\"\n";
+    let opts = crate::emit::Options {
+        client: false,
+        tests: false,
+        rust: crate::emit::rust::Options { binary: true, ..Default::default() },
+        ..crate::emit::Options::default()
+    };
+    let spec = root.join("tests").join("fixtures").join("v32").join("webhooks.yaml");
+    let generated = crate::generate::generate(&spec, &opts).unwrap_or_else(|d| panic!("generation failed: {:?}", d.0));
+    let api = out.join("src").join("api");
+    crate::disk::write_module(&api, &api.join("mod.rs"), &generated.files).unwrap();
+    std::fs::write(out.join("Cargo.toml"), super::common::with_runtime(manifest, &generated, &opts.rust.libs, &[]))
+        .unwrap();
+    super::common::use_local_runtime(&out.join("Cargo.toml"));
+    std::fs::write(out.join("src").join("main.rs"), "#![deny(warnings)]\nmod api;\nfn main() {}\n").unwrap();
+    let status = Command::new(env!("CARGO"))
+        .args(["check", "--quiet"])
+        .current_dir(&out)
+        .env("CARGO_TARGET_DIR", root.join("target").join("gen-tests").join("target"))
+        .status()
+        .expect("cargo runs");
+    assert!(status.success(), "a binary server has warnings");
+}
+
 /// The date and time formats with `jiff`: a `time` keeps its offset and its leap second in `::honig::FullTime`.
 #[test]
 #[ignore = "compiles generated crates"]
