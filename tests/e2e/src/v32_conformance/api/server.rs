@@ -30,6 +30,11 @@ pub trait Api: Send + Sync + Sized + 'static {
         params: ops::inherits::Params,
         ctx: &Context<'_, ops::inherits::Security<Self>>,
     ) -> impl Future<Output = ops::inherits::Result> + Send;
+    fn ping(
+        &self,
+        params: ops::ping::Params,
+        ctx: &Context<'_, ()>,
+    ) -> impl Future<Output = ops::ping::Result> + Send;
     fn get_item(
         &self,
         params: ops::get_item::Params,
@@ -70,6 +75,7 @@ pub trait Api: Send + Sync + Sized + 'static {
 pub enum Operation {
     Open,
     Inherits,
+    Ping,
     GetItem,
     PostClosed,
     OptionalBody,
@@ -83,6 +89,7 @@ impl ::honig::Operation for Operation {
         match self {
             Self::Open => &OPEN_OP,
             Self::Inherits => &INHERITS_OP,
+            Self::Ping => &PING_OP,
             Self::GetItem => &GET_ITEM_OP,
             Self::PostClosed => &POST_CLOSED_OP,
             Self::OptionalBody => &OPTIONAL_BODY_OP,
@@ -152,6 +159,7 @@ const fn error_schema(
 static METHODS: &[&[(&str, Operation)]] = &[
     &[("GET", Operation::Open)],
     &[("GET", Operation::Inherits)],
+    &[("GET", Operation::Ping)],
     &[("POST", Operation::PostClosed)],
     &[("POST", Operation::OptionalBody)],
     &[("POST", Operation::PostProduct)],
@@ -163,15 +171,16 @@ static METHODS: &[&[(&str, Operation)]] = &[
 static ROUTES: &[::honig::__private::Node] = &[
     ::honig::__private::node(
         &[
-            ("items", 9),
-            ("closed", 3),
-            ("filter", 8),
+            ("ping", 3),
+            ("items", 10),
+            ("closed", 4),
+            ("filter", 9),
             ("public", 1),
-            ("upload", 6),
-            ("cookies", 7),
+            ("upload", 7),
+            ("cookies", 8),
             ("inherits", 2),
-            ("products", 5),
-            ("optional-body", 4),
+            ("products", 6),
+            ("optional-body", 5),
         ],
         &[],
         ::honig::__private::Node::NONE,
@@ -185,8 +194,9 @@ static ROUTES: &[::honig::__private::Node] = &[
     ::honig::__private::node(&[], &[], ::honig::__private::Node::NONE, 5),
     ::honig::__private::node(&[], &[], ::honig::__private::Node::NONE, 6),
     ::honig::__private::node(&[], &[], ::honig::__private::Node::NONE, 7),
-    ::honig::__private::node(&[], &[], 10, ::honig::__private::Node::NONE),
     ::honig::__private::node(&[], &[], ::honig::__private::Node::NONE, 8),
+    ::honig::__private::node(&[], &[], 11, ::honig::__private::Node::NONE),
+    ::honig::__private::node(&[], &[], ::honig::__private::Node::NONE, 9),
 ];
 static PATHS: &[&str] = &[
     "/closed",
@@ -195,6 +205,7 @@ static PATHS: &[&str] = &[
     "/inherits",
     "/items/{s1}",
     "/optional-body",
+    "/ping",
     "/products",
     "/public",
     "/upload",
@@ -317,6 +328,7 @@ async fn dispatch<A: Api>(
     match op {
         Operation::Open => Box::pin(open(api, routed, call)).await,
         Operation::Inherits => Box::pin(inherits(api, routed, call)).await,
+        Operation::Ping => Box::pin(ping(api, routed, call)).await,
         Operation::GetItem => Box::pin(get_item(api, routed, call)).await,
         Operation::PostClosed => Box::pin(post_closed(api, routed, call)).await,
         Operation::OptionalBody => Box::pin(optional_body(api, routed, call)).await,
@@ -401,6 +413,34 @@ async fn inherits<A: Api>(
 fn inherits_encode(resp: &ops::inherits::Response) -> ::honig::Response {
     let ops::inherits::Response::NoContent = resp;
     ::honig::__private::new_response(204)
+}
+static PING_OP: ::honig::__private::Op = ::honig::__private::Op::new(
+    "ping",
+    "GET",
+    "/ping",
+    "GET /ping",
+    error_schema,
+);
+async fn ping<A: Api>(
+    api: &A,
+    routed: ::honig::__private::Routed<'_>,
+    call: ::honig::__private::Call<
+        '_,
+        Option<::honig::Passed<<Routes<A> as ::honig::__private::Operations>::Value>>,
+        Operation,
+    >,
+) -> ::honig::Response {
+    let steps = ::honig::__private::Steps {
+        api,
+        decode: |_| Ok(ops::ping::Params {}),
+        call: |a, p, c| Box::pin(a.ping(p, c)),
+        encode: |r, _| Ok(ping_encode(&r)),
+    };
+    ::honig::__private::serve(routed, call.map(|_| ()), &steps).await
+}
+fn ping_encode(resp: &ops::ping::Response) -> ::honig::Response {
+    let ops::ping::Response::Successful { status } = resp;
+    ::honig::__private::new_response(status.as_u16())
 }
 static GET_ITEM_OP: ::honig::__private::Op = ::honig::__private::Op {
     security: ops::SECURITY_0,

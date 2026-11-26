@@ -890,7 +890,7 @@ fn into_result(space: &Space<'_>, op: &Operation, bx: &Boxing) -> Option<TokenSt
         " Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.";
     let (success, arm, item) = match successes[..] {
         [] => return None,
-        [(index, resp)] => one_success(space, resp, bx.resp[index]),
+        [(index, resp)] if status_code(resp).is_some() => one_success(space, resp, bx.resp[index]),
         _ => {
             let patterns = either(&successes.iter().map(|(_, r)| any_of(r)).collect::<Vec<_>>());
             (quote!(Self), quote!(success @ #patterns => Ok(success),), None)

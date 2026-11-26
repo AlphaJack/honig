@@ -86,6 +86,52 @@ pub mod inherits {
         }
     }
 }
+pub mod ping {
+    pub const METHOD: &str = "GET";
+    pub const PATH: &str = "/ping";
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct Params {}
+    impl Params {
+        #[must_use]
+        pub const fn new() -> Self {
+            Self {}
+        }
+    }
+    ::honig::default_from_new!(Params);
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub enum Response {
+        /// any success
+        Successful { status: SuccessfulStatus },
+    }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
+    ::honig::status_enum!(
+        #[doc = "The statuses of `Successful`."] SuccessfulStatus { Ok = 200, Created =
+        201, Accepted = 202, NonAuthoritativeInformation = 203, NoContent = 204,
+        ResetContent = 205, PartialContent = 206, MultiStatus = 207, AlreadyReported =
+        208, ImUsed = 226 }
+    );
+    ::honig::response_error!(
+        Response {
+            Self::Successful { status,.. } => format_args!("status {} (Successful)", status.as_u16()),
+        }
+    );
+    impl Response {
+        /// Returns `Successful` from each of its values.
+        #[must_use]
+        pub const fn successful(status: SuccessfulStatus) -> Self {
+            Self::Successful { status }
+        }
+    }
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
+        pub fn into_result(self) -> Result<Self, Box<Self>> {
+            match self {
+                success @ Self::Successful { .. } => Ok(success),
+            }
+        }
+    }
+}
 pub mod get_item {
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/items/{id}";
@@ -170,9 +216,9 @@ pub mod get_item {
     }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_result(self) -> Result<String, Box<Self>> {
+        pub fn into_result(self) -> Result<Self, Box<Self>> {
             match self {
-                Self::Successful { body, .. } => Ok(body),
+                success @ Self::Successful { .. } => Ok(success),
                 other @ Self::Default { .. } => Err(Box::new(other)),
             }
         }
