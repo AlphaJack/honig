@@ -19,7 +19,7 @@ pub(crate) fn check_runtime(manifest: &Manifest, needed: &[&str]) -> Result<(), 
         let features = if needed.is_empty() { String::new() } else { format!(" -F {}", needed.join(",")) };
         return Err(Error::Runtime(format!("is missing. Run `cargo add {RUNTIME}@{version}{features}`")));
     };
-    if dep.req != version {
+    if !pins(&dep.req) {
         let fix = if manifest.inherits(&dep.name) {
             format!("Set `{RUNTIME} = \"{version}\"` in [workspace.dependencies]")
         } else {
@@ -35,6 +35,15 @@ pub(crate) fn check_runtime(manifest: &Manifest, needed: &[&str]) -> Result<(), 
         )));
     }
     Ok(())
+}
+
+/// Does the requirement `req` admit the version of the generator and no other? `=x.y.z` does. So does a caret on a
+/// `0.0.z` version, which Cargo reads as that version alone: `0.0.3` and `^0.0.3`, as `cargo add` writes them.
+fn pins(req: &str) -> bool {
+    let req = req.trim();
+    let exact = req.strip_prefix('=').map(str::trim) == Some(RUNTIME_VERSION);
+    let caret = RUNTIME_VERSION.starts_with("0.0.") && req.strip_prefix('^').unwrap_or(req).trim() == RUNTIME_VERSION;
+    exact || caret
 }
 
 #[cfg(test)]
@@ -71,6 +80,10 @@ mod tests {
             )
         );
         assert!(check("honig = { workspace = true }", &[]).unwrap().contains("in [workspace.dependencies]"));
+        // `cargo add` writes a caret: on a `0.0.z` version Cargo reads it as that version alone.
+        assert_eq!(check(&format!("honig = \"{RUNTIME_VERSION}\""), &[]), None);
+        assert_eq!(check(&format!("honig = \"^{RUNTIME_VERSION}\""), &[]), None);
+        assert!(check(&format!("honig = \"~{RUNTIME_VERSION}\""), &[]).is_some(), "a tilde admits later patches");
         let renamed =
             format!("rt = {{ package = \"honig\", version = \"={RUNTIME_VERSION}\", features = [\"client\"] }}");
         assert_eq!(check(&renamed, &["client"]), None, "a renamed dependency counts");
