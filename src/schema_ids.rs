@@ -175,7 +175,7 @@ fn rebase_from(root: &mut Value, retrieved: Option<&str>) -> Vec<(String, String
     for ptr in found.schemas.iter().filter(|(_, d)| d.id.is_some()).map(|(p, _)| p) {
         resources.entry(bases[ptr.as_str()].clone()).or_insert_with(|| ptr.clone());
     }
-    let (anchors, twice) = anchors_of(&found, |ptr| bases[ptr].clone());
+    let (anchors, mut errors) = anchors_of(&found, |ptr| bases[ptr].clone());
     let index = Index { bases: &bases, resources: &resources, anchors: &anchors };
     dynamic_refs(root, &found, &index);
     for (ptr, d) in &found.schemas {
@@ -191,6 +191,19 @@ fn rebase_from(root: &mut Value, retrieved: Option<&str>) -> Vec<(String, String
             f if f.starts_with('/') => Some(format!("{at}{}", percent_decode(f))),
             name => anchors.get(&(uri.to_owned(), name.to_owned())).cloned(),
         });
+        if let (Some(at), Some(f)) = (&local, fragment.strip_prefix('/'))
+            && crate::json::pointer(root, at).is_none()
+        {
+            let resource = resources.get(uri).map_or("", String::as_str);
+            let id = found.schemas.get(resource).and_then(|d| d.id.as_deref()).unwrap_or(uri);
+            errors.push((
+                crate::json::join(ptr, "$ref"),
+                format!(
+                    "`{r}` resolves against the `$id` `{id}` of `{resource}` (JSON Schema 2020-12 section 8.2.1), \
+                     which has no `/{f}`: remove the `$id`, or refer to a schema inside the one that declares it"
+                ),
+            ));
+        }
         let rewritten = match local {
             Some(at) => format!("#{at}"),
             // No `$id` above it: the bundler resolves it against the document as written.
@@ -202,7 +215,7 @@ fn rebase_from(root: &mut Value, retrieved: Option<&str>) -> Vec<(String, String
             o.insert("$ref".to_owned(), Value::String(rewritten));
         }
     }
-    twice
+    errors
 }
 
 /// Returns the pointer of the schema in `root` (a schema document) that declares `$anchor` (or `$dynamicAnchor`)
