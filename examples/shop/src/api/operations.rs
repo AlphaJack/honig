@@ -75,13 +75,17 @@ pub mod list_products {
             Self::Default { status,.. } => format_args!("status {} (Default)", status.as_u16()),
         }
     );
-    /// The body and headers of the success, in order: what `Response::into_result` gives.
-    pub type Success = (Vec<types::Product>, Option<String>);
+    /// The body and headers of the success by name: what `Response::into_result` gives.
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct Success {
+        pub body: Vec<types::Product>,
+        pub x_next: Option<String>,
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
-                Self::Ok { body, x_next } => Ok((body, x_next)),
+                Self::Ok { body, x_next } => Ok(Success { body, x_next }),
                 other @ Self::Default { .. } => Err(Box::new(other)),
             }
         }

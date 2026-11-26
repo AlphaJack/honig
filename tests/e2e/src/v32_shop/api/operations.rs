@@ -373,19 +373,25 @@ pub mod create_product {
             Self::Forbidden(..) => "status 403 (Forbidden)",
         }
     );
-    /// The body and headers of the success, in order: what `Response::into_result` gives.
-    pub type Success = (
-        Box<types::Product>,
-        Option<::honig::UuidStr>,
-        Option<::honig::url::Url>,
-        Option<i64>,
-    );
+    /// The body and headers of the success by name: what `Response::into_result` gives.
+    #[derive(Debug, Clone, PartialEq)]
+    pub struct Success {
+        pub body: Box<types::Product>,
+        pub x_request_id: Option<::honig::UuidStr>,
+        pub location: Option<::honig::url::Url>,
+        pub x_processing_time: Option<i64>,
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Created { body, x_request_id, location, x_processing_time } => {
-                    Ok((body, x_request_id, location, x_processing_time))
+                    Ok(Success {
+                        body,
+                        x_request_id,
+                        location,
+                        x_processing_time,
+                    })
                 }
                 other @ (Self::BadRequest { .. } | Self::Forbidden(..)) => {
                     Err(Box::new(other))
@@ -546,13 +552,17 @@ pub mod query_products {
             Self::BadRequest { .. } => "status 400 (BadRequest)",
         }
     );
-    /// The body and headers of the success, in order: what `Response::into_result` gives.
-    pub type Success = (types::QueryProductsOk, Option<::honig::UuidStr>);
+    /// The body and headers of the success by name: what `Response::into_result` gives.
+    #[derive(Debug, Clone, PartialEq)]
+    pub struct Success {
+        pub body: types::QueryProductsOk,
+        pub x_request_id: Option<::honig::UuidStr>,
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
-                Self::Ok { body, x_request_id } => Ok((body, x_request_id)),
+                Self::Ok { body, x_request_id } => Ok(Success { body, x_request_id }),
                 other @ Self::BadRequest { .. } => Err(Box::new(other)),
             }
         }
@@ -599,13 +609,17 @@ pub mod search_products {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok { .. } => "status 200 (Ok)", });
-    /// The body and headers of the success, in order: what `Response::into_result` gives.
-    pub type Success = (types::SearchProductsOk, Option<::honig::UuidStr>);
+    /// The body and headers of the success by name: what `Response::into_result` gives.
+    #[derive(Debug, Clone, PartialEq)]
+    pub struct Success {
+        pub body: types::SearchProductsOk,
+        pub x_request_id: Option<::honig::UuidStr>,
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
-                Self::Ok { body, x_request_id } => Ok((body, x_request_id)),
+                Self::Ok { body, x_request_id } => Ok(Success { body, x_request_id }),
             }
         }
     }
@@ -1048,13 +1062,17 @@ pub mod copy_product {
             Self::NotFound(..) => "status 404 (NotFound)",
         }
     );
-    /// The body and headers of the success, in order: what `Response::into_result` gives.
-    pub type Success = (Box<types::Product>, Option<::honig::url::Url>);
+    /// The body and headers of the success by name: what `Response::into_result` gives.
+    #[derive(Debug, Clone, PartialEq)]
+    pub struct Success {
+        pub body: Box<types::Product>,
+        pub location: Option<::honig::url::Url>,
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
-                Self::Created { body, location } => Ok((body, location)),
+                Self::Created { body, location } => Ok(Success { body, location }),
                 other @ Self::NotFound(..) => Err(Box::new(other)),
             }
         }
@@ -1203,14 +1221,23 @@ pub mod upload_image {
             Self::NotFound(..) => "status 404 (NotFound)",
         }
     );
-    /// The body and headers of the success, in order: what `Response::into_result` gives.
-    pub type Success = (OkBody, Option<::honig::UuidStr>, Option<String>);
+    /// The body and headers of the success by name: what `Response::into_result` gives.
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct Success {
+        pub body: OkBody,
+        pub x_request_id: Option<::honig::UuidStr>,
+        pub x_cache_control: Option<String>,
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Ok { body, x_request_id, x_cache_control } => {
-                    Ok((body, x_request_id, x_cache_control))
+                    Ok(Success {
+                        body,
+                        x_request_id,
+                        x_cache_control,
+                    })
                 }
                 other @ (Self::BadRequest { .. }
                 | Self::Forbidden(..)
@@ -1328,13 +1355,17 @@ pub mod stream_product_events {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok { .. } => "status 200 (Ok)", });
-    /// The body and headers of the success, in order: what `Response::into_result` gives.
-    pub type Success = (OkBody, Option<::honig::UuidStr>);
+    /// The body and headers of the success by name: what `Response::into_result` gives.
+    #[derive(Debug, Clone, PartialEq)]
+    pub struct Success {
+        pub body: OkBody,
+        pub x_request_id: Option<::honig::UuidStr>,
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
-                Self::Ok { body, x_request_id } => Ok((body, x_request_id)),
+                Self::Ok { body, x_request_id } => Ok(Success { body, x_request_id }),
             }
         }
     }
@@ -1403,13 +1434,19 @@ pub mod upload_photos {
             Self::NotFound(..) => "status 404 (NotFound)",
         }
     );
-    /// The body and headers of the success, in order: what `Response::into_result` gives.
-    pub type Success = (types::UploadPhotosAccepted, Option<::honig::UuidStr>);
+    /// The body and headers of the success by name: what `Response::into_result` gives.
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct Success {
+        pub body: types::UploadPhotosAccepted,
+        pub x_request_id: Option<::honig::UuidStr>,
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
-                Self::Accepted { body, x_request_id } => Ok((body, x_request_id)),
+                Self::Accepted { body, x_request_id } => {
+                    Ok(Success { body, x_request_id })
+                }
                 other @ (Self::BadRequest { .. } | Self::NotFound(..)) => {
                     Err(Box::new(other))
                 }
@@ -1632,19 +1669,25 @@ pub mod create_user {
             Self::UnprocessableEntity(..) => "status 422 (UnprocessableEntity)",
         }
     );
-    /// The body and headers of the success, in order: what `Response::into_result` gives.
-    pub type Success = (
-        types::User,
-        Option<::honig::UuidStr>,
-        Option<::honig::url::Url>,
-        Option<i64>,
-    );
+    /// The body and headers of the success by name: what `Response::into_result` gives.
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct Success {
+        pub body: types::User,
+        pub x_request_id: Option<::honig::UuidStr>,
+        pub location: Option<::honig::url::Url>,
+        pub x_processing_time: Option<i64>,
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Created { body, x_request_id, location, x_processing_time } => {
-                    Ok((body, x_request_id, location, x_processing_time))
+                    Ok(Success {
+                        body,
+                        x_request_id,
+                        location,
+                        x_processing_time,
+                    })
                 }
                 other @ (Self::BadRequest { .. }
                 | Self::Unauthorized(..)

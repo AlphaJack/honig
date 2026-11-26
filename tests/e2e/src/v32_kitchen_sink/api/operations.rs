@@ -192,13 +192,20 @@ pub mod put_blob {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok { .. } => "status 200 (Ok)", });
-    /// The body and headers of the success, in order: what `Response::into_result` gives.
-    pub type Success = (::honig::Blob, Option<i64>, types::PutBlobOkXQuota);
+    /// The body and headers of the success by name: what `Response::into_result` gives.
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct Success {
+        pub body: ::honig::Blob,
+        pub x_size: Option<i64>,
+        pub x_quota: types::PutBlobOkXQuota,
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
-                Self::Ok { body, x_size, x_quota } => Ok((body, x_size, x_quota)),
+                Self::Ok { body, x_size, x_quota } => {
+                    Ok(Success { body, x_size, x_quota })
+                }
             }
         }
     }

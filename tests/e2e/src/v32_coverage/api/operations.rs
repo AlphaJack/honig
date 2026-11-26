@@ -163,13 +163,20 @@ pub mod add_note {
     ::honig::response_error!(
         Response { Self::Created { .. } => "status 201 (Created)", }
     );
-    /// The body and headers of the success, in order: what `Response::into_result` gives.
-    pub type Success = (types::Note, Option<i64>, Option<types::AddNoteCreatedXTags>);
+    /// The body and headers of the success by name: what `Response::into_result` gives.
+    #[derive(Debug, Clone, PartialEq)]
+    pub struct Success {
+        pub body: types::Note,
+        pub x_count: Option<i64>,
+        pub x_tags: Option<types::AddNoteCreatedXTags>,
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
-                Self::Created { body, x_count, x_tags } => Ok((body, x_count, x_tags)),
+                Self::Created { body, x_count, x_tags } => {
+                    Ok(Success { body, x_count, x_tags })
+                }
             }
         }
     }

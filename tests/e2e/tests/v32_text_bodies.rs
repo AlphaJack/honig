@@ -48,7 +48,7 @@ fn the_client_builds_and_decodes_text_bodies_of_their_types() {
     let client = Client::new(support::loopback(|req: api::Request| api::Server::new(Notes).into_service().handle(req)));
     let body = types::AddNoteBody::try_from("hi!").expect("3 characters");
     let note = honig::block_on(client.add_note(ops::add_note::Params::new(body))).expect("sent").into_result();
-    assert_eq!(note.expect("200").0.as_ref(), "HI!");
+    assert_eq!(note.expect("200").body.as_ref(), "HI!");
     let mood = ops::set_mood::Params::new(types::SetMoodBody::Loud);
     honig::block_on(client.set_mood(mood)).expect("sent").into_result().expect("204");
 }

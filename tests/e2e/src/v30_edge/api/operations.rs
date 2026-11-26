@@ -88,13 +88,17 @@ pub mod list_orders {
             Self::ClientError { status,.. } => format_args!("status {} (ClientError)", status.as_u16()),
         }
     );
-    /// The body and headers of the success, in order: what `Response::into_result` gives.
-    pub type Success = (types::OrderPage, Option<String>);
+    /// The body and headers of the success by name: what `Response::into_result` gives.
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct Success {
+        pub body: types::OrderPage,
+        pub x_next_cursor: Option<String>,
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
-                Self::Ok { body, x_next_cursor } => Ok((body, x_next_cursor)),
+                Self::Ok { body, x_next_cursor } => Ok(Success { body, x_next_cursor }),
                 other @ Self::ClientError { .. } => Err(Box::new(other)),
             }
         }
@@ -269,13 +273,17 @@ pub mod get_order {
             Self::Default { status,.. } => format_args!("status {} (Default)", status.as_u16()),
         }
     );
-    /// The body and headers of the success, in order: what `Response::into_result` gives.
-    pub type Success = (Box<types::Order>, String);
+    /// The body and headers of the success by name: what `Response::into_result` gives.
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct Success {
+        pub body: Box<types::Order>,
+        pub x_request_id: String,
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
-                Self::Ok { body, x_request_id } => Ok((body, x_request_id)),
+                Self::Ok { body, x_request_id } => Ok(Success { body, x_request_id }),
                 other @ (Self::NotFound(..) | Self::Default { .. }) => {
                     Err(Box::new(other))
                 }
