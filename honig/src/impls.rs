@@ -28,6 +28,16 @@ macro_rules! str_enum_impls {
                 f.write_str(self.as_str())
             }
         }
+        impl AsRef<str> for $n {
+            fn as_ref(&self) -> &str {
+                self.as_str()
+            }
+        }
+        impl From<$n> for String {
+            fn from(value: $n) -> Self {
+                value.as_str().to_owned()
+            }
+        }
         impl std::str::FromStr for $n {
             type Err = $crate::BuildError;
             fn from_str(s: &str) -> Result<Self, Self::Err> {
