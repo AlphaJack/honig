@@ -15,6 +15,7 @@ impl api::Api for Notes {
         p: ops::add_note::Params,
         _: &api::Context<'_>,
     ) -> impl Future<Output = Result<ops::add_note::Response, api::ApiError>> + Send {
+        assert_ne!(p.body.as_ref(), "panic", "the note store is gone");
         let loud = types::AddNoteOk::try_from(p.body.to_uppercase().as_str()).map_err(api::ApiError::from);
         std::future::ready(loud.map(|body| ops::add_note::Response::Ok { body, x_count: Some(1) }))
     }
@@ -27,11 +28,28 @@ impl api::Api for Notes {
     }
 }
 
-fn send(method: &'static str, path: &str, text: &str) -> u16 {
+fn request(method: &'static str, path: &str, text: &str) -> api::Request {
     let mut req = honig::__private::new_request(method, path.to_owned(), vec![]).unwrap();
     req.headers_mut().insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::from_static("text/plain"));
     *req.body_mut() = honig::Body::from(text.as_bytes().to_vec());
-    honig::block_on(api::Server::new(Notes).into_service().handle(req)).status().as_u16()
+    req
+}
+
+fn send(method: &'static str, path: &str, text: &str) -> u16 {
+    honig::block_on(api::Server::new(Notes).into_service().handle(request(method, path, text))).status().as_u16()
+}
+
+/// A handler that panics answers 500 in the error schema. The panic message goes to the wide event and not to the
+/// body, and the server serves the next request.
+#[test]
+fn a_handler_that_panics_answers_500() {
+    let server = api::Server::new(Notes).into_service();
+    let resp = honig::block_on(server.handle(request("POST", "/notes", "panic")));
+    assert_eq!(resp.status().as_u16(), 500);
+    assert!(!String::from_utf8_lossy(resp.body().bytes()).contains("note store"), "{resp:?}");
+    let event = resp.extensions().get::<api::RequestEvent>().map(api::RequestEvent::fields).expect("an event");
+    assert!(event["panic"].as_str().is_some_and(|m| m.contains("the note store is gone")), "{event:?}");
+    assert_eq!(honig::block_on(server.handle(request("POST", "/notes", "hi"))).status().as_u16(), 200);
 }
 
 #[test]

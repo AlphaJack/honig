@@ -344,9 +344,30 @@ impl<O: Operations> Service<Request> for Endpoint<O> {
                 ));
             };
             let call = Call { config: &shared.config, operation, satisfied, security, event: &event, uri, spans };
-            Ok(shared.ops.call(req, call).await)
+            // A handler that panics answers 500 in the error schema: the panic is in the event, not in the body.
+            unwound(shared.ops.call(req, call)).await.map_err(|message| {
+                event.panicked(message);
+                ApiError::new(http::StatusCode::INTERNAL_SERVER_ERROR, "the operation panicked")
+            })
         })
     }
+}
+
+/// Returns the output of `fut`, or the message of its panic.
+async fn unwound<F: Future>(fut: F) -> Result<F::Output, String> {
+    let mut fut = std::pin::pin!(fut);
+    std::future::poll_fn(move |cx| {
+        match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| fut.as_mut().poll(cx))) {
+            Ok(Poll::Ready(out)) => Poll::Ready(Ok(out)),
+            Ok(Poll::Pending) => Poll::Pending,
+            Err(payload) => Poll::Ready(Err(payload
+                .downcast_ref::<&str>()
+                .map(|s| (*s).to_owned())
+                .or_else(|| payload.downcast_ref::<String>().cloned())
+                .unwrap_or_else(|| "a panic without a message".to_owned()))),
+        }
+    })
+    .await
 }
 
 /// The server as a tower `Service`: what [`Server::into_service`] returns.

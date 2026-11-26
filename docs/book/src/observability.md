@@ -7,6 +7,7 @@ Every request that reaches the server produces one wide event. Under `into_axum`
 - the body sizes
 - the security schemes and scopes
 - the failure kind if there is one
+- `panic`: the message of a handler that panicked. The server answers `500` in the error schema without it.
 
 Layers add fields with `req.event().set(key, value)`. Handlers add fields with `ctx.event.set(key, value)`. A key is an `EventKey`. Declare it as a `const` such as `const TENANT: EventKey = EventKey::new("tenant")`. Then a key that has the name of a built-in field fails to compile.
 
