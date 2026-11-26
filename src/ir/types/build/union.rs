@@ -139,7 +139,7 @@ impl Builder<'_> {
             .collect();
         let (additional, additional_constraints) = match o.get("additionalProperties") {
             Some(Value::Bool(false)) => (None, Box::default()),
-            Some(extra @ Value::Object(m)) if !m.is_empty() => (
+            Some(extra @ Value::Object(_)) => (
                 Some(self.ty(extra, &join(ptr, "additionalProperties"), &name.and(&Name::new("Value")))),
                 Box::new(self.constraints(extra)),
             ),
