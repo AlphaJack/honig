@@ -25,11 +25,12 @@ Three commands add honig to your crate:
 
 ```sh
 cargo honig init path/to/openapi.yaml
-cargo add honig@=x.y.z -F client,server
+cargo add honig@=x.y.z -F client,server,...
 cargo honig generate
 ```
 
-`init` adds the `[package.metadata.honig.api]` section to your `Cargo.toml` and prints the exact `cargo add` lines.
+`init` adds the `[package.metadata.honig.api]` section to your `Cargo.toml` and prints the exact `cargo add` lines:
+`honig` with every feature that the description needs, such as `regress` for a `pattern`.
 `generate` writes the module to `src/api`. It never edits `Cargo.toml`.
 When the code needs a `honig` feature that is off, `generate` stops and prints the `cargo add` line that turns it on.
 

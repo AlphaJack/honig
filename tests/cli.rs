@@ -71,8 +71,8 @@ fn scratch_crate(name: &str) -> PathBuf {
     dir
 }
 
-/// honig features that the code generated from the `shop` description needs.
-const SHOP: &[&str] = &["client", "server", "pkce", "oauth", "cookie", "base64", "idn", "multipart", "xml"];
+/// honig features that the code generated from the `shop` description needs, in the order of honig's `[features]`.
+const SHOP: &[&str] = &["client", "server", "base64", "cookie", "idn", "multipart", "oauth", "pkce", "xml"];
 
 /// Adds honig of this checkout to the crate in `dir` with `features`, as `cargo add` would.
 fn add_runtime(dir: &Path, features: &[&str]) {
@@ -102,7 +102,8 @@ fn init_then_generate_writes_a_module_that_check_finds_up_to_date() {
     let version = env!("CARGO_PKG_VERSION");
     for line in [
         "added [package.metadata.honig.api]".to_owned(),
-        format!("next: cargo add honig@={version} -F client,server"),
+        // Every feature that the description needs, as `generate` asks for them below.
+        format!("next: cargo add honig@={version} -F {}", SHOP.join(",")),
         "next: cargo add serde -F derive".to_owned(),
         "next: cargo add serde_json".to_owned(),
         "next: cargo honig generate".to_owned(),
@@ -117,10 +118,9 @@ fn init_then_generate_writes_a_module_that_check_finds_up_to_date() {
     assert_eq!(code, Some(2));
     assert!(err.contains("already has [package.metadata.honig]"), "{err}");
 
-    // The description needs more features than `init` can know.
     let (code, _, err) = in_crate(&dir, &["generate"]);
     assert_eq!(code, Some(2));
-    assert!(err.contains(&format!("is missing. Run `cargo add honig@={version} -F client,server,")), "{err}");
+    assert!(err.contains(&format!("is missing. Run `cargo add honig@={version} -F {}`", SHOP.join(","))), "{err}");
     add_runtime(&dir, SHOP);
 
     let (code, _, err) = in_crate(&dir, &["check"]);

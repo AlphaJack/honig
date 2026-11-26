@@ -12,12 +12,10 @@ use crate::settings::{FEATURES, Manifest, RUNTIME};
 /// # Errors
 /// The crate has no honig dependency, it requires another version or it lacks a feature in `needed`.
 pub(crate) fn check_runtime(manifest: &Manifest, needed: &[&str]) -> Result<(), Error> {
-    // In the order of honig's `[features]`, whatever order the modules found them in.
-    let needed: Vec<&str> = FEATURES.iter().map(|(name, _)| *name).filter(|name| needed.contains(name)).collect();
+    let needed = in_order(needed);
     let version = format!("={RUNTIME_VERSION}");
     let Some(dep) = manifest.runtime() else {
-        let features = if needed.is_empty() { String::new() } else { format!(" -F {}", needed.join(",")) };
-        return Err(Error::Runtime(format!("is missing. Run `cargo add {RUNTIME}@{version}{features}`")));
+        return Err(Error::Runtime(format!("is missing. Run `{}`", add_line(&needed))));
     };
     if !pins(&dep.req) {
         let fix = if manifest.inherits(&dep.name) {
@@ -44,6 +42,18 @@ fn pins(req: &str) -> bool {
     let exact = req.strip_prefix('=').map(str::trim) == Some(RUNTIME_VERSION);
     let caret = RUNTIME_VERSION.starts_with("0.0.") && req.strip_prefix('^').unwrap_or(req).trim() == RUNTIME_VERSION;
     exact || caret
+}
+
+/// Returns `needed` in the order of honig's `[features]`, whatever order the modules found them in.
+fn in_order<'f>(needed: &[&'f str]) -> Vec<&'f str> {
+    FEATURES.iter().map(|(name, _)| *name).filter(|name| needed.contains(name)).collect()
+}
+
+/// Returns the `cargo add` line of honig at the version of the generator with the features in `needed`.
+pub(crate) fn add_line(needed: &[&str]) -> String {
+    let needed = in_order(needed);
+    let features = if needed.is_empty() { String::new() } else { format!(" -F {}", needed.join(",")) };
+    format!("cargo add {RUNTIME}@={RUNTIME_VERSION}{features}")
 }
 
 #[cfg(test)]
