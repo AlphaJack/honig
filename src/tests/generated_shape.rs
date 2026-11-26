@@ -155,10 +155,10 @@ fn a_struct_with_a_required_field_has_no_default() {
     assert!(derive_of("Filter").contains("Default"), "{types}");
 }
 
-/// `into_result` gives a tuple of the body and headers only when no two have the same type: a reorder of two headers
-/// of one type would swap them without a compile error. Else it gives a `Success` struct that names each.
+/// `into_result` gives a `Success` struct that names the body and each header, whatever their types: fields keep their
+/// names when the description adds a header or reorders them.
 #[test]
-fn into_result_gives_no_tuple_of_two_values_of_one_type() {
+fn into_result_names_each_value() {
     let header = |schema: serde_json::Value| json!({"schema": schema});
     let responses = |second: serde_json::Value| json!({"200": {"description": "ok", "headers": {"ETag": header(json!({"type": "string"})), "Rev": header(second)}}});
     let ops = |name: &str, second: serde_json::Value| {
@@ -174,7 +174,10 @@ fn into_result_gives_no_tuple_of_two_values_of_one_type() {
     );
     assert!(same.contains("pub fn into_result(self) -> Result<Success, Box<Self>>"), "{same}");
     let different = ops("tuple-different", json!({"type": "integer"}));
-    assert!(different.contains("pub type Success"), "{different}");
+    assert!(
+        different.contains("pub struct Success {\n        pub e_tag: Option<String>,\n        pub rev: Option<i64>,"),
+        "{different}"
+    );
 }
 
 /// The `then` of a conditional keeps every limit: `maxProperties` is checked, and the `name` that the base and the
