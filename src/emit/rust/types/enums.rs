@@ -119,7 +119,8 @@ pub(super) fn no_variant(u: &Union) -> TokenStream {
     }
 }
 
-pub(super) fn union(items: &mut Vec<TokenStream>, space: &Space<'_>, def: &TypeDef, u: &Union) {
+/// `cyclic`: a value of the union can contain another one, so an untagged one keeps its decisions ([`untagged`]).
+pub(super) fn union(items: &mut Vec<TokenStream>, space: &Space<'_>, cyclic: bool, def: &TypeDef, u: &Union) {
     let n = pascal_ident(&def.name);
     let doc = doc_opt(def.doc.as_deref());
     let eq = (!u.variants.iter().any(|v| has_float(space, &v.ty))).then(|| quote!(Eq,));
@@ -127,7 +128,8 @@ pub(super) fn union(items: &mut Vec<TokenStream>, space: &Space<'_>, def: &TypeD
         let (name, t) = (pascal_ident(&v.name), ty(space, &v.ty, false));
         quote!(#name(#t),)
     });
-    let deserialize = union_deserialize_impl(space, &n, def, u);
+    let memo = cyclic && u.mode == UnionMode::Untagged;
+    let deserialize = union_deserialize_impl(space, &n, def, u, memo);
     // Only a union that the schema leaves open stores a value that no variant accepts, or a lenient client's member
     // that the server added. A closed one fails to decode it.
     let open = has_other(u) || reads_added(def, u);
@@ -152,8 +154,9 @@ pub(super) fn union_deserialize_impl(
     n: &proc_macro2::Ident,
     def: &TypeDef,
     u: &Union,
+    memo: bool,
 ) -> TokenStream {
-    let de = union_deserialize(space, def, u);
+    let de = union_deserialize(space, def, u, memo);
     // A buffered number is an `f64`. So a union that contains a `Decimal` decodes from the JSON text instead. An
     // untagged one pays one parse per branch that it tries. A tagged one parses its tag and then parses the one branch.
     let exact = u.variants.iter().any(|v| space.has_decimal(&v.ty));
@@ -171,6 +174,9 @@ pub(super) fn union_deserialize_impl(
             } else {
                 quote!(<::honig::__private::Content<'de> as serde::Deserialize>::deserialize(d)?)
             };
+            if memo {
+                return remembered(n, u, &buffer, &de);
+            }
             return quote! {
                 impl<'de> serde::Deserialize<'de> for #n {
                     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
@@ -211,6 +217,54 @@ pub(super) fn union_deserialize_impl(
             }
             fn from_content(v: ::honig::__private::Content<'de>) -> Result<Self, serde_json::Error> {
                 #de
+            }
+        }
+    }
+}
+
+/// Returns `impl Deserialize` of an untagged union whose values can contain one another. It decides each value once
+/// ([`::honig::__private::Memo`]): a decision made before tries only the branch that won, or fails as it failed.
+fn remembered(n: &proc_macro2::Ident, u: &Union, buffer: &TokenStream, de: &TokenStream) -> TokenStream {
+    let arms = u.variants.iter().enumerate().map(|(i, v)| {
+        let name = pascal_ident(&v.name);
+        quote!(Self::#name(_) => #i,)
+    });
+    let other = has_other(u).then(|| {
+        let i = u.variants.len();
+        quote!(Self::Other(_) => #i,)
+    });
+    // Only an open union keeps the value: its `Other` stores it.
+    let (value, arg) = if u.open {
+        (quote!(::honig::__private::Content<'_>), quote!(v))
+    } else {
+        (quote!(&::honig::__private::Content<'_>), quote!(&v))
+    };
+    quote! {
+        impl #n {
+            /// Decodes `v`. `won`: the branch that a decision made before chose, the only one tried.
+            fn decide<E: serde::de::Error>(v: #value, won: Option<usize>) -> Result<Self, E> {
+                #de
+            }
+
+            /// Returns the index of the branch of `self`.
+            const fn branch(&self) -> usize {
+                match self {
+                    #(#arms)*
+                    #other
+                }
+            }
+        }
+        impl<'de> serde::Deserialize<'de> for #n {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let v = #buffer;
+                let memo = ::honig::__private::Memo::of::<Self>(&v);
+                let decided = memo.decided();
+                if let Some(Err(e)) = &decided {
+                    return Err(serde::de::Error::custom(e));
+                }
+                let out = Self::decide(#arg, decided.and_then(Result::ok));
+                memo.decide(out.as_ref().map(Self::branch).map_err(ToString::to_string));
+                out
             }
         }
     }
@@ -276,7 +330,7 @@ pub(super) fn decode_ref(space: &Space<'_>, t: &Ty) -> TokenStream {
     }
 }
 
-pub(super) fn union_deserialize(space: &Space<'_>, def: &TypeDef, u: &Union) -> TokenStream {
+pub(super) fn union_deserialize(space: &Space<'_>, def: &TypeDef, u: &Union, memo: bool) -> TokenStream {
     match &u.mode {
         UnionMode::Tagged { property, default } => {
             let property = lit(property);
@@ -325,18 +379,14 @@ pub(super) fn union_deserialize(space: &Space<'_>, def: &TypeDef, u: &Union) -> 
             }
         }
         UnionMode::ByKind => by_kind(space, u),
-        UnionMode::Untagged => untagged(space, u),
+        UnionMode::Untagged => untagged(space, u, memo),
     }
 }
 
-/// Tries each branch in the order of the variant names. `anyOf` has no order, so a reorder of the branches in the
-/// description changes no decoded value.
-pub(super) fn untagged(space: &Space<'_>, u: &Union) -> TokenStream {
-    // What rules a branch out before it decodes: the JSON kind of the value and the fields of a struct. Each is
-    // named `fit_<i>` and computed once.
-    let guards: Vec<Option<TokenStream>> = u
-        .variants
-        .iter()
+/// Returns what rules each branch out before it decodes: the JSON kind of the value `value` and the fields of a
+/// struct. [`untagged`] names each `fit_<i>` and computes it once.
+fn guards(space: &Space<'_>, u: &Union, value: &TokenStream) -> Vec<Option<TokenStream>> {
+    (u.variants.iter())
         .map(|v| {
             // serde lets a struct decode an array by position. So a branch of a known kind only sees values of
             // that kind.
@@ -349,12 +399,21 @@ pub(super) fn untagged(space: &Space<'_>, u: &Union) -> TokenStream {
             }
             .map(|k| quote!(v.kind() == #k));
             let inner = if let Ty::Indirect(i) = &v.ty { i.as_ref() } else { &v.ty };
-            match (kind, fits(space, inner)) {
+            match (kind, fits(space, inner, value)) {
                 (Some(k), Some(f)) => Some(quote!(#k && #f)),
                 (k, f) => k.or(f),
             }
         })
-        .collect();
+        .collect()
+}
+
+/// Tries each branch in the order of the variant names. `anyOf` has no order, so a reorder of the branches in the
+/// description changes no decoded value.
+/// `memo`: a decision made before names the one branch to try, `won` ([`remembered`]).
+pub(super) fn untagged(space: &Space<'_>, u: &Union, memo: bool) -> TokenStream {
+    // A remembered closed union borrows the value ([`remembered`]).
+    let value = if memo && !u.open { quote!(v) } else { quote!(&v) };
+    let guards = guards(space, u, &value);
     let fit = |i: usize| quote::format_ident!("fit_{i}");
     let lets = guards.iter().enumerate().filter_map(|(i, g)| {
         let (name, g) = (fit(i), g.as_ref()?);
@@ -401,11 +460,12 @@ pub(super) fn untagged(space: &Space<'_>, u: &Union) -> TokenStream {
         };
         // Decoding checks every keyword: the first branch that decodes is the answer. A branch whose shape fits but
         // that does not decode keeps its error, so that a closed union says what is wrong with the closest one.
-        if guards[i].is_some() {
-            let f = fit(i);
-            quote!(if #f { #attempt })
-        } else {
-            quote!({ #attempt })
+        let won = memo.then(|| quote!(won.is_none_or(|w| w == #i)));
+        let f = guards[i].is_some().then(|| fit(i)).map(|f| quote!(#f));
+        match (won, f) {
+            (Some(w), Some(f)) => quote!(if #w && #f { #attempt }),
+            (Some(c), None) | (None, Some(c)) => quote!(if #c { #attempt }),
+            (None, None) => quote!({ #attempt }),
         }
     });
     // When none decodes, an open union has a branch that accepts any value: `Other` stores it.
@@ -443,11 +503,12 @@ pub(super) fn counting(counts: bool) -> (TokenStream, TokenStream) {
     )
 }
 
-/// `::honig::__private::fits(&v, ...)` for a struct branch: the fields that must be present and the kinds that each may have.
+/// `::honig::__private::fits(v, ...)` of the value `v` (`&v` or a reference) for a struct branch: the fields that must be
+/// present and the kinds that each may have.
 /// It never refuses a value that the branch decodes: a kind that a type decodes from more than one JSON kind (a
 /// `Decimal`, an untyped value, an open union) is not checked, an integer may come as a number, and an optional or
 /// nullable field may be absent or `null`. `None` when there is nothing to check.
-pub(super) fn fits(space: &Space<'_>, t: &Ty) -> Option<TokenStream> {
+pub(super) fn fits(space: &Space<'_>, t: &Ty, v: &TokenStream) -> Option<TokenStream> {
     use rtkind::K;
     let Ty::Named(id) = t else { return None };
     let Kind::Struct(s) = &space.types.get(*id).kind else { return None };
@@ -476,7 +537,7 @@ pub(super) fn fits(space: &Space<'_>, t: &Ty) -> Option<TokenStream> {
             })
         })
         .collect();
-    (!checks.is_empty()).then(|| quote!(::honig::__private::fits(&v, &[#(#checks),*])))
+    (!checks.is_empty()).then(|| quote!(::honig::__private::fits(#v, &[#(#checks),*])))
 }
 
 /// Whether `t` decodes from more JSON kinds than [`TypeSpace::kind_of`](crate::ir::types::TypeSpace::kind_of) names: a

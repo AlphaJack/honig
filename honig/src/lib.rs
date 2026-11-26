@@ -37,6 +37,7 @@ mod json_pointer;
 mod links;
 mod linkset;
 mod media;
+mod memo;
 mod message;
 mod no_seq;
 mod nullable;
@@ -157,6 +158,7 @@ pub mod __private {
     pub use crate::links::*;
     pub use crate::linkset::*;
     pub use crate::media::*;
+    pub use crate::memo::Memo;
     pub use crate::message::*;
     pub use crate::no_seq::NoSeq;
     pub use crate::nullable::{not_null, required_nullable};

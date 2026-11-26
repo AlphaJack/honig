@@ -11,7 +11,7 @@ use build::kind_in;
 pub(crate) use build::{Builder, doc_of, literal_default, text_of, with_external_docs};
 pub(crate) use build::{binary_media, is_annotation_only, string_format};
 
-pub(crate) use cycles::{all_refs, def_types};
+pub(crate) use cycles::{all_refs, def_types, on_cycle};
 use cycles::{direction, map_kind, map_named};
 
 use std::collections::BTreeSet;
