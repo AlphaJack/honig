@@ -1641,3 +1641,12 @@ fn a_one_of_of_the_same_schema_twice_fails() {
         made.diagnostics
     );
 }
+
+/// `enum: []` lists no value, so no value meets the schema: generation fails at the `enum`.
+#[test]
+fn an_empty_enum_fails() {
+    let empty = json!({"schemas": {"Grade": {"enum": []}}});
+    let path = common::write("empty-enum", &doc(&json!({}), &empty), &[]);
+    let Err(d) = crate::generate::generate(&path, &Options::default()) else { panic!("an empty enum generates") };
+    assert!(d.0.iter().any(|d| d.pointer == "/components/schemas/Grade/enum"), "{:?}", d.0);
+}
