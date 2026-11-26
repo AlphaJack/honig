@@ -77,7 +77,7 @@ pub(super) fn emit(api: &crate::ir::Api, space: &Space<'_>, opts: &crate::emit::
                     builders_name_types |= names_types;
                 }
             }
-            Kind::Union(u) => union(&mut items, space, def, u),
+            Kind::Union(u) => union(&mut items, space, space.cyclic(id), def, u),
             Kind::Alias(t) => {
                 let doc = doc_opt(def.doc.as_deref());
                 let t = ty(space, t, false);

@@ -1,7 +1,7 @@
 //! The type space as the Rust emitter sees it. That is the types of the IR with what only Rust output depends on.
 
 use crate::ir::TypeSpace;
-use crate::ir::types::{JsonKind, Kind, Ty, TypeId, all_refs, def_types};
+use crate::ir::types::{JsonKind, Kind, Ty, TypeId, all_refs, def_types, on_cycle};
 use crate::settings::FormatLibs;
 
 /// The types of the IR, the libraries that the target crate provides for `Ty::Format` and which types contain a float.
@@ -18,6 +18,13 @@ pub(crate) struct Space<'a> {
     kinds: Vec<JsonKind>,
     /// The rough size of each definition by `TypeId` ([`Space::approx_size`]).
     sizes: Vec<usize>,
+    /// Which definitions lie on a cycle of references by `TypeId`.
+    cyclic: Vec<bool>,
+}
+
+/// Returns the mark of the definition `id` in `marks`, one per `TypeId`.
+fn marked(marks: &[bool], id: TypeId) -> bool {
+    marks.get(id.0).copied().unwrap_or_default()
 }
 
 impl<'a> Space<'a> {
@@ -56,7 +63,20 @@ impl<'a> Space<'a> {
     pub(crate) fn new(types: &'a TypeSpace, libs: &'a FormatLibs) -> Self {
         let floats = reaching(types, |d| d.rust_type.is_some() || def_types(&d.kind).iter().any(|t| float_here(t)));
         let decimals = reaching(types, |d| def_types(&d.kind).iter().any(|t| decimal_here(t)));
-        Self { types, libs, floats, decimals, kinds: types.kinds(), sizes: def_sizes(types) }
+        Self {
+            types,
+            libs,
+            floats,
+            decimals,
+            kinds: types.kinds(),
+            sizes: def_sizes(types),
+            cyclic: on_cycle(&types.defs),
+        }
+    }
+
+    /// Does the definition `id` lie on a cycle of references: can a value of it contain another?
+    pub(crate) fn cyclic(&self, id: TypeId) -> bool {
+        marked(&self.cyclic, id)
     }
 
     /// Returns the rough in-memory size in bytes of `ty` on a 64-bit target. It decides which enum variants to box
@@ -70,7 +90,7 @@ impl<'a> Space<'a> {
     pub(crate) fn has_float(&self, ty: &Ty) -> bool {
         let mut refs = vec![];
         all_refs(ty, &mut refs);
-        float_here(ty) || refs.iter().any(|id| self.floats.get(id.0).copied().unwrap_or_default())
+        float_here(ty) || refs.iter().any(|id| marked(&self.floats, *id))
     }
 
     /// Resolves aliases and wrappers down to the JSON kind on the wire, as [`TypeSpace::kind_of`] does with each
@@ -91,7 +111,7 @@ impl<'a> Space<'a> {
     pub(crate) fn has_decimal(&self, ty: &Ty) -> bool {
         let mut refs = vec![];
         all_refs(ty, &mut refs);
-        decimal_here(ty) || refs.iter().any(|id| self.decimals.get(id.0).copied().unwrap_or_default())
+        decimal_here(ty) || refs.iter().any(|id| marked(&self.decimals, *id))
     }
 }
 

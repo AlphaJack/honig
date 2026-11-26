@@ -1,6 +1,6 @@
 //! Breaking reference cycles: a type that contains itself by value is boxed where the cycle closes.
 
-use super::{Access, Kind, Ty, TypeId, TypeSpace};
+use super::{Access, Kind, Ty, TypeDef, TypeId, TypeSpace};
 
 /// Collects the direct (by-value) references from a type expression. `Vec` and `Map`
 /// already allocate. So they do not count.
@@ -155,12 +155,9 @@ pub(crate) fn scc(n: usize, edges: &[Vec<usize>]) -> Vec<usize> {
     s.comp
 }
 
-pub(crate) fn break_cycles(space: &mut TypeSpace) {
-    let n = space.defs.len();
-    // Aliases that are part of any cycle cannot be `type` aliases.
-    let full: Vec<Vec<usize>> = space
-        .defs
-        .iter()
+/// Returns which definitions lie on a cycle of references, through a field, a branch, a list or a map alike.
+pub(crate) fn on_cycle(defs: &[TypeDef]) -> Vec<bool> {
+    let full: Vec<Vec<usize>> = (defs.iter())
         .map(|d| {
             let mut out = vec![];
             for t in def_types(&d.kind) {
@@ -169,15 +166,21 @@ pub(crate) fn break_cycles(space: &mut TypeSpace) {
             out.into_iter().map(|t| t.0).collect()
         })
         .collect();
-    let comp = scc(n, &full);
-    let mut size = vec![0usize; n];
+    let comp = scc(defs.len(), &full);
+    let mut size = vec![0usize; defs.len()];
     for c in &comp {
         size[*c] += 1;
     }
-    for i in 0..n {
-        let in_cycle = size[comp[i]] > 1 || full[i].contains(&i);
-        if in_cycle && let Kind::Alias(t) = &space.defs[i].kind {
-            space.defs[i].kind = Kind::Newtype(t.clone());
+    (0..defs.len()).map(|i| size[comp[i]] > 1 || full[i].contains(&i)).collect()
+}
+
+pub(crate) fn break_cycles(space: &mut TypeSpace) {
+    let n = space.defs.len();
+    // Aliases that are part of any cycle cannot be `type` aliases.
+    let cyclic = on_cycle(&space.defs);
+    for (def, cyclic) in space.defs.iter_mut().zip(cyclic) {
+        if cyclic && let Kind::Alias(t) = &def.kind {
+            def.kind = Kind::Newtype(t.clone());
         }
     }
     // Box every by-value edge inside a strongly connected component.

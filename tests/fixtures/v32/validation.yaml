@@ -207,6 +207,17 @@ components:
           properties:
             items: {type: array, items: {$ref: '#/components/schemas/Tree'}}
             x: {type: integer}
+    # A recursive union whose branches no guard tells apart: each branch decodes the value nested in it.
+    Bundle:
+      oneOf:
+        - type: object
+          properties:
+            contents: {$ref: '#/components/schemas/Bundle'}
+            sku: {type: string}
+        - type: object
+          properties:
+            contents: {$ref: '#/components/schemas/Bundle'}
+            count: {type: integer}
     # A list of `allOf` items with a nullable property nine levels down. Both members
     # declare `lines`: one merged struct would keep one of them, so the item is checked whole at run time, and every
     # keyword is still there after the references are inlined.

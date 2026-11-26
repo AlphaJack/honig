@@ -561,6 +561,15 @@ fn a_recursive_union_decodes_in_time_linear_in_its_depth() {
     assert!(serde_json::from_str::<types::Tree>(&json).is_ok());
 }
 
+/// A recursive union whose branches no guard tells apart decodes the value nested in it once per branch. It decides
+/// each value once, so 40 levels end at once with the error of the innermost, where each level doubled the work.
+#[test]
+fn a_recursive_union_decides_each_value_once() {
+    let json = format!(r#"{}{{"sku":"BOOK-1"}}{}"#, r#"{"contents":"#.repeat(40), "}".repeat(40));
+    let err = serde_json::from_str::<types::Bundle>(&json).unwrap_err();
+    assert!(err.to_string().contains("matches 2 of `oneOf`"), "{err}");
+}
+
 /// A builder accepts raw values for its fields and converts each one. `build` returns the first that did not convert,
 /// named as the description spells it. The required properties are the arguments of `builder`.
 #[test]

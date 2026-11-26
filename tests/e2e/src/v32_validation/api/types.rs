@@ -710,14 +710,15 @@ pub enum Tree {
     Variant1(TreeVariant1),
 }
 ::honig::union_serialize!(Tree { Variant1, Variant2 });
-impl<'de> serde::Deserialize<'de> for Tree {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let v = <::honig::__private::Content<
-            'de,
-        > as serde::Deserialize>::deserialize(d)?;
+impl Tree {
+    /// Decodes `v`. `won`: the branch that a decision made before chose, the only one tried.
+    fn decide<E: serde::de::Error>(
+        v: &::honig::__private::Content<'_>,
+        won: Option<usize>,
+    ) -> Result<Self, E> {
         let fit_0 = v.kind() == ::honig::__private::Kind::Object
             && ::honig::__private::fits(
-                &v,
+                v,
                 &[
                     ("items", true, &[::honig::__private::Kind::Array]),
                     ("x", true, &[::honig::__private::Kind::String]),
@@ -725,7 +726,7 @@ impl<'de> serde::Deserialize<'de> for Tree {
             );
         let fit_1 = v.kind() == ::honig::__private::Kind::Object
             && ::honig::__private::fits(
-                &v,
+                v,
                 &[
                     ("items", true, &[::honig::__private::Kind::Array]),
                     (
@@ -741,7 +742,7 @@ impl<'de> serde::Deserialize<'de> for Tree {
         let mut first: Option<String> = None;
         let mut matches = 0usize;
         let mut found: Option<Self> = None;
-        if fit_1 {
+        if won.is_none_or(|w| w == 1usize) && fit_1 {
             match v.decode_ref::<TreeVariant1>() {
                 Ok(x) => {
                     matches += 1;
@@ -752,7 +753,7 @@ impl<'de> serde::Deserialize<'de> for Tree {
                 }
             }
         }
-        if fit_0 {
+        if won.is_none_or(|w| w == 0usize) && fit_0 {
             match v.decode_ref::<TreeVariant2>() {
                 Ok(x) => {
                     matches += 1;
@@ -779,6 +780,150 @@ impl<'de> serde::Deserialize<'de> for Tree {
                 first.unwrap_or_else(|| "matches no variant".to_owned()),
             ),
         )
+    }
+    /// Returns the index of the branch of `self`.
+    const fn branch(&self) -> usize {
+        match self {
+            Self::Variant2(_) => 0usize,
+            Self::Variant1(_) => 1usize,
+        }
+    }
+}
+impl<'de> serde::Deserialize<'de> for Tree {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let v = <::honig::__private::Content<
+            'de,
+        > as serde::Deserialize>::deserialize(d)?;
+        let memo = ::honig::__private::Memo::of::<Self>(&v);
+        let decided = memo.decided();
+        if let Some(Err(e)) = &decided {
+            return Err(serde::de::Error::custom(e));
+        }
+        let out = Self::decide(&v, decided.and_then(Result::ok));
+        memo.decide(out.as_ref().map(Self::branch).map_err(ToString::to_string));
+        out
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Bundle {
+    Variant2(Box<BundleVariant2>),
+    Variant1(Box<BundleVariant1>),
+}
+::honig::union_serialize!(Bundle { Variant1, Variant2 });
+impl Bundle {
+    /// Decodes `v`. `won`: the branch that a decision made before chose, the only one tried.
+    fn decide<E: serde::de::Error>(
+        v: &::honig::__private::Content<'_>,
+        won: Option<usize>,
+    ) -> Result<Self, E> {
+        let fit_0 = v.kind() == ::honig::__private::Kind::Object
+            && ::honig::__private::fits(
+                v,
+                &[
+                    (
+                        "contents",
+                        false,
+                        &[
+                            ::honig::__private::Kind::Object,
+                            ::honig::__private::Kind::Null,
+                        ],
+                    ),
+                    (
+                        "sku",
+                        false,
+                        &[
+                            ::honig::__private::Kind::String,
+                            ::honig::__private::Kind::Null,
+                        ],
+                    ),
+                ],
+            );
+        let fit_1 = v.kind() == ::honig::__private::Kind::Object
+            && ::honig::__private::fits(
+                v,
+                &[
+                    (
+                        "contents",
+                        false,
+                        &[
+                            ::honig::__private::Kind::Object,
+                            ::honig::__private::Kind::Null,
+                        ],
+                    ),
+                    (
+                        "count",
+                        false,
+                        &[
+                            ::honig::__private::Kind::Integer,
+                            ::honig::__private::Kind::Number,
+                            ::honig::__private::Kind::Null,
+                        ],
+                    ),
+                ],
+            );
+        let mut first: Option<String> = None;
+        let mut matches = 0usize;
+        let mut found: Option<Self> = None;
+        if won.is_none_or(|w| w == 1usize) && fit_1 {
+            match v.decode_ref::<Box<BundleVariant1>>() {
+                Ok(x) => {
+                    matches += 1;
+                    found.get_or_insert(Self::Variant1(x));
+                }
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
+            }
+        }
+        if won.is_none_or(|w| w == 0usize) && fit_0 {
+            match v.decode_ref::<Box<BundleVariant2>>() {
+                Ok(x) => {
+                    matches += 1;
+                    found.get_or_insert(Self::Variant2(x));
+                }
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
+            }
+        }
+        match (matches, found) {
+            (1, Some(one)) => return Ok(one),
+            (n, Some(_)) => {
+                return Err(
+                    serde::de::Error::custom(
+                        format!("matches {n} of `oneOf`, not exactly one"),
+                    ),
+                );
+            }
+            (_, None) => {}
+        }
+        Err(
+            serde::de::Error::custom(
+                first.unwrap_or_else(|| "matches no variant".to_owned()),
+            ),
+        )
+    }
+    /// Returns the index of the branch of `self`.
+    const fn branch(&self) -> usize {
+        match self {
+            Self::Variant2(_) => 0usize,
+            Self::Variant1(_) => 1usize,
+        }
+    }
+}
+impl<'de> serde::Deserialize<'de> for Bundle {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let v = <::honig::__private::Content<
+            'de,
+        > as serde::Deserialize>::deserialize(d)?;
+        let memo = ::honig::__private::Memo::of::<Self>(&v);
+        let decided = memo.decided();
+        if let Some(Err(e)) = &decided {
+            return Err(serde::de::Error::custom(e));
+        }
+        let out = Self::decide(&v, decided.and_then(Result::ok));
+        memo.decide(out.as_ref().map(Self::branch).map_err(ToString::to_string));
+        out
     }
 }
 ::honig::object! {
@@ -2133,6 +2278,67 @@ impl ::honig::__private::XmlShape for TreeVariant1 {
                     required: true,
                     ..::honig::__private::XmlField::new("x")
                 },
+            ],
+        };
+        &NODE
+    }
+}
+::honig::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct BundleVariant2 {
+        #[optional]
+        pub contents: Box<Bundle>,
+        #[optional]
+        pub sku: String,
+    }
+}
+impl BundleVariant2 {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self { contents: None, sku: None }
+    }
+}
+impl ::honig::__private::XmlShape for BundleVariant2 {
+    fn xml() -> &'static ::honig::__private::XmlNode {
+        static NODE: ::honig::__private::XmlNode = ::honig::__private::XmlNode {
+            name: "BundleVariant2",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                ::honig::__private::XmlField::new("contents"),
+                ::honig::__private::XmlField::new("sku"),
+            ],
+        };
+        &NODE
+    }
+}
+::honig::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct BundleVariant1 {
+        #[optional]
+        pub contents: Box<Bundle>,
+        #[optional]
+        pub count: i64,
+    }
+}
+impl BundleVariant1 {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            contents: None,
+            count: None,
+        }
+    }
+}
+impl ::honig::__private::XmlShape for BundleVariant1 {
+    fn xml() -> &'static ::honig::__private::XmlNode {
+        static NODE: ::honig::__private::XmlNode = ::honig::__private::XmlNode {
+            name: "BundleVariant1",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                ::honig::__private::XmlField::new("contents"),
+                ::honig::__private::XmlField::new("count"),
             ],
         };
         &NODE
@@ -4943,6 +5149,24 @@ pub mod builders {
             x: R1: i64 = "x",
         }
         optional {}
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        BundleVariant2 => super::BundleVariant2;
+        required {}
+        optional {
+            contents(contents): Box<types::Bundle> = "contents" => some, None,
+            sku(sku): String = "sku" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        BundleVariant1 => super::BundleVariant1;
+        required {}
+        optional {
+            contents(contents): Box<types::Bundle> = "contents" => some, None,
+            count(count): i64 = "count" => some, None,
+        }
         fixed {}
     }
     ::honig::typestate_builder! {
