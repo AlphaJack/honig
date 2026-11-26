@@ -36,6 +36,13 @@ pub mod add_note {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok { .. } => "status 200 (Ok)", });
+    impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: types::AddNoteOk, x_count: Option<i64>) -> Self {
+            Self::Ok { body, x_count }
+        }
+    }
     /// The body and headers of the success by name: what `Response::into_result` gives.
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Success {

@@ -21,6 +21,13 @@ pub mod tile_stream {
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: ::honig::Items<types::TileEvent>) -> Self {
+            Self::Ok(body)
+        }
+    }
+    impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<::honig::Items<types::TileEvent>, Box<Self>> {
             match self {
@@ -50,6 +57,13 @@ pub mod tile_lines {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
+    impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: ::honig::Items<types::TileEvent>) -> Self {
+            Self::Ok(body)
+        }
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<::honig::Items<types::TileEvent>, Box<Self>> {
@@ -81,6 +95,13 @@ pub mod tile_updates {
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: ::honig::Items<types::TileUpdatesOkItem>) -> Self {
+            Self::Ok(body)
+        }
+    }
+    impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(
             self,
@@ -111,6 +132,15 @@ pub mod chat_stream {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
+    impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(
+            body: ::honig::Items<std::collections::BTreeMap<String, serde_json::Value>>,
+        ) -> Self {
+            Self::Ok(body)
+        }
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(
@@ -188,6 +218,13 @@ pub mod tile_top {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
+    impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: ::honig::Items<types::TileEvent>) -> Self {
+            Self::Ok(body)
+        }
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<::honig::Items<types::TileEvent>, Box<Self>> {

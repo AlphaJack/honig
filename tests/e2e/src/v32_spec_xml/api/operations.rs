@@ -21,6 +21,13 @@ pub mod no_xml_object {
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: types::NoXmlObjectOk) -> Self {
+            Self::Ok(body)
+        }
+    }
+    impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<types::NoXmlObjectOk, Box<Self>> {
             match self {
@@ -50,6 +57,13 @@ pub mod no_xml_object_array {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
+    impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: types::NoXmlObjectArrayOk) -> Self {
+            Self::Ok(body)
+        }
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<types::NoXmlObjectArrayOk, Box<Self>> {
@@ -124,6 +138,13 @@ pub mod xml_array_item_names {
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: types::XmlArrayItemNamesOk) -> Self {
+            Self::Ok(body)
+        }
+    }
+    impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<types::XmlArrayItemNamesOk, Box<Self>> {
             match self {
@@ -153,6 +174,13 @@ pub mod xml_array_name_without_wrapper {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
+    impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: types::XmlArrayNameWithoutWrapperOk) -> Self {
+            Self::Ok(body)
+        }
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(
@@ -186,6 +214,13 @@ pub mod xml_array_wrapped {
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: types::XmlArrayWrappedOk) -> Self {
+            Self::Ok(body)
+        }
+    }
+    impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<types::XmlArrayWrappedOk, Box<Self>> {
             match self {
@@ -215,6 +250,13 @@ pub mod xml_array_wrapped_item_names {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
+    impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: types::XmlArrayWrappedItemNamesOk) -> Self {
+            Self::Ok(body)
+        }
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(
@@ -248,6 +290,13 @@ pub mod xml_array_wrapped_renamed {
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: types::XmlArrayWrappedRenamedOk) -> Self {
+            Self::Ok(body)
+        }
+    }
+    impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<types::XmlArrayWrappedRenamedOk, Box<Self>> {
             match self {
@@ -276,6 +325,13 @@ pub mod elements_with_attributes_and_text {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
+    impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: String) -> Self {
+            Self::Ok(body)
+        }
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<String, Box<Self>> {
@@ -307,6 +363,13 @@ pub mod referenced_element_with_cdata {
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: types::Documentation) -> Self {
+            Self::Ok(body)
+        }
+    }
+    impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<types::Documentation, Box<Self>> {
             match self {
@@ -335,6 +398,13 @@ pub mod ordered_elements {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
+    impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: String) -> Self {
+            Self::Ok(body)
+        }
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<String, Box<Self>> {
@@ -365,6 +435,13 @@ pub mod ordered_elements_and_text {
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: String) -> Self {
+            Self::Ok(body)
+        }
+    }
+    impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<String, Box<Self>> {
             match self {
@@ -394,6 +471,13 @@ pub mod xml_with_null_values {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
+    impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: types::XmlWithNullValuesOk) -> Self {
+            Self::Ok(body)
+        }
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<types::XmlWithNullValuesOk, Box<Self>> {

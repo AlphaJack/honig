@@ -28,6 +28,13 @@ pub mod get_subscription {
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: types::Subscription) -> Self {
+            Self::Ok(body)
+        }
+    }
+    impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<types::Subscription, Box<Self>> {
             match self {

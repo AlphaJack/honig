@@ -2975,3 +2975,26 @@ fn every_oauth_flow_takes_the_client_first() {
         );
     }
 }
+
+/// A response variant has a constructor that takes each of its values, an optional header as an `Option`: leaving a
+/// header out is a `None` that the handler writes. Two headers of one type could swap through a reorder of the
+/// description: that variant has none, and its literal names each value.
+#[test]
+fn a_response_is_built_from_each_of_its_values() {
+    let header = |t: &str| json!({"schema": {"type": t}});
+    let ok = |headers: serde_json::Value| {
+        json!({"200": {"description": "ok", "headers": headers,
+        "content": {"application/json": {"schema": {"type": "string"}}}}})
+    };
+    let ops = |headers: serde_json::Value| {
+        let doc =
+            common::spec("3.2.0", &json!({"/a": {"get": {"operationId": "a", "responses": ok(headers)}}}), &json!({}));
+        common::file(&common::generate("response-ctor", &doc, &crate::emit::Options::default()), "operations.rs")
+            .split_whitespace()
+            .collect::<String>()
+    };
+    let distinct = ops(json!({"X-Total": header("integer"), "X-Cursor": header("string")}));
+    assert!(distinct.contains("pubconstfnok(body:String,x_total:Option<i64>,x_cursor:Option<String>,)"), "{distinct}");
+    let alike = ops(json!({"X-Total": header("integer"), "X-Page": header("integer")}));
+    assert!(!alike.contains("fnok("), "{alike}");
+}

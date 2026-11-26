@@ -42,6 +42,13 @@ pub mod ping {
             Self::Default { status,.. } => format_args!("status {} (Default)", status.as_u16()),
         }
     );
+    impl Response {
+        /// Returns `Default` from each of its values.
+        #[must_use]
+        pub const fn default(status: DefaultStatus) -> Self {
+            Self::Default { status }
+        }
+    }
 }
 pub mod archive {
     use super::super::types;
@@ -71,6 +78,13 @@ pub mod archive {
             Self::Conflict(..) => "status 409 (Conflict)",
         }
     );
+    impl Response {
+        /// Returns `Conflict` from each of its values.
+        #[must_use]
+        pub const fn conflict(body: types::ArchiveConflict) -> Self {
+            Self::Conflict(body)
+        }
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<(), Box<Self>> {
@@ -109,6 +123,13 @@ pub mod unarchive {
             Self::Conflict(..) => "status 409 (Conflict)",
         }
     );
+    impl Response {
+        /// Returns `Conflict` from each of its values.
+        #[must_use]
+        pub const fn conflict(body: types::UnarchiveConflict) -> Self {
+            Self::Conflict(body)
+        }
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<(), Box<Self>> {
@@ -163,6 +184,25 @@ pub mod add_note {
     ::honig::response_error!(
         Response { Self::Created { .. } => "status 201 (Created)", }
     );
+    impl Response {
+        /// Returns `Created` from each of its values.
+        #[must_use]
+        pub const fn created(
+            body: types::Note,
+            x_count: Option<i64>,
+            x_tags: Option<types::AddNoteCreatedXTags>,
+        ) -> Self {
+            #![allow(
+                deprecated,
+                reason = "a deprecated header is still a field of the response"
+            )]
+            Self::Created {
+                body,
+                x_count,
+                x_tags,
+            }
+        }
+    }
     /// The body and headers of the success by name: what `Response::into_result` gives.
     #[derive(Debug, Clone, PartialEq)]
     pub struct Success {
@@ -221,6 +261,13 @@ pub mod find_box {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
+    impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: types::Box2) -> Self {
+            Self::Ok(body)
+        }
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<types::Box2, Box<Self>> {

@@ -21,6 +21,13 @@ pub mod list_products {
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: types::ProductPage) -> Self {
+            Self::Ok(body)
+        }
+    }
+    impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<types::ProductPage, Box<Self>> {
             match self {
@@ -51,6 +58,13 @@ pub mod tag_tree {
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: types::StringTree) -> Self {
+            Self::Ok(body)
+        }
+    }
+    impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<types::StringTree, Box<Self>> {
             match self {
@@ -80,6 +94,13 @@ pub mod any_page {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
+    impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: types::Page) -> Self {
+            Self::Ok(body)
+        }
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<types::Page, Box<Self>> {

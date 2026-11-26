@@ -154,6 +154,21 @@ pub mod get_item {
         }
     );
     impl Response {
+        /// Returns `Success` from each of its values.
+        #[must_use]
+        pub const fn success(status: SuccessStatus, body: String) -> Self {
+            Self::Success { status, body }
+        }
+        /// Returns `Default` from each of its values.
+        #[must_use]
+        pub const fn default(
+            status: DefaultStatus,
+            body: std::collections::BTreeMap<String, serde_json::Value>,
+        ) -> Self {
+            Self::Default { status, body }
+        }
+    }
+    impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<String, Box<Self>> {
             match self {
@@ -412,6 +427,13 @@ pub mod cookies {
     ::honig::response_error!(
         Response { Self::NoContent { .. } => "status 204 (NoContent)", }
     );
+    impl Response {
+        /// Returns `NoContent` from each of its values.
+        #[must_use]
+        pub const fn no_content(set_cookie: Option<Vec<String>>) -> Self {
+            Self::NoContent { set_cookie }
+        }
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<Option<Vec<String>>, Box<Self>> {

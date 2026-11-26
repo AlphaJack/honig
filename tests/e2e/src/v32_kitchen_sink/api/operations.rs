@@ -192,6 +192,17 @@ pub mod put_blob {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok { .. } => "status 200 (Ok)", });
+    impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(
+            body: ::honig::Blob,
+            x_size: Option<i64>,
+            x_quota: types::PutBlobOkXQuota,
+        ) -> Self {
+            Self::Ok { body, x_size, x_quota }
+        }
+    }
     /// The body and headers of the success by name: what `Response::into_result` gives.
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Success {
@@ -358,6 +369,27 @@ pub mod list_products {
             Self::Default { status,.. } => format_args!("status {} (Default)", status.as_u16()),
         }
     );
+    impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(
+            body: OkBody,
+            x_next: Option<String>,
+            x_total: Option<i64>,
+        ) -> Self {
+            Self::Ok { body, x_next, x_total }
+        }
+        /// Returns `Success` from each of its values.
+        #[must_use]
+        pub const fn success(status: SuccessStatus) -> Self {
+            Self::Success { status }
+        }
+        /// Returns `Default` from each of its values.
+        #[must_use]
+        pub const fn default(status: DefaultStatus, body: types::Error) -> Self {
+            Self::Default { status, body }
+        }
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<Self, Box<Self>> {
@@ -561,6 +593,13 @@ pub mod search_products {
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: Vec<types::Product>) -> Self {
+            Self::Ok(body)
+        }
+    }
+    impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<Vec<types::Product>, Box<Self>> {
             match self {
@@ -692,6 +731,13 @@ pub mod get_product {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
+    impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: types::Product) -> Self {
+            Self::Ok(body)
+        }
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<types::Product, Box<Self>> {
@@ -1115,6 +1161,13 @@ pub mod search {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
+    impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: ::honig::Items<types::SearchOkItem>) -> Self {
+            Self::Ok(body)
+        }
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(

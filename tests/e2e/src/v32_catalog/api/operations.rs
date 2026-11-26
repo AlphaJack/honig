@@ -75,6 +75,18 @@ pub mod list_products {
             Self::Default { status,.. } => format_args!("status {} (Default)", status.as_u16()),
         }
     );
+    impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: Vec<types::Product>, x_next: Option<String>) -> Self {
+            Self::Ok { body, x_next }
+        }
+        /// Returns `Default` from each of its values.
+        #[must_use]
+        pub const fn default(status: DefaultStatus, body: types::Error) -> Self {
+            Self::Default { status, body }
+        }
+    }
     /// The body and headers of the success by name: what `Response::into_result` gives.
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Success {
@@ -164,6 +176,18 @@ pub mod create_product {
         }
     );
     impl Response {
+        /// Returns `Created` from each of its values.
+        #[must_use]
+        pub const fn created(body: types::Product) -> Self {
+            Self::Created(body)
+        }
+        /// Returns `Default` from each of its values.
+        #[must_use]
+        pub const fn default(status: DefaultStatus, body: types::Error) -> Self {
+            Self::Default { status, body }
+        }
+    }
+    impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<types::Product, Box<Self>> {
             match self {
@@ -224,6 +248,18 @@ pub mod get_product {
             Self::NotFound(..) => "status 404 (NotFound)",
         }
     );
+    impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: types::Product) -> Self {
+            Self::Ok(body)
+        }
+        /// Returns `NotFound` from each of its values.
+        #[must_use]
+        pub const fn not_found(body: types::Error) -> Self {
+            Self::NotFound(body)
+        }
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<types::Product, Box<Self>> {

@@ -58,6 +58,13 @@ pub mod add_book {
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Created(..) => "status 201 (Created)", });
     impl Response {
+        /// Returns `Created` from each of its values.
+        #[must_use]
+        pub const fn created(body: types::Book) -> Self {
+            Self::Created(body)
+        }
+    }
+    impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<types::Book, Box<Self>> {
             match self {
