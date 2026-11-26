@@ -60,7 +60,7 @@ pub struct RequestEventFields<Id = ()> {
 pub struct EventKey(&'static str);
 
 /// The names of the fields that every event has.
-const BUILT_IN: [&str; 11] = [
+const BUILT_IN: [&str; 12] = [
     "operation",
     "method",
     "route",
@@ -72,6 +72,7 @@ const BUILT_IN: [&str; 11] = [
     "scopes",
     "error",
     "violations",
+    "panic",
 ];
 
 impl EventKey {
@@ -133,6 +134,11 @@ impl<Id: Clone> RequestEvent<Id> {
             f.violations = reason.violations().len();
             f.error = Some(reason.clone());
         });
+    }
+
+    /// Records the message of a panic of the operation, under `panic`.
+    pub(crate) fn panicked(&self, message: String) {
+        self.with(|f| f.extra.insert("panic".to_owned(), Value::String(message)));
     }
 
     /// Records the granted schemes and required scopes.
