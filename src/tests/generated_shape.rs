@@ -2803,7 +2803,7 @@ fn a_tag_pinned_deep_in_all_of_is_seen_up_to_the_depth_limit() {
 
 /// A union's variants take their names from their branches: a `$dynamicRef` from its target, a lone array branch is
 /// `Array` and several are named by their items, a short `enum` by its values, and branches that share a prefix by the
-/// rest. A branch that any value passes is the `Other` that the union has already.
+/// rest. A hint that another variant has already leaves the branch numbered. A branch that any value passes is the `Other` that the union has already.
 #[test]
 fn union_variants_take_the_names_of_their_branches() {
     let product = |p: &str| json!({"type": "object", "required": [p], "properties": {p: {"type": "string"}}});
@@ -2821,6 +2821,8 @@ fn union_variants_take_the_names_of_their_branches() {
             "Size": {"oneOf": [{"type": "string", "enum": ["s", "m", "l"]}, {"type": "integer"}]},
             "Grade": {"oneOf": [{"type": "string", "enum": ["a", "b", "c", "d"]}, {"type": "integer"}]},
             "Item": {"oneOf": [{"$ref": "#/components/schemas/ProductBook"}, {"$ref": "#/components/schemas/ProductGadget"}]},
+            "Pair": {"oneOf": [{"$ref": "#/components/schemas/ProductBook"},
+                {"type": "object", "required": ["product_book"], "properties": {"product_book": {"type": "integer"}}}]},
             "Note": {"oneOf": [{"type": "string"}, {"$comment": "any value"}]},
         }}),
     );
@@ -2835,6 +2837,7 @@ fn union_variants_take_the_names_of_their_branches() {
     assert!(types.contains("pub enum Size {\n    SOrMOrL(SizeSOrMOrL),"), "{types}");
     assert!(types.contains("pub enum Grade {\n    Variant2(GradeVariant2),"), "more than three values: {types}");
     assert!(types.contains("pub enum Item {\n    Book(ProductBook),\n    Gadget(ProductGadget),"), "{types}");
+    assert!(types.contains("pub enum Pair {\n    ProductBook(ProductBook),\n    Variant2(PairVariant2),"), "{types}");
     assert!(
         types.contains("pub enum NoteVariants {\n    String(String),\n    Other(serde_json::Value),\n}"),
         "{types}"
@@ -2883,4 +2886,23 @@ fn a_read_only_default_is_not_filled_in() {
         common::file(&common::generate("read-only-default", &doc, &crate::emit::Options::default()), "types.rs")
             .to_owned();
     assert!(types.contains("        #[optional]\n        pub count: i64,"), "{types}");
+}
+
+/// Beside an `allOf` of several members, `patternProperties` and `unevaluatedProperties` judge the names that no member
+/// declares: the merged struct keeps them for the run-time check.
+#[test]
+fn an_all_of_keeps_undeclared_names_for_the_keywords_beside_it() {
+    let types = |beside: (&str, serde_json::Value)| {
+        let member = |p: &str| json!({"type": "object", "required": [p], "properties": {p: {"type": "string"}}});
+        let mut order = json!({"allOf": [member("sku"), member("name")]});
+        order[beside.0] = beside.1;
+        let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Order": order}}));
+        common::file(&common::generate("all-of-beside", &doc, &crate::emit::Options::default()), "types.rs").to_owned()
+    };
+    let kept = "        pub name: String,\n        #[serde(flatten)]\n        pub additional_properties: \
+                std::collections::BTreeMap<String, serde_json::Value>,";
+    let patterned = types(("patternProperties", json!({"^x": {"type": "integer"}})));
+    assert!(patterned.contains(kept), "{patterned}");
+    let sealed = types(("unevaluatedProperties", json!(false)));
+    assert!(sealed.contains(kept), "{sealed}");
 }
