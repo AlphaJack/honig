@@ -1650,3 +1650,27 @@ fn an_empty_enum_fails() {
     let Err(d) = crate::generate::generate(&path, &Options::default()) else { panic!("an empty enum generates") };
     assert!(d.0.iter().any(|d| d.pointer == "/components/schemas/Grade/enum"), "{:?}", d.0);
 }
+
+/// A schema that accepts no value fails generation only where a value must meet it. Under `not` it turns into "any
+/// value", as the schema of an optional property it forbids the property, and as one branch of a union it is a branch
+/// that never matches: each generates.
+#[test]
+fn a_schema_that_accepts_no_value_fails_only_where_it_must_be_met() {
+    let made = |schema: Value| {
+        let path = common::write("must-meet", &doc(&json!({}), &json!({"schemas": {"Item": schema}})), &[]);
+        crate::generate::generate(&path, &Options::default())
+    };
+    let never = json!({"type": "string", "minLength": 5, "maxLength": 2});
+    let empty = json!({"enum": []});
+    for free in [
+        json!({"not": never}),
+        json!({"not": empty}),
+        json!({"type": "object", "properties": {"sku": empty}}),
+        json!({"anyOf": [empty, {"type": "integer"}]}),
+    ] {
+        made(free.clone()).unwrap_or_else(|d| panic!("{free}: {:?}", d.0));
+    }
+    for must in [never, json!({"type": "object", "required": ["sku"], "properties": {"sku": empty}})] {
+        assert!(made(must.clone()).is_err(), "{must} generates");
+    }
+}

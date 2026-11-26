@@ -5,9 +5,71 @@ use serde_json::{Number, Value};
 
 use crate::walk::Obj;
 
-/// Returns (pointer, message) for each schema of `root` that no value of its type meets.
+/// Returns (pointer, message) for each schema of `root` that no value of its type meets, where a value must meet it.
 pub(crate) fn found(root: &Value) -> Vec<(String, String)> {
-    crate::walk::findings(root, rule)
+    crate::walk::findings(root, rule).into_iter().filter(|(ptr, _)| must_meet(root, ptr)).collect()
+}
+
+/// Does a value that the document lets through have to meet the schema at `ptr`? Not under `not`, `if`, `then` or
+/// `else`, whose keyword turns what it accepts around, nor in a branch of a union with others, an optional property, or
+/// the schema of items, of other names or of names: that place may stay empty. `{not: {enum: []}}` accepts every value,
+/// and `properties: {x: {enum: []}}` only forbids `x`.
+fn must_meet(root: &Value, ptr: &str) -> bool {
+    let mut cur = root;
+    let mut tokens = ptr.split('/').skip(1).map(crate::json::unescape_token);
+    while let Some(t) = tokens.next() {
+        let Some(next) = child(cur, &t) else { return true };
+        match t.as_str() {
+            "not"
+            | "if"
+            | "then"
+            | "else"
+            | "items"
+            | "prefixItems"
+            | "additionalProperties"
+            | "patternProperties"
+            | "propertyNames"
+            | "dependentSchemas"
+            | "unevaluatedItems"
+            | "unevaluatedProperties"
+            | "contentSchema" => {
+                return false;
+            }
+            "anyOf" | "oneOf" if next.as_array().is_some_and(|a| a.len() > 1) => return false,
+            "properties" => {
+                let Some(name) = tokens.next() else { return true };
+                let required = cur.get("required").and_then(Value::as_array);
+                if !required.is_some_and(|r| r.iter().any(|x| x.as_str() == Some(name.as_str()))) {
+                    return false;
+                }
+                let Some(property) = next.get(&name) else { return true };
+                cur = property;
+                continue;
+            }
+            // A map of names: the next token is a name, not a keyword.
+            "schemas" | "$defs" | "definitions" | "headers" | "content" | "responses" | "callbacks" | "pathItems"
+            | "links" | "encoding" | "requestBodies" | "parameters"
+                if next.is_object() =>
+            {
+                let Some(name) = tokens.next() else { return true };
+                let Some(named) = next.get(&name) else { return true };
+                cur = named;
+                continue;
+            }
+            _ => {}
+        }
+        cur = next;
+    }
+    true
+}
+
+/// Returns the member `token` of an object, or the item at that index of an array.
+fn child<'v>(v: &'v Value, token: &str) -> Option<&'v Value> {
+    match v {
+        Value::Object(o) => o.get(token),
+        Value::Array(a) => token.parse::<usize>().ok().and_then(|i| a.get(i)),
+        Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => None,
+    }
 }
 
 /// Does the schema accept only values of `kinds`? It has a `type` and every type listed is one of them.
