@@ -125,7 +125,7 @@ pub(crate) fn oauth_methods(api: &Api) -> (Vec<TokenStream>, Vec<TokenStream>) {
             let (f, url) = (format_ident!("authorize_password_{snake}"), lit(url));
             out.push(quote! {
                 #dep
-                pub async fn #f(&mut self, username: &str, password: &str, client_id: &str, client_secret: Option<&str>, #sp) -> Result<::honig::Token, ::honig::ClientError> {
+                pub async fn #f(&mut self, client_id: &str, client_secret: Option<&str>, username: &str, password: &str, #sp) -> Result<::honig::Token, ::honig::ClientError> {
                     let token = ::honig::__private::password_grant(&self.transport, #url, username, password, client_id, client_secret, #sa).await?;
                     #store
                     Ok(token)
@@ -144,7 +144,7 @@ pub(crate) fn oauth_methods(api: &Api) -> (Vec<TokenStream>, Vec<TokenStream>) {
             });
             out.push(quote! {
                 #dep
-                pub async fn #x(&mut self, code: &str, redirect_uri: &str, client_id: &str, client_secret: Option<&str>, pkce: &::honig::Pkce) -> Result<::honig::Token, ::honig::ClientError> {
+                pub async fn #x(&mut self, client_id: &str, client_secret: Option<&str>, code: &str, redirect_uri: &str, pkce: &::honig::Pkce) -> Result<::honig::Token, ::honig::ClientError> {
                     let token = ::honig::__private::exchange_code(&self.transport, #token_url, code, redirect_uri, client_id, client_secret, pkce).await?;
                     #store
                     Ok(token)
@@ -169,7 +169,7 @@ pub(crate) fn oauth_methods(api: &Api) -> (Vec<TokenStream>, Vec<TokenStream>) {
             let (f, url) = (format_ident!("refresh_{snake}"), lit(url));
             out.push(quote! {
                 #dep
-                pub async fn #f(&mut self, refresh_token: &str, client_id: &str, client_secret: Option<&str>) -> Result<::honig::Token, ::honig::ClientError> {
+                pub async fn #f(&mut self, client_id: &str, client_secret: Option<&str>, refresh_token: &str) -> Result<::honig::Token, ::honig::ClientError> {
                     let token = ::honig::__private::refresh_token(&self.transport, #url, refresh_token, client_id, client_secret).await?;
                     #store
                     Ok(token)

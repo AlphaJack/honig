@@ -46,13 +46,13 @@ Other flows get helpers by what the scheme declares:
 
 | Flow | Methods |
 |---|---|
-| Authorization code (PKCE) | `Client::authorization_url_<s>(..., &pkce)` and then `exchange_code_<s>(code, ..., &pkce)` |
-| Password | `authorize_password_<s>(user, password, client_id, secret, scopes)` |
-| Implicit | `Client::implicit_url_<s>(...)` |
-| Refresh | `refresh_<s>(refresh_token, client_id, secret)` |
+| Authorization code (PKCE) | `Client::authorization_url_<s>(client_id, ..., &pkce)` and then `exchange_code_<s>(client_id, secret, code, redirect_uri, &pkce)` |
+| Password | `authorize_password_<s>(client_id, secret, user, password, scopes)` |
+| Implicit | `Client::implicit_url_<s>(client_id, ...)` |
+| Refresh | `refresh_<s>(client_id, secret, refresh_token)` |
 | OpenID Connect and RFC 8414 | `discover_<s>()` returns the token, authorization and device endpoints |
 
-A helper of a scheme with scopes takes them as its scope enum, such as `&[api::operations::PatScope::Read]`: a scope that the description does not list does not compile.
+Every helper takes the client id first and its secret second, so the two stay at one place whatever the flow. A helper of a scheme with scopes takes them as its scope enum, such as `&[api::operations::PatScope::Read]`: a scope that the description does not list does not compile.
 
 ## Streams
 

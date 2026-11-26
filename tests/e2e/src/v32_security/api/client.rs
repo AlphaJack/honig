@@ -85,9 +85,9 @@ impl<T: ::honig::Transport> Client<T> {
     }
     pub async fn refresh_oauth(
         &mut self,
-        refresh_token: &str,
         client_id: &str,
         client_secret: Option<&str>,
+        refresh_token: &str,
     ) -> Result<::honig::Token, ::honig::ClientError> {
         let token = ::honig::__private::refresh_token(
                 &self.transport,
