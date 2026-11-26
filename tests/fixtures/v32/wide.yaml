@@ -1,0 +1,150 @@
+openapi: 3.2.0
+info: {title: Wide, version: "1"}
+paths:
+  /subscriptions/{id}:
+    get:
+      operationId: getSubscription
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200":
+          description: The subscription.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Subscription"}
+components:
+  schemas:
+    # More properties than `object!` expands under the default `recursion_limit` of 128: one level per field.
+    Subscription:
+      type: object
+      properties:
+        feature_001: {type: string}
+        feature_002: {type: string}
+        feature_003: {type: string}
+        feature_004: {type: string}
+        feature_005: {type: string}
+        feature_006: {type: string}
+        feature_007: {type: string}
+        feature_008: {type: string}
+        feature_009: {type: string}
+        feature_010: {type: string}
+        feature_011: {type: string}
+        feature_012: {type: string}
+        feature_013: {type: string}
+        feature_014: {type: string}
+        feature_015: {type: string}
+        feature_016: {type: string}
+        feature_017: {type: string}
+        feature_018: {type: string}
+        feature_019: {type: string}
+        feature_020: {type: string}
+        feature_021: {type: string}
+        feature_022: {type: string}
+        feature_023: {type: string}
+        feature_024: {type: string}
+        feature_025: {type: string}
+        feature_026: {type: string}
+        feature_027: {type: string}
+        feature_028: {type: string}
+        feature_029: {type: string}
+        feature_030: {type: string}
+        feature_031: {type: string}
+        feature_032: {type: string}
+        feature_033: {type: string}
+        feature_034: {type: string}
+        feature_035: {type: string}
+        feature_036: {type: string}
+        feature_037: {type: string}
+        feature_038: {type: string}
+        feature_039: {type: string}
+        feature_040: {type: string}
+        feature_041: {type: string}
+        feature_042: {type: string}
+        feature_043: {type: string}
+        feature_044: {type: string}
+        feature_045: {type: string}
+        feature_046: {type: string}
+        feature_047: {type: string}
+        feature_048: {type: string}
+        feature_049: {type: string}
+        feature_050: {type: string}
+        feature_051: {type: string}
+        feature_052: {type: string}
+        feature_053: {type: string}
+        feature_054: {type: string}
+        feature_055: {type: string}
+        feature_056: {type: string}
+        feature_057: {type: string}
+        feature_058: {type: string}
+        feature_059: {type: string}
+        feature_060: {type: string}
+        feature_061: {type: string}
+        feature_062: {type: string}
+        feature_063: {type: string}
+        feature_064: {type: string}
+        feature_065: {type: string}
+        feature_066: {type: string}
+        feature_067: {type: string}
+        feature_068: {type: string}
+        feature_069: {type: string}
+        feature_070: {type: string}
+        feature_071: {type: string}
+        feature_072: {type: string}
+        feature_073: {type: string}
+        feature_074: {type: string}
+        feature_075: {type: string}
+        feature_076: {type: string}
+        feature_077: {type: string}
+        feature_078: {type: string}
+        feature_079: {type: string}
+        feature_080: {type: string}
+        feature_081: {type: string}
+        feature_082: {type: string}
+        feature_083: {type: string}
+        feature_084: {type: string}
+        feature_085: {type: string}
+        feature_086: {type: string}
+        feature_087: {type: string}
+        feature_088: {type: string}
+        feature_089: {type: string}
+        feature_090: {type: string}
+        feature_091: {type: string}
+        feature_092: {type: string}
+        feature_093: {type: string}
+        feature_094: {type: string}
+        feature_095: {type: string}
+        feature_096: {type: string}
+        feature_097: {type: string}
+        feature_098: {type: string}
+        feature_099: {type: string}
+        feature_100: {type: string}
+        feature_101: {type: string}
+        feature_102: {type: string}
+        feature_103: {type: string}
+        feature_104: {type: string}
+        feature_105: {type: string}
+        feature_106: {type: string}
+        feature_107: {type: string}
+        feature_108: {type: string}
+        feature_109: {type: string}
+        feature_110: {type: string}
+        feature_111: {type: string}
+        feature_112: {type: string}
+        feature_113: {type: string}
+        feature_114: {type: string}
+        feature_115: {type: string}
+        feature_116: {type: string}
+        feature_117: {type: string}
+        feature_118: {type: string}
+        feature_119: {type: string}
+        feature_120: {type: string}
+        feature_121: {type: string}
+        feature_122: {type: string}
+        feature_123: {type: string}
+        feature_124: {type: string}
+        feature_125: {type: string}
+        feature_126: {type: string}
+        feature_127: {type: string}
+        feature_128: {type: string}
+        feature_129: {type: string}
+        feature_130: {type: string}

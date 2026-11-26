@@ -184,6 +184,14 @@ A checked type behaves as its value: a string one derefs to `str` and compares w
 
 Integer keywords are exact. A fractional bound rounds inward, `multipleOf: 2.5` accepts the integers that are multiples of 5, and a bound that no value of the type meets refuses every value: `maximum: -1` on a `uint8` leaves none.
 
+## Wide structs
+
+`object!` writes a struct one field at a time, one level of macro expansion each. Under the default
+`recursion_limit` of 128 that is about 124 fields. A wider struct, such as a `Subscription` with 130 properties,
+fails with `recursion limit reached while expanding $crate::object!`. Raise the limit above the field count of the
+widest struct on the first line of the crate root (`src/lib.rs` or `src/main.rs`), never in the generated module:
+`#![recursion_limit = "256"]` holds about 250 fields, `"512"` about 500.
+
 ## Whole schemas
 
 Some keywords say what no Rust type can: `not`, `contains`, `dependentRequired`, `if`/`then` beyond the constants of one property, the one branch that a `oneOf` accepts when a discriminator picks branches it does not pin, tuples and `$dynamicRef`. A struct or union whose own schema has them is a checked type of its shape: `Product` wraps a `ProductFields`, `Vehicle` wraps a `VehicleVariants`. It derefs to its shape. `try_from` and decoding check the whole schema. Its builder fills the fields and checks the whole value in `build`:

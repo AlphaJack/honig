@@ -67,6 +67,8 @@ pub fn e2e_files(e2e: &Path, root: &Path) -> Result<Vec<(PathBuf, String)>, Erro
     for lint in LINTS {
         lib.push_str(&format!("#![warn({lint})]\n"));
     }
+    // `object!` expands one level per field: `v32/wide.yaml` has a struct of 130 (types.md, "Wide structs").
+    lib.push_str("#![recursion_limit = \"256\"]\n");
     let mut features = vec![];
     for (module, spec) in fixtures(root)? {
         let sidecar = sidecar(&spec)?;
