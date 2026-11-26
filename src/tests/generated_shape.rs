@@ -2907,3 +2907,18 @@ fn an_all_of_keeps_undeclared_names_for_the_keywords_beside_it() {
     let sealed = types(("unevaluatedProperties", json!(false)));
     assert!(sealed.contains(kept), "{sealed}");
 }
+
+/// A description of types alone gives a client and a server that import no operations: there are none to refer to.
+#[test]
+fn a_description_without_operations_imports_none() {
+    let doc = common::spec(
+        "3.2.0",
+        &json!({}),
+        &json!({"schemas": {"Product": {"type": "object", "properties": {"sku": {"type": "string"}}}}}),
+    );
+    let files = common::generate("no-operations", &doc, &crate::emit::Options::default());
+    for file in ["client.rs", "server.rs"] {
+        let text = common::file(&files, file);
+        assert!(!text.contains("use super::operations as ops;"), "{file}: {text}");
+    }
+}
