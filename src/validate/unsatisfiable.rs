@@ -124,6 +124,15 @@ fn whole(s: &Obj, key: &str, exclusive: bool, up: bool) -> Option<i128> {
 
 /// Pushes what is wrong with the bounds of `s`.
 fn rule(s: &Obj, ptr: &str, out: &mut Vec<(String, String)>) {
+    let members = |k: &str| s.get(k).and_then(Value::as_array);
+    if members("allOf").is_some_and(|m| m.contains(&Value::Bool(false))) {
+        out.push((crate::json::join(ptr, "allOf"), "`allOf` has a member `false`: no value meets it".to_owned()));
+    }
+    for key in ["anyOf", "oneOf"] {
+        if members(key).is_some_and(|m| !m.is_empty() && m.iter().all(|b| *b == Value::Bool(false))) {
+            out.push((crate::json::join(ptr, key), format!("every branch of `{key}` is `false`: no value meets it")));
+        }
+    }
     if s.get("enum").and_then(Value::as_array).is_some_and(Vec::is_empty) {
         out.push((crate::json::join(ptr, "enum"), "`enum: []` lists no value: no value meets it".to_owned()));
     }

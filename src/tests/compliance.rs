@@ -1674,3 +1674,23 @@ fn a_schema_that_accepts_no_value_fails_only_where_it_must_be_met() {
         assert!(made(must.clone()).is_err(), "{must} generates");
     }
 }
+
+/// `false` accepts no value: an `allOf` with it, or a union of nothing else, accepts none either and fails generation.
+/// As the schema of a property `false` only forbids it, and under `not` it accepts every value.
+#[test]
+fn a_schema_that_false_empties_fails() {
+    let made = |schema: Value| {
+        let path = common::write("false-members", &doc(&json!({}), &json!({"schemas": {"Item": schema}})), &[]);
+        crate::generate::generate(&path, &Options::default())
+    };
+    for never in [json!({"allOf": [false]}), json!({"anyOf": [false]}), json!({"oneOf": [false]})] {
+        assert!(made(never.clone()).is_err(), "{never} generates");
+    }
+    for free in [
+        json!({"type": "object", "properties": {"sku": false}}),
+        json!({"not": {"allOf": [false]}}),
+        json!({"anyOf": [false, {"type": "integer"}]}),
+    ] {
+        made(free.clone()).unwrap_or_else(|d| panic!("{free}: {:?}", d.0));
+    }
+}

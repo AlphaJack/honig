@@ -1,3 +1,5 @@
+allOf: allOf with boolean schemas, all false: any value is invalid	does not generate: `allOf` has a member `false`: no value meets it
+allOf: allOf with boolean schemas, some false: any value is invalid	does not generate: `allOf` has a member `false`: no value meets it
 default: invalid string value for default: still valid when the invalid default is used	does not generate: the default `"bad"` is shorter than `minLength`
 default: invalid string value for default: valid when property is specified	does not generate: the default `"bad"` is shorter than `minLength`
 default: invalid type for default: still valid when the invalid default is used	does not generate: `[]` is not of type `integer`: quote it or fix the type
