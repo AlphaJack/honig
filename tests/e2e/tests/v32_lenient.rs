@@ -56,3 +56,16 @@ fn a_request_refuses_an_added_member_of_a_tagged_union() {
         serde_json::from_str(r#"{"id":"o1","status":"open","delivery":{"kind":"drone","pad":"roof"}}"#);
     assert!(sent.is_err(), "{sent:?}");
 }
+
+/// A string enum turns into its text with `.into()` and lends it with `as_ref()`, as a checked string does. A value of
+/// an open enum that the description does not list keeps its own text.
+#[test]
+fn a_string_enum_converts_into_its_text() {
+    let take = |s: String| s;
+    let lend = |s: &dyn AsRef<str>| s.as_ref().to_owned();
+    assert_eq!(take(types::StatusRequest::Open.into()), "open");
+    assert_eq!(lend(&types::StatusRequest::Closed), "closed");
+    assert_eq!(take(types::Status::from("archived").into()), "archived");
+    assert_eq!(lend(&types::Status::from("archived")), "archived");
+    assert_eq!(take(::honig::DateTimeStr::try_from("2024-06-19T08:30:06Z").unwrap().into()), "2024-06-19T08:30:06Z");
+}

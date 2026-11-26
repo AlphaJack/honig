@@ -52,6 +52,16 @@ impl std::fmt::Display for Status {
         f.write_str(self.as_str())
     }
 }
+impl AsRef<str> for Status {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+impl From<Status> for String {
+    fn from(value: Status) -> Self {
+        if let Status::Other(other) = value { other } else { value.as_str().to_owned() }
+    }
+}
 impl serde::Serialize for Status {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         s.serialize_str(self.as_str())

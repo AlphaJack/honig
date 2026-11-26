@@ -83,6 +83,16 @@ pub(super) fn open_str_enum(items: &mut Vec<TokenStream>, def: &TypeDef, values:
                 f.write_str(self.as_str())
             }
         }
+        impl AsRef<str> for #n {
+            fn as_ref(&self) -> &str {
+                self.as_str()
+            }
+        }
+        impl From<#n> for String {
+            fn from(value: #n) -> Self {
+                if let #n::Other(other) = value { other } else { value.as_str().to_owned() }
+            }
+        }
         impl serde::Serialize for #n {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
                 s.serialize_str(self.as_str())
