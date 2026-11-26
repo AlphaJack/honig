@@ -176,6 +176,13 @@ pub mod me {
         /// The alternative of `Bearer`, with what each `verify_` method found.
         Bearer(A::Bearer),
     }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Bearer(v0) => Self::Bearer(v0.clone()),
+            }
+        }
+    }
 }
 pub mod optional {
     pub const METHOD: &str = "GET";
@@ -211,6 +218,14 @@ pub mod optional {
         Anonymous,
         /// The alternative of `Bearer`, with what each `verify_` method found.
         Bearer(A::Bearer),
+    }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Anonymous => Self::Anonymous,
+                Self::Bearer(v0) => Self::Bearer(v0.clone()),
+            }
+        }
     }
 }
 pub mod read {
@@ -248,6 +263,14 @@ pub mod read {
         /// The alternative of `Key`, with what each `verify_` method found.
         Key(A::Key),
     }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Oauth(v0) => Self::Oauth(v0.clone()),
+                Self::Key(v0) => Self::Key(v0.clone()),
+            }
+        }
+    }
 }
 pub mod write {
     pub const METHOD: &str = "POST";
@@ -282,6 +305,13 @@ pub mod write {
         /// The alternative of `Oauth`, with what each `verify_` method found.
         Oauth(A::Oauth),
     }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Oauth(v0) => Self::Oauth(v0.clone()),
+            }
+        }
+    }
 }
 pub mod both {
     pub const METHOD: &str = "GET";
@@ -315,6 +345,15 @@ pub mod both {
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `Key` and `Session`, with what each `verify_` method found.
         KeyAndSession(A::Key, A::Session),
+    }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::KeyAndSession(v0, v1) => {
+                    Self::KeyAndSession(v0.clone(), v1.clone())
+                }
+            }
+        }
     }
 }
 pub mod login {
@@ -352,6 +391,14 @@ pub mod login {
         /// The alternative of `QueryKey`, with what each `verify_` method found.
         QueryKey(A::QueryKey),
     }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Login(v0) => Self::Login(v0.clone()),
+                Self::QueryKey(v0) => Self::QueryKey(v0.clone()),
+            }
+        }
+    }
 }
 pub mod cert {
     pub const METHOD: &str = "GET";
@@ -386,6 +433,13 @@ pub mod cert {
         /// The alternative of `Cert`, with what each `verify_` method found.
         Cert(A::Cert),
     }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Cert(v0) => Self::Cert(v0.clone()),
+            }
+        }
+    }
 }
 pub mod oidc {
     pub const METHOD: &str = "GET";
@@ -419,5 +473,12 @@ pub mod oidc {
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `Oidc`, with what each `verify_` method found.
         Oidc(A::Oidc),
+    }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Oidc(v0) => Self::Oidc(v0.clone()),
+            }
+        }
     }
 }

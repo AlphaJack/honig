@@ -91,6 +91,13 @@ pub mod list_products {
         /// The alternative of `ApiKey`, with what each `verify_` method found.
         ApiKey(A::ApiKey),
     }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::ApiKey(v0) => Self::ApiKey(v0.clone()),
+            }
+        }
+    }
 }
 pub mod create_product {
     use super::super::types;
@@ -166,6 +173,13 @@ pub mod create_product {
         /// The alternative of `ApiKey`, with what each `verify_` method found.
         ApiKey(A::ApiKey),
     }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::ApiKey(v0) => Self::ApiKey(v0.clone()),
+            }
+        }
+    }
 }
 pub mod get_product {
     use super::super::types;
@@ -219,5 +233,12 @@ pub mod get_product {
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `ApiKey`, with what each `verify_` method found.
         ApiKey(A::ApiKey),
+    }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::ApiKey(v0) => Self::ApiKey(v0.clone()),
+            }
+        }
     }
 }

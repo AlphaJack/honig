@@ -78,6 +78,13 @@ pub mod inherits {
         /// The alternative of `Bearer`, with what each `verify_` method found.
         Bearer(A::Bearer),
     }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Bearer(v0) => Self::Bearer(v0.clone()),
+            }
+        }
+    }
 }
 pub mod get_item {
     pub const METHOD: &str = "GET";
@@ -160,6 +167,13 @@ pub mod get_item {
         /// The alternative of `Bearer`, with what each `verify_` method found.
         Bearer(A::Bearer),
     }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Bearer(v0) => Self::Bearer(v0.clone()),
+            }
+        }
+    }
 }
 pub mod post_closed {
     use super::super::types;
@@ -207,6 +221,13 @@ pub mod post_closed {
         /// The alternative of `Bearer`, with what each `verify_` method found.
         Bearer(A::Bearer),
     }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Bearer(v0) => Self::Bearer(v0.clone()),
+            }
+        }
+    }
 }
 pub mod optional_body {
     pub const METHOD: &str = "POST";
@@ -252,6 +273,13 @@ pub mod optional_body {
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `Bearer`, with what each `verify_` method found.
         Bearer(A::Bearer),
+    }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Bearer(v0) => Self::Bearer(v0.clone()),
+            }
+        }
     }
 }
 pub mod post_product {
@@ -300,6 +328,13 @@ pub mod post_product {
         /// The alternative of `Bearer`, with what each `verify_` method found.
         Bearer(A::Bearer),
     }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Bearer(v0) => Self::Bearer(v0.clone()),
+            }
+        }
+    }
 }
 pub mod upload {
     use super::super::types;
@@ -347,6 +382,13 @@ pub mod upload {
         /// The alternative of `Bearer`, with what each `verify_` method found.
         Bearer(A::Bearer),
     }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Bearer(v0) => Self::Bearer(v0.clone()),
+            }
+        }
+    }
 }
 pub mod cookies {
     pub const METHOD: &str = "GET";
@@ -382,6 +424,13 @@ pub mod cookies {
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `CookieKey`, with what each `verify_` method found.
         CookieKey(A::CookieKey),
+    }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::CookieKey(v0) => Self::CookieKey(v0.clone()),
+            }
+        }
     }
 }
 pub mod filter {
@@ -432,5 +481,12 @@ pub mod filter {
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `Bearer`, with what each `verify_` method found.
         Bearer(A::Bearer),
+    }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Bearer(v0) => Self::Bearer(v0.clone()),
+            }
+        }
     }
 }

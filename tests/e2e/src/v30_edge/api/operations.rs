@@ -106,6 +106,16 @@ pub mod list_orders {
         /// The alternative of `ApiKey` and `Tenant`, with what each `verify_` method found.
         ApiKeyAndTenant(A::ApiKey, A::Tenant),
     }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Bearer(v0) => Self::Bearer(v0.clone()),
+                Self::ApiKeyAndTenant(v0, v1) => {
+                    Self::ApiKeyAndTenant(v0.clone(), v1.clone())
+                }
+            }
+        }
+    }
 }
 pub mod create_order {
     use super::super::types;
@@ -186,6 +196,16 @@ pub mod create_order {
         Bearer(A::Bearer),
         /// The alternative of `ApiKey` and `Tenant`, with what each `verify_` method found.
         ApiKeyAndTenant(A::ApiKey, A::Tenant),
+    }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Bearer(v0) => Self::Bearer(v0.clone()),
+                Self::ApiKeyAndTenant(v0, v1) => {
+                    Self::ApiKeyAndTenant(v0.clone(), v1.clone())
+                }
+            }
+        }
     }
 }
 pub mod get_order {
@@ -269,6 +289,16 @@ pub mod get_order {
         /// The alternative of `ApiKey` and `Tenant`, with what each `verify_` method found.
         ApiKeyAndTenant(A::ApiKey, A::Tenant),
     }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Bearer(v0) => Self::Bearer(v0.clone()),
+                Self::ApiKeyAndTenant(v0, v1) => {
+                    Self::ApiKeyAndTenant(v0.clone(), v1.clone())
+                }
+            }
+        }
+    }
     pub mod links {
         use super::super::super::types;
         /// Place the same order again.
@@ -339,6 +369,16 @@ pub mod upload_document {
         Bearer(A::Bearer),
         /// The alternative of `ApiKey` and `Tenant`, with what each `verify_` method found.
         ApiKeyAndTenant(A::ApiKey, A::Tenant),
+    }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Bearer(v0) => Self::Bearer(v0.clone()),
+                Self::ApiKeyAndTenant(v0, v1) => {
+                    Self::ApiKeyAndTenant(v0.clone(), v1.clone())
+                }
+            }
+        }
     }
 }
 pub mod cookie_form_fa {

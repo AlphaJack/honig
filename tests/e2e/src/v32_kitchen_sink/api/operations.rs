@@ -101,6 +101,17 @@ pub mod submit_form {
         /// The alternative of `Oauth` and `ApiKey`, with what each `verify_` method found.
         OauthAndApiKey(A::Oauth, A::ApiKey),
     }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Anonymous => Self::Anonymous,
+                Self::Bearer(v0) => Self::Bearer(v0.clone()),
+                Self::OauthAndApiKey(v0, v1) => {
+                    Self::OauthAndApiKey(v0.clone(), v1.clone())
+                }
+            }
+        }
+    }
 }
 pub mod put_blob {
     use super::super::types;
@@ -199,6 +210,17 @@ pub mod put_blob {
         Bearer(A::Bearer),
         /// The alternative of `Oauth` and `ApiKey`, with what each `verify_` method found.
         OauthAndApiKey(A::Oauth, A::ApiKey),
+    }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Anonymous => Self::Anonymous,
+                Self::Bearer(v0) => Self::Bearer(v0.clone()),
+                Self::OauthAndApiKey(v0, v1) => {
+                    Self::OauthAndApiKey(v0.clone(), v1.clone())
+                }
+            }
+        }
     }
 }
 /// List products
@@ -352,6 +374,17 @@ pub mod list_products {
         /// The alternative of `Oauth` and `ApiKey`, with what each `verify_` method found.
         OauthAndApiKey(A::Oauth, A::ApiKey),
     }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Anonymous => Self::Anonymous,
+                Self::Bearer(v0) => Self::Bearer(v0.clone()),
+                Self::OauthAndApiKey(v0, v1) => {
+                    Self::OauthAndApiKey(v0.clone(), v1.clone())
+                }
+            }
+        }
+    }
     pub mod links {
         /// First product
         #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -443,6 +476,13 @@ pub mod create_product {
         /// The alternative of `Oauth`, with what each `verify_` method found.
         Oauth(A::Oauth),
     }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Oauth(v0) => Self::Oauth(v0.clone()),
+            }
+        }
+    }
     pub mod callbacks {
         #[must_use]
         pub fn on_adopt_url(
@@ -530,6 +570,17 @@ pub mod search_products {
         /// The alternative of `Oauth` and `ApiKey`, with what each `verify_` method found.
         OauthAndApiKey(A::Oauth, A::ApiKey),
     }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Anonymous => Self::Anonymous,
+                Self::Bearer(v0) => Self::Bearer(v0.clone()),
+                Self::OauthAndApiKey(v0, v1) => {
+                    Self::OauthAndApiKey(v0.clone(), v1.clone())
+                }
+            }
+        }
+    }
 }
 /// Products collection
 ///
@@ -590,6 +641,17 @@ pub mod copy_products {
         /// The alternative of `Oauth` and `ApiKey`, with what each `verify_` method found.
         OauthAndApiKey(A::Oauth, A::ApiKey),
     }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Anonymous => Self::Anonymous,
+                Self::Bearer(v0) => Self::Bearer(v0.clone()),
+                Self::OauthAndApiKey(v0, v1) => {
+                    Self::OauthAndApiKey(v0.clone(), v1.clone())
+                }
+            }
+        }
+    }
 }
 pub mod get_product {
     use super::super::types;
@@ -640,6 +702,17 @@ pub mod get_product {
         /// The alternative of `Oauth` and `ApiKey`, with what each `verify_` method found.
         OauthAndApiKey(A::Oauth, A::ApiKey),
     }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Anonymous => Self::Anonymous,
+                Self::Bearer(v0) => Self::Bearer(v0.clone()),
+                Self::OauthAndApiKey(v0, v1) => {
+                    Self::OauthAndApiKey(v0.clone(), v1.clone())
+                }
+            }
+        }
+    }
 }
 pub mod put_product {
     pub const METHOD: &str = "PUT";
@@ -688,6 +761,17 @@ pub mod put_product {
         Bearer(A::Bearer),
         /// The alternative of `Oauth` and `ApiKey`, with what each `verify_` method found.
         OauthAndApiKey(A::Oauth, A::ApiKey),
+    }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Anonymous => Self::Anonymous,
+                Self::Bearer(v0) => Self::Bearer(v0.clone()),
+                Self::OauthAndApiKey(v0, v1) => {
+                    Self::OauthAndApiKey(v0.clone(), v1.clone())
+                }
+            }
+        }
     }
 }
 pub mod delete_product {
@@ -738,6 +822,17 @@ pub mod delete_product {
         /// The alternative of `Oauth` and `ApiKey`, with what each `verify_` method found.
         OauthAndApiKey(A::Oauth, A::ApiKey),
     }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Anonymous => Self::Anonymous,
+                Self::Bearer(v0) => Self::Bearer(v0.clone()),
+                Self::OauthAndApiKey(v0, v1) => {
+                    Self::OauthAndApiKey(v0.clone(), v1.clone())
+                }
+            }
+        }
+    }
 }
 pub mod options_product {
     pub const METHOD: &str = "OPTIONS";
@@ -786,6 +881,17 @@ pub mod options_product {
         Bearer(A::Bearer),
         /// The alternative of `Oauth` and `ApiKey`, with what each `verify_` method found.
         OauthAndApiKey(A::Oauth, A::ApiKey),
+    }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Anonymous => Self::Anonymous,
+                Self::Bearer(v0) => Self::Bearer(v0.clone()),
+                Self::OauthAndApiKey(v0, v1) => {
+                    Self::OauthAndApiKey(v0.clone(), v1.clone())
+                }
+            }
+        }
     }
 }
 pub mod head_product {
@@ -836,6 +942,17 @@ pub mod head_product {
         /// The alternative of `Oauth` and `ApiKey`, with what each `verify_` method found.
         OauthAndApiKey(A::Oauth, A::ApiKey),
     }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Anonymous => Self::Anonymous,
+                Self::Bearer(v0) => Self::Bearer(v0.clone()),
+                Self::OauthAndApiKey(v0, v1) => {
+                    Self::OauthAndApiKey(v0.clone(), v1.clone())
+                }
+            }
+        }
+    }
 }
 pub mod patch_product {
     pub const METHOD: &str = "PATCH";
@@ -885,6 +1002,17 @@ pub mod patch_product {
         /// The alternative of `Oauth` and `ApiKey`, with what each `verify_` method found.
         OauthAndApiKey(A::Oauth, A::ApiKey),
     }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Anonymous => Self::Anonymous,
+                Self::Bearer(v0) => Self::Bearer(v0.clone()),
+                Self::OauthAndApiKey(v0, v1) => {
+                    Self::OauthAndApiKey(v0.clone(), v1.clone())
+                }
+            }
+        }
+    }
 }
 pub mod trace_product {
     pub const METHOD: &str = "TRACE";
@@ -933,6 +1061,17 @@ pub mod trace_product {
         Bearer(A::Bearer),
         /// The alternative of `Oauth` and `ApiKey`, with what each `verify_` method found.
         OauthAndApiKey(A::Oauth, A::ApiKey),
+    }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Anonymous => Self::Anonymous,
+                Self::Bearer(v0) => Self::Bearer(v0.clone()),
+                Self::OauthAndApiKey(v0, v1) => {
+                    Self::OauthAndApiKey(v0.clone(), v1.clone())
+                }
+            }
+        }
     }
 }
 pub mod search {
@@ -988,6 +1127,17 @@ pub mod search {
         /// The alternative of `Oauth` and `ApiKey`, with what each `verify_` method found.
         OauthAndApiKey(A::Oauth, A::ApiKey),
     }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Anonymous => Self::Anonymous,
+                Self::Bearer(v0) => Self::Bearer(v0.clone()),
+                Self::OauthAndApiKey(v0, v1) => {
+                    Self::OauthAndApiKey(v0.clone(), v1.clone())
+                }
+            }
+        }
+    }
 }
 pub mod new_product_post {
     use super::super::types;
@@ -1039,6 +1189,17 @@ pub mod new_product_post {
         Bearer(A::Bearer),
         /// The alternative of `Oauth` and `ApiKey`, with what each `verify_` method found.
         OauthAndApiKey(A::Oauth, A::ApiKey),
+    }
+    impl<A: super::super::server::Webhooks> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Anonymous => Self::Anonymous,
+                Self::Bearer(v0) => Self::Bearer(v0.clone()),
+                Self::OauthAndApiKey(v0, v1) => {
+                    Self::OauthAndApiKey(v0.clone(), v1.clone())
+                }
+            }
+        }
     }
 }
 pub mod create_product_on_adopt_post {
@@ -1092,6 +1253,17 @@ pub mod create_product_on_adopt_post {
         /// The alternative of `Oauth` and `ApiKey`, with what each `verify_` method found.
         OauthAndApiKey(A::Oauth, A::ApiKey),
     }
+    impl<A: super::super::server::Webhooks> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Anonymous => Self::Anonymous,
+                Self::Bearer(v0) => Self::Bearer(v0.clone()),
+                Self::OauthAndApiKey(v0, v1) => {
+                    Self::OauthAndApiKey(v0.clone(), v1.clone())
+                }
+            }
+        }
+    }
 }
 pub mod create_product_shared_post {
     pub const METHOD: &str = "POST";
@@ -1129,6 +1301,17 @@ pub mod create_product_shared_post {
         Bearer(A::Bearer),
         /// The alternative of `Oauth` and `ApiKey`, with what each `verify_` method found.
         OauthAndApiKey(A::Oauth, A::ApiKey),
+    }
+    impl<A: super::super::server::Webhooks> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Anonymous => Self::Anonymous,
+                Self::Bearer(v0) => Self::Bearer(v0.clone()),
+                Self::OauthAndApiKey(v0, v1) => {
+                    Self::OauthAndApiKey(v0.clone(), v1.clone())
+                }
+            }
+        }
     }
 }
 pub mod tags {
