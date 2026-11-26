@@ -14,6 +14,21 @@ pub(crate) fn decode_err(status: Option<u16>, body: &[u8], e: impl fmt::Display)
     }
 }
 
+/// Returns how many characters (Unicode scalar values) `s` has, as `chars().count()` does, in a constant too: the
+/// length that `minLength` and `maxLength` count.
+#[must_use]
+pub const fn char_count(s: &str) -> usize {
+    // Each character starts at a boundary: the boundaries before the end count them.
+    let (mut i, mut n) = (0, 0);
+    while i < s.len() {
+        if s.is_char_boundary(i) {
+            n += 1;
+        }
+        i += 1;
+    }
+    n
+}
+
 /// Encodes a text body.
 pub fn text_encode(s: &str) -> Vec<u8> {
     s.as_bytes().to_vec()

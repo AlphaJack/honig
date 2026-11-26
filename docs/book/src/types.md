@@ -162,6 +162,8 @@ A string with a `pattern`, `minLength` or `maxLength` is a type of its own. So i
 
 So a request with a bad value gets `400`, and a client decoding a response with one gets a decode error.
 
+A string checked by `minLength` and `maxLength` alone builds in a constant: `const GREETING: AddNoteBody = AddNoteBody::from_static("hi").expect("a note");` counts the characters when the crate builds, so a literal outside the limits is a build error. A `pattern` or a `format` cannot run in a constant: such a type has no `from_static`.
+
 Where the field type is known, `try_into` builds the value. A spec `default` is filled in already checked:
 
 ```rust

@@ -1048,6 +1048,26 @@ fn literal_constructor(
     })
 }
 
+/// Returns `from_static` of the string type `n` checked by its length alone ([`defaults::length_only`]): a constant can
+/// hold one.
+fn str_literal_constructor(n: &proc_macro2::Ident, c: &crate::ir::types::Constraints) -> TokenStream {
+    let tests: Vec<TokenStream> = match (c.min_length, c.max_length) {
+        (Some(min), Some(max)) if min == max => vec![quote!(n == #min)],
+        (min, max) => min.map(|m| quote!(n >= #m)).into_iter().chain(max.map(|m| quote!(n <= #m))).collect(),
+    };
+    quote! {
+        impl #n {
+            /// Returns `value`, or `None` when its length breaks a limit. In a constant, `.expect(..)` on it makes a
+            /// literal outside the limits a build error.
+            #[must_use]
+            pub const fn from_static(value: &'static str) -> Option<Self> {
+                let n = ::honig::__private::char_count(value) as u64;
+                if #(#tests)&&* { Some(Self(::std::borrow::Cow::Borrowed(value))) } else { None }
+            }
+        }
+    }
+}
+
 /// Emits a checked newtype: a scalar that only `TryFrom` and decoding build. Both check the keywords of its schema and
 /// return the first that the value breaks. The impls shared by every checked type of one base are a macro (see
 /// `checked_macros`).
@@ -1102,8 +1122,11 @@ fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def
             (checks, quote!(#eq), Some(de))
         }
     };
+    let literal_str = defaults::length_only(c).then(|| str_literal_constructor(&n, &c.constraints));
+    // A string checked by its length alone holds a `Cow`: `from_static` borrows a literal.
+    let inner = if literal_str.is_some() { quote!(::std::borrow::Cow<'static, str>) } else { base.clone() };
     let shared = match kind {
-        Base::Str => quote!(::honig::checked_str_impls!(#n);),
+        Base::Str => quote!(#literal_str ::honig::checked_str_impls!(#n);),
         Base::Decimal => quote!(::honig::checked_decimal_impls!(#n);),
         Base::Int | Base::Float => {
             let literal =
@@ -1123,13 +1146,13 @@ fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def
             let json = reads_json(subschemas.as_ref(), &checks).then(|| quote!(, json));
             quote!(::honig::checked_twin!(#n, #first, #base #json);)
         }
-        None => checked_try_from(&n, &base, subschemas.as_ref(), &checks),
+        None => checked_try_from(&n, &base, subschemas.as_ref(), &checks, literal_str.is_some()),
     };
     items.push(quote! {
         #doc
         #[derive(Debug, Clone, PartialEq, #derive serde::Serialize)]
         #[serde(transparent)]
-        pub struct #n(pub(super) #base);
+        pub struct #n(pub(super) #inner);
         #consts
         #build
         #shared
@@ -1143,10 +1166,13 @@ fn checked_try_from(
     base: &TokenStream,
     subschemas: Option<&TokenStream>,
     checks: &TokenStream,
+    into: bool,
 ) -> TokenStream {
+    // `into`: the type holds the value as another type than `base` (a `Cow` of a `String`).
+    let value = if into { quote!(value.into()) } else { quote!(value) };
     // A bound that every value of the type meets leaves no check.
     let body = if quote!(#subschemas #checks).is_empty() {
-        quote!(Ok(Self(value)))
+        quote!(Ok(Self(#value)))
     } else {
         quote! {
             let mut violations: Vec<::honig::Violation> = Vec::new();
@@ -1155,7 +1181,7 @@ fn checked_try_from(
                 #subschemas
                 #checks
             }
-            ::honig::__private::first(violations).map(|()| Self(value)).map_err(::honig::BuildError::value)
+            ::honig::__private::first(violations).map(|()| Self(#value)).map_err(::honig::BuildError::value)
         }
     };
     if !reads_json(subschemas, checks) {

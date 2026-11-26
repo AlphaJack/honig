@@ -7,7 +7,7 @@ use super::super::syntax::{ident, lit, ty};
 
 use crate::emit::rust::names::pascal;
 use crate::emit::rust::space::Space;
-use crate::ir::types::{Field, Kind, Struct, Ty};
+use crate::ir::types::{Checked, Field, Kind, Struct, Ty};
 
 /// Returns the literal `v` as an expression of type `t` (`qualify`: `types::` paths)
 /// if it fits. That is scalars and string/integer enums through aliases. A default that its schema refuses never gets
@@ -70,8 +70,14 @@ pub(super) fn literal_expr(space: &Space<'_>, t: &Ty, v: &serde_json::Value, qua
         (Ty::Named(id), _) => {
             let kind = &space.types.get(*id).kind;
             if let Kind::Checked(c) = kind {
-                // Built without the checks: the test of the documented examples checks the default.
-                let inner = literal_expr(space, &c.base, v, qualify)?;
+                // Built without the checks: the test of the documented examples checks the default. A string checked
+                // by its length alone borrows the literal.
+                let inner = if let (serde_json::Value::String(x), true) = (v, length_only(c)) {
+                    let x = lit(x);
+                    quote!(::std::borrow::Cow::Borrowed(#x))
+                } else {
+                    literal_expr(space, &c.base, v, qualify)?
+                };
                 let t = ty(space, t, qualify);
                 // Brace syntax: a twin of the type is declared as an alias of it, and no alias is a tuple constructor.
                 return Some(quote!(#t { 0: #inner }));
@@ -80,6 +86,14 @@ pub(super) fn literal_expr(space: &Space<'_>, t: &Ty, v: &serde_json::Value, qua
         }
         _ => return None,
     })
+}
+
+/// Is `c` a string checked by its length alone? It holds a `Cow`, so that `from_static` and a default borrow a
+/// literal. A `pattern` or a `format` cannot run in a `const fn`.
+pub(super) fn length_only(c: &Checked) -> bool {
+    let mut rest = c.constraints.clone();
+    let (min, max) = (rest.min_length.take(), rest.max_length.take());
+    c.base == Ty::String && rest == crate::ir::types::Constraints::default() && (min.is_some() || max.is_some())
 }
 
 /// Returns the default of an enum: the variant of a listed value. So a `const fn` can set it. A value the enum does not

@@ -506,6 +506,13 @@ pub(crate) const PATHS: &[Path] = &[
         },
     },
     Path {
+        name: "char_count",
+        prepare: |size| {
+            let text = mixed(size);
+            (text.len(), on(text, |t| runtime::char_count(t)))
+        },
+    },
+    Path {
         name: "text_encode",
         prepare: |size| {
             let text = mixed(size);

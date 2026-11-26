@@ -84,7 +84,7 @@ macro_rules! checked_str_impls {
             }
             #[must_use]
             pub fn into_inner(self) -> String {
-                self.0
+                self.0.into()
             }
         }
         impl TryFrom<&str> for $n {
@@ -127,7 +127,7 @@ macro_rules! checked_str_impls {
         }
         impl From<$n> for String {
             fn from(value: $n) -> Self {
-                value.0
+                value.0.into()
             }
         }
         impl<'de> ::serde::Deserialize<'de> for $n {
