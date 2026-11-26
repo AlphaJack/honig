@@ -62,6 +62,9 @@ fn whole(s: &Obj, key: &str, exclusive: bool, up: bool) -> Option<i128> {
 
 /// Pushes what is wrong with the bounds of `s`.
 fn rule(s: &Obj, ptr: &str, out: &mut Vec<(String, String)>) {
+    if s.get("enum").and_then(Value::as_array).is_some_and(Vec::is_empty) {
+        out.push((crate::json::join(ptr, "enum"), "`enum: []` lists no value: no value meets it".to_owned()));
+    }
     let mut pair = |min: &str, max: &str| {
         if let Some((low, high)) = number(s, min).zip(number(s, max))
             && less(&high, &low)
