@@ -88,6 +88,21 @@ pub mod list_orders {
             Self::ClientError { status,.. } => format_args!("status {} (ClientError)", status.as_u16()),
         }
     );
+    impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: types::OrderPage, x_next_cursor: Option<String>) -> Self {
+            Self::Ok { body, x_next_cursor }
+        }
+        /// Returns `ClientError` from each of its values.
+        #[must_use]
+        pub const fn client_error(
+            status: ClientErrorStatus,
+            body: types::Problem,
+        ) -> Self {
+            Self::ClientError { status, body }
+        }
+    }
     /// The body and headers of the success by name: what `Response::into_result` gives.
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Success {
@@ -184,6 +199,23 @@ pub mod create_order {
         }
     );
     impl Response {
+        /// Returns `Created` from each of its values.
+        #[must_use]
+        pub fn created(body: types::Order) -> Self {
+            Self::Created(Box::new(body))
+        }
+        /// Returns `UnprocessableEntity` from each of its values.
+        #[must_use]
+        pub const fn unprocessable_entity(body: types::Problem) -> Self {
+            Self::UnprocessableEntity(body)
+        }
+        /// Returns `Default` from each of its values.
+        #[must_use]
+        pub const fn default(status: DefaultStatus, body: types::Problem) -> Self {
+            Self::Default { status, body }
+        }
+    }
+    impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<Box<types::Order>, Box<Self>> {
             match self {
@@ -273,6 +305,26 @@ pub mod get_order {
             Self::Default { status,.. } => format_args!("status {} (Default)", status.as_u16()),
         }
     );
+    impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub fn ok(body: types::Order, x_request_id: String) -> Self {
+            Self::Ok {
+                body: Box::new(body),
+                x_request_id,
+            }
+        }
+        /// Returns `NotFound` from each of its values.
+        #[must_use]
+        pub const fn not_found(body: types::Problem) -> Self {
+            Self::NotFound(body)
+        }
+        /// Returns `Default` from each of its values.
+        #[must_use]
+        pub const fn default(status: DefaultStatus, body: types::Problem) -> Self {
+            Self::Default { status, body }
+        }
+    }
     /// The body and headers of the success by name: what `Response::into_result` gives.
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Success {

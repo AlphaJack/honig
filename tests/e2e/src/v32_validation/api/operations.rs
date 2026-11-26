@@ -21,6 +21,13 @@ pub mod get_mode {
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: types::GetModeOk) -> Self {
+            Self::Ok(body)
+        }
+    }
+    impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<types::GetModeOk, Box<Self>> {
             match self {
@@ -91,6 +98,21 @@ pub mod create_user {
         }
     );
     impl Response {
+        /// Returns `Created` from each of its values.
+        #[must_use]
+        pub fn created(body: types::User) -> Self {
+            Self::Created(Box::new(body))
+        }
+        /// Returns `ClientError` from each of its values.
+        #[must_use]
+        pub const fn client_error(
+            status: ClientErrorStatus,
+            body: types::Problem,
+        ) -> Self {
+            Self::ClientError { status, body }
+        }
+    }
+    impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<Box<types::User>, Box<Self>> {
             match self {
@@ -141,6 +163,13 @@ pub mod create_shipment {
         }
     );
     impl Response {
+        /// Returns `BadRequest` from each of its values.
+        #[must_use]
+        pub const fn bad_request(body: types::Refusal) -> Self {
+            Self::BadRequest(body)
+        }
+    }
+    impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
@@ -183,6 +212,13 @@ pub mod login {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Created(..) => "status 201 (Created)", });
+    impl Response {
+        /// Returns `Created` from each of its values.
+        #[must_use]
+        pub const fn created(body: types::Login) -> Self {
+            Self::Created(body)
+        }
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<types::Login, Box<Self>> {

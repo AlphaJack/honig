@@ -14,7 +14,7 @@ use crate::emit::rust::space::Space;
 use crate::emit::rust::syntax::{doc_opt, ident, json_tokens, lit, mentions, ty};
 use crate::emit::rust::syntax::{pascal_ident, snake_ident};
 use crate::ir::Api;
-use crate::ir::http::{Content, Link, LinkTarget, Location, OpKind, Operation, Param, Resp};
+use crate::ir::http::{Content, Link, LinkTarget, Location, OpKind, Operation, Param, Resp, ResponseHeader};
 use crate::ir::names::Name;
 use crate::ir::types::{Kind, Ty};
 
@@ -452,6 +452,36 @@ pub(crate) fn callbacks_mod(api: &Api, op: &Operation) -> Option<TokenStream> {
     })
 }
 
+/// A value that generated code passes by its field name: a parameter or a response header.
+trait Field {
+    fn name(&self) -> &Name;
+    fn ty(&self) -> &Ty;
+}
+
+impl Field for Param {
+    fn name(&self) -> &Name {
+        &self.name
+    }
+    fn ty(&self) -> &Ty {
+        &self.ty
+    }
+}
+
+impl Field for ResponseHeader {
+    fn name(&self) -> &Name {
+        &self.name
+    }
+    fn ty(&self) -> &Ty {
+        &self.ty
+    }
+}
+
+/// Returns `name: T` of `field`.
+fn typed_arg(space: &Space<'_>, field: &impl Field) -> TokenStream {
+    let (n, t) = (snake_ident(field.name()), ty(space, field.ty(), true));
+    quote!(#n: #t)
+}
+
 /// Returns `Params::new(required...)`: the one constructor that every operation gets. Path
 /// parameters come first in URL-template order. Reordering them changes the
 /// URL. So arguments cannot silently swap. Then comes every other parameter that
@@ -462,10 +492,7 @@ pub(crate) fn params_new(space: &Space<'_>, op: &Operation) -> TokenStream {
     let args = new_args(space, op);
     let body = op.body.as_ref().filter(|b| b.required).map(|b| body_ty(space, &b.contents, "Body"));
     let count = args.len() + usize::from(body.is_some());
-    let arg_list = args.iter().map(|p| {
-        let (n, t) = (snake_ident(&p.name), ty(space, &p.ty, true));
-        quote!(#n: #t)
-    });
+    let arg_list = args.iter().map(|p| typed_arg(space, *p));
     let body_arg = body.as_ref().map(|t| quote!(body: #t));
     let inits = op.params.iter().map(|p| {
         let n = snake_ident(&p.name);
@@ -712,10 +739,9 @@ pub(crate) fn response_enum(items: &mut Vec<TokenStream>, space: &Space<'_>, op:
                     quote!(body: #t,)
                 });
                 let headers = r.headers.iter().map(|h| {
-                    let (n, t) = (snake_ident(&h.name), ty(space, &h.ty, true));
-                    let d = doc_opt(h.doc.as_deref());
+                    let (arg, d) = (typed_arg(space, h), doc_opt(h.doc.as_deref()));
                     let dep = h.deprecated.then(|| quote!(#[deprecated]));
-                    quote!(#d #dep #n: #t,)
+                    quote!(#d #dep #arg,)
                 });
                 quote!(#doc #v { #status #body_field #(#headers)* },)
             }
@@ -744,6 +770,7 @@ pub(crate) fn response_enum(items: &mut Vec<TokenStream>, space: &Space<'_>, op:
         items.push(quote!(::honig::status_enum!(#[doc = #doc] #name { #(#variants),* });));
     }
     items.push(response_error(op));
+    items.extend(constructors(space, op, bx));
     items.extend(into_result(space, op, bx));
     for (i, r) in op.responses.iter().enumerate() {
         if r.contents.len() < 2 || crate::emit::rust::http::shared::collapses(space, r) {
@@ -758,6 +785,58 @@ pub(crate) fn response_enum(items: &mut Vec<TokenStream>, space: &Space<'_>, op:
         }
         items.push(content_enum(space, &name.to_string(), &r.contents, &bx.resp_enums[i]));
     }
+}
+
+/// Returns a constructor of `Response` per variant that carries anything: `Response::ok(body)`. It takes every value of
+/// the variant in order: the status of a range, the body, then each header, an optional one as an `Option`, so leaving
+/// one out is a `None` that the caller writes. A boxed body is boxed here. A variant with two values of one type, aliases
+/// followed, gets none: a reorder of its headers in the description would swap them ([`Space::distinct`]).
+fn constructors(space: &Space<'_>, op: &Operation, bx: &Boxing) -> Option<TokenStream> {
+    let fns: Vec<TokenStream> = (op.responses.iter().enumerate())
+        .filter(|(_, r)| variant_shape(r) != VariantShape::Unit)
+        .filter(|(_, r)| {
+            // The status has an enum of its own and a body of several media types too: neither can swap.
+            let body = if let [one] = r.contents.as_slice() { Some(&one.ty) } else { None };
+            space.distinct(&body.into_iter().chain(r.headers.iter().map(|h| &h.ty)).collect::<Vec<_>>())
+        })
+        .map(|(i, r)| {
+            let (v, name) = (pascal_ident(&r.variant), snake_ident(&r.variant));
+            let body_ty =
+                crate::emit::rust::http::shared::resp_body_ty(space, r, &format!("{}Body", pascal(&r.variant)));
+            let body = if bx.resp[i] { quote!(Box::new(body)) } else { quote!(body) };
+            let has_body = !r.contents.is_empty();
+            let status = status_code(r).is_none().then(|| crate::emit::rust::http::shared::status_enum(r));
+            let mut args: Vec<TokenStream> = status.iter().map(|s| quote!(status: #s)).collect();
+            args.extend(has_body.then(|| quote!(body: #body_ty)));
+            args.extend(r.headers.iter().map(|h| typed_arg(space, h)));
+            let value = if variant_shape(r) == VariantShape::Tuple {
+                quote!(Self::#v(#body))
+            } else {
+                let status = status.is_some().then(|| quote!(status,));
+                let body = has_body.then(|| if bx.resp[i] { quote!(body: #body,) } else { quote!(body,) });
+                let headers = r.headers.iter().map(|h| snake_ident(&h.name));
+                quote!(Self::#v { #status #body #(#headers,)* })
+            };
+            let many = (args.len() > crate::emit::rust::syntax::MAX_ARGUMENTS).then(
+                || quote!(#![allow(clippy::too_many_arguments, reason = "one argument per value of the response")]),
+            );
+            let deprecated = (r.headers.iter().any(|h| h.deprecated)).then(
+                || quote!(#![allow(deprecated, reason = "a deprecated header is still a field of the response")]),
+            );
+            let constness = (!bx.resp[i]).then(|| quote!(const));
+            let doc = lit(&format!(" Returns `{}` from each of its values.", pascal(&r.variant)));
+            quote! {
+                #[doc = #doc]
+                #[must_use]
+                pub #constness fn #name(#(#args),*) -> Self {
+                    #many
+                    #deprecated
+                    #value
+                }
+            }
+        })
+        .collect();
+    (!fns.is_empty()).then(|| quote!(impl Response { #(#fns)* }))
 }
 
 /// Returns the pattern that matches the variant of `r` whatever it contains.

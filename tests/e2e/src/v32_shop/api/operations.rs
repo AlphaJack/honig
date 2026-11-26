@@ -373,6 +373,39 @@ pub mod create_product {
             Self::Forbidden(..) => "status 403 (Forbidden)",
         }
     );
+    impl Response {
+        /// Returns `Created` from each of its values.
+        #[must_use]
+        pub fn created(
+            body: types::Product,
+            x_request_id: Option<::honig::UuidStr>,
+            location: Option<::honig::url::Url>,
+            x_processing_time: Option<i64>,
+        ) -> Self {
+            Self::Created {
+                body: Box::new(body),
+                x_request_id,
+                location,
+                x_processing_time,
+            }
+        }
+        /// Returns `BadRequest` from each of its values.
+        #[must_use]
+        pub const fn bad_request(
+            body: BadRequestBody,
+            x_request_id: Option<::honig::UuidStr>,
+        ) -> Self {
+            Self::BadRequest {
+                body,
+                x_request_id,
+            }
+        }
+        /// Returns `Forbidden` from each of its values.
+        #[must_use]
+        pub const fn forbidden(body: ForbiddenBody) -> Self {
+            Self::Forbidden(body)
+        }
+    }
     /// The body and headers of the success by name: what `Response::into_result` gives.
     #[derive(Debug, Clone, PartialEq)]
     pub struct Success {
@@ -552,6 +585,27 @@ pub mod query_products {
             Self::BadRequest { .. } => "status 400 (BadRequest)",
         }
     );
+    impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(
+            body: types::QueryProductsOk,
+            x_request_id: Option<::honig::UuidStr>,
+        ) -> Self {
+            Self::Ok { body, x_request_id }
+        }
+        /// Returns `BadRequest` from each of its values.
+        #[must_use]
+        pub const fn bad_request(
+            body: BadRequestBody,
+            x_request_id: Option<::honig::UuidStr>,
+        ) -> Self {
+            Self::BadRequest {
+                body,
+                x_request_id,
+            }
+        }
+    }
     /// The body and headers of the success by name: what `Response::into_result` gives.
     #[derive(Debug, Clone, PartialEq)]
     pub struct Success {
@@ -609,6 +663,16 @@ pub mod search_products {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok { .. } => "status 200 (Ok)", });
+    impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(
+            body: types::SearchProductsOk,
+            x_request_id: Option<::honig::UuidStr>,
+        ) -> Self {
+            Self::Ok { body, x_request_id }
+        }
+    }
     /// The body and headers of the success by name: what `Response::into_result` gives.
     #[derive(Debug, Clone, PartialEq)]
     pub struct Success {
@@ -708,6 +772,13 @@ pub mod get_product {
             Self::NotFound(..) => "status 404 (NotFound)",
         }
     );
+    impl Response {
+        /// Returns `NotFound` from each of its values.
+        #[must_use]
+        pub const fn not_found(body: NotFoundBody) -> Self {
+            Self::NotFound(body)
+        }
+    }
     /// The body and headers of the success by name: what `Response::into_result` gives.
     #[derive(Debug, Clone, PartialEq)]
     pub struct Success {
@@ -859,6 +930,34 @@ pub mod update_product {
         }
     );
     impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub fn ok(body: types::Product) -> Self {
+            Self::Ok(Box::new(body))
+        }
+        /// Returns `BadRequest` from each of its values.
+        #[must_use]
+        pub const fn bad_request(
+            body: BadRequestBody,
+            x_request_id: Option<::honig::UuidStr>,
+        ) -> Self {
+            Self::BadRequest {
+                body,
+                x_request_id,
+            }
+        }
+        /// Returns `Forbidden` from each of its values.
+        #[must_use]
+        pub const fn forbidden(body: ForbiddenBody) -> Self {
+            Self::Forbidden(body)
+        }
+        /// Returns `NotFound` from each of its values.
+        #[must_use]
+        pub const fn not_found(body: NotFoundBody) -> Self {
+            Self::NotFound(body)
+        }
+    }
+    impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<Box<types::Product>, Box<Self>> {
             match self {
@@ -966,6 +1065,13 @@ pub mod delete_product {
         }
     );
     impl Response {
+        /// Returns `NotFound` from each of its values.
+        #[must_use]
+        pub const fn not_found(body: NotFoundBody) -> Self {
+            Self::NotFound(body)
+        }
+    }
+    impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
@@ -1062,6 +1168,24 @@ pub mod copy_product {
             Self::NotFound(..) => "status 404 (NotFound)",
         }
     );
+    impl Response {
+        /// Returns `Created` from each of its values.
+        #[must_use]
+        pub fn created(
+            body: types::Product,
+            location: Option<::honig::url::Url>,
+        ) -> Self {
+            Self::Created {
+                body: Box::new(body),
+                location,
+            }
+        }
+        /// Returns `NotFound` from each of its values.
+        #[must_use]
+        pub const fn not_found(body: NotFoundBody) -> Self {
+            Self::NotFound(body)
+        }
+    }
     /// The body and headers of the success by name: what `Response::into_result` gives.
     #[derive(Debug, Clone, PartialEq)]
     pub struct Success {
@@ -1221,6 +1345,42 @@ pub mod upload_image {
             Self::NotFound(..) => "status 404 (NotFound)",
         }
     );
+    impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(
+            body: OkBody,
+            x_request_id: Option<::honig::UuidStr>,
+            x_cache_control: Option<String>,
+        ) -> Self {
+            Self::Ok {
+                body,
+                x_request_id,
+                x_cache_control,
+            }
+        }
+        /// Returns `BadRequest` from each of its values.
+        #[must_use]
+        pub const fn bad_request(
+            body: BadRequestBody,
+            x_request_id: Option<::honig::UuidStr>,
+        ) -> Self {
+            Self::BadRequest {
+                body,
+                x_request_id,
+            }
+        }
+        /// Returns `Forbidden` from each of its values.
+        #[must_use]
+        pub const fn forbidden(body: ForbiddenBody) -> Self {
+            Self::Forbidden(body)
+        }
+        /// Returns `NotFound` from each of its values.
+        #[must_use]
+        pub const fn not_found(body: NotFoundBody) -> Self {
+            Self::NotFound(body)
+        }
+    }
     /// The body and headers of the success by name: what `Response::into_result` gives.
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Success {
@@ -1355,6 +1515,13 @@ pub mod stream_product_events {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Ok { .. } => "status 200 (Ok)", });
+    impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: OkBody, x_request_id: Option<::honig::UuidStr>) -> Self {
+            Self::Ok { body, x_request_id }
+        }
+    }
     /// The body and headers of the success by name: what `Response::into_result` gives.
     #[derive(Debug, Clone, PartialEq)]
     pub struct Success {
@@ -1434,6 +1601,35 @@ pub mod upload_photos {
             Self::NotFound(..) => "status 404 (NotFound)",
         }
     );
+    impl Response {
+        /// Returns `Accepted` from each of its values.
+        #[must_use]
+        pub const fn accepted(
+            body: types::UploadPhotosAccepted,
+            x_request_id: Option<::honig::UuidStr>,
+        ) -> Self {
+            Self::Accepted {
+                body,
+                x_request_id,
+            }
+        }
+        /// Returns `BadRequest` from each of its values.
+        #[must_use]
+        pub const fn bad_request(
+            body: BadRequestBody,
+            x_request_id: Option<::honig::UuidStr>,
+        ) -> Self {
+            Self::BadRequest {
+                body,
+                x_request_id,
+            }
+        }
+        /// Returns `NotFound` from each of its values.
+        #[must_use]
+        pub const fn not_found(body: NotFoundBody) -> Self {
+            Self::NotFound(body)
+        }
+    }
     /// The body and headers of the success by name: what `Response::into_result` gives.
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Success {
@@ -1526,6 +1722,13 @@ pub mod create_item {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
     ::honig::response_error!(Response { Self::Created(..) => "status 201 (Created)", });
+    impl Response {
+        /// Returns `Created` from each of its values.
+        #[must_use]
+        pub const fn created(body: types::Item) -> Self {
+            Self::Created(body)
+        }
+    }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<types::Item, Box<Self>> {
@@ -1669,6 +1872,54 @@ pub mod create_user {
             Self::UnprocessableEntity(..) => "status 422 (UnprocessableEntity)",
         }
     );
+    impl Response {
+        /// Returns `Created` from each of its values.
+        #[must_use]
+        pub const fn created(
+            body: types::User,
+            x_request_id: Option<::honig::UuidStr>,
+            location: Option<::honig::url::Url>,
+            x_processing_time: Option<i64>,
+        ) -> Self {
+            Self::Created {
+                body,
+                x_request_id,
+                location,
+                x_processing_time,
+            }
+        }
+        /// Returns `BadRequest` from each of its values.
+        #[must_use]
+        pub const fn bad_request(
+            body: BadRequestBody,
+            x_request_id: Option<::honig::UuidStr>,
+        ) -> Self {
+            Self::BadRequest {
+                body,
+                x_request_id,
+            }
+        }
+        /// Returns `Unauthorized` from each of its values.
+        #[must_use]
+        pub const fn unauthorized(body: UnauthorizedBody) -> Self {
+            Self::Unauthorized(body)
+        }
+        /// Returns `Forbidden` from each of its values.
+        #[must_use]
+        pub const fn forbidden(body: ForbiddenBody) -> Self {
+            Self::Forbidden(body)
+        }
+        /// Returns `Conflict` from each of its values.
+        #[must_use]
+        pub const fn conflict(body: ConflictBody) -> Self {
+            Self::Conflict(body)
+        }
+        /// Returns `UnprocessableEntity` from each of its values.
+        #[must_use]
+        pub const fn unprocessable_entity(body: UnprocessableEntityBody) -> Self {
+            Self::UnprocessableEntity(body)
+        }
+    }
     /// The body and headers of the success by name: what `Response::into_result` gives.
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Success {
@@ -1813,6 +2064,29 @@ pub mod get_token {
             Self::TooManyRequests { .. } => "status 429 (TooManyRequests)",
         }
     );
+    impl Response {
+        /// Returns `BadRequest` from each of its values.
+        #[must_use]
+        pub const fn bad_request(
+            body: BadRequestBody,
+            x_request_id: Option<::honig::UuidStr>,
+        ) -> Self {
+            Self::BadRequest {
+                body,
+                x_request_id,
+            }
+        }
+        /// Returns `Unauthorized` from each of its values.
+        #[must_use]
+        pub const fn unauthorized(body: UnauthorizedBody) -> Self {
+            Self::Unauthorized(body)
+        }
+        /// Returns `Forbidden` from each of its values.
+        #[must_use]
+        pub const fn forbidden(body: ForbiddenBody) -> Self {
+            Self::Forbidden(body)
+        }
+    }
     /// The body and headers of the success by name: what `Response::into_result` gives.
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Success {
@@ -1919,6 +2193,18 @@ pub mod get_me {
             Self::Forbidden(..) => "status 403 (Forbidden)",
         }
     );
+    impl Response {
+        /// Returns `Unauthorized` from each of its values.
+        #[must_use]
+        pub const fn unauthorized(body: UnauthorizedBody) -> Self {
+            Self::Unauthorized(body)
+        }
+        /// Returns `Forbidden` from each of its values.
+        #[must_use]
+        pub const fn forbidden(body: ForbiddenBody) -> Self {
+            Self::Forbidden(body)
+        }
+    }
     /// The body and headers of the success by name: what `Response::into_result` gives.
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Success {

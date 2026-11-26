@@ -17,7 +17,7 @@ impl api::Api for Notes {
     ) -> impl Future<Output = Result<ops::add_note::Response, api::ApiError>> + Send {
         assert_ne!(p.body.as_ref(), "panic", "the note store is gone");
         let loud = types::AddNoteOk::try_from(p.body.to_uppercase().as_str()).map_err(api::ApiError::from);
-        std::future::ready(loud.map(|body| ops::add_note::Response::Ok { body, x_count: Some(1) }))
+        std::future::ready(loud.map(|body| ops::add_note::Response::ok(body, Some(1))))
     }
     fn set_mood(
         &self,
