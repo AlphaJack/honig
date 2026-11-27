@@ -121,12 +121,14 @@ pub mod create_product {
     pub const PATH: &str = "/products";
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
+        /// Where to send the new product
+        pub notify: Option<::honig::UriStr>,
         pub body: types::Product,
     }
     impl Params {
         #[must_use]
         pub const fn new(body: types::Product) -> Self {
-            Self { body }
+            Self { notify: None, body }
         }
     }
     pub mod builders {
@@ -136,7 +138,9 @@ pub mod create_product {
             required {
                 body: R0: types::Product = "body",
             }
-            optional {}
+            optional {
+                notify(notify): ::honig::UriStr = "notify" => some, None,
+            }
             fixed {}
         }
     }
@@ -208,6 +212,156 @@ pub mod create_product {
             }
         }
     }
+    pub mod callbacks {
+        #[must_use]
+        pub fn product_created_url(
+            request: &super::Params,
+            _exchange: &::honig::Exchange<'_>,
+        ) -> Option<String> {
+            ::honig::__private::template(
+                    &["", ""],
+                    vec![
+                        serde::Serialize::serialize(& request.notify,
+                        serde_json::value::Serializer).ok()
+                    ],
+                )
+                .map(::honig::__private::value_text)
+        }
+    }
+}
+pub mod export_products {
+    use super::super::types;
+    pub const METHOD: &str = "GET";
+    pub const PATH: &str = "/products/export";
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct Params {
+        pub media: Media,
+    }
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+    pub enum Media {
+        Json,
+        Csv,
+    }
+    impl Media {
+        pub const ALL: [Self; 2] = [Self::Json, Self::Csv];
+        #[must_use]
+        pub const fn from_index(index: usize) -> Self {
+            match index {
+                1 => Self::Csv,
+                _ => Self::Json,
+            }
+        }
+        #[must_use]
+        pub const fn as_str(self) -> &'static str {
+            match self {
+                Self::Json => "application/json",
+                Self::Csv => "text/csv",
+            }
+        }
+    }
+    impl Params {
+        #[must_use]
+        pub const fn new() -> Self {
+            Self { media: Media::ALL[0] }
+        }
+    }
+    ::honig::default_from_new!(Params);
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub enum Response {
+        /// Every product, as JSON or as CSV
+        Ok(OkBody),
+    }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
+    ::honig::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
+    impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: OkBody) -> Self {
+            Self::Ok(body)
+        }
+    }
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
+        pub fn into_result(self) -> Result<OkBody, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
+    }
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub enum OkBody {
+        Json(Vec<types::Product>),
+        Csv(String),
+    }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `ApiKey`, with what each `verify_` method found.
+        ApiKey(A::ApiKey),
+    }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::ApiKey(v0) => Self::ApiKey(v0.clone()),
+            }
+        }
+    }
+}
+pub mod stream_product_events {
+    use super::super::types;
+    pub const METHOD: &str = "GET";
+    pub const PATH: &str = "/products/events";
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct Params {}
+    impl Params {
+        #[must_use]
+        pub const fn new() -> Self {
+            Self {}
+        }
+    }
+    ::honig::default_from_new!(Params);
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub enum Response {
+        /// Each change to the catalog as it happens
+        Ok(::honig::Items<types::ProductEvent>),
+        /// The feed has ended
+        NoContent,
+    }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
+    ::honig::response_error!(
+        Response {
+            Self::Ok(..) => "status 200 (Ok)",
+            Self::NoContent => "status 204 (NoContent)",
+        }
+    );
+    impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: ::honig::Items<types::ProductEvent>) -> Self {
+            Self::Ok(body)
+        }
+    }
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
+        pub fn into_result(self) -> Result<Self, Box<Self>> {
+            match self {
+                success @ (Self::Ok(..) | Self::NoContent) => Ok(success),
+            }
+        }
+    }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `ApiKey`, with what each `verify_` method found.
+        ApiKey(A::ApiKey),
+    }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::ApiKey(v0) => Self::ApiKey(v0.clone()),
+            }
+        }
+    }
 }
 pub mod get_product {
     use super::super::types;
@@ -216,11 +370,15 @@ pub mod get_product {
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
         pub product_id: i64,
+        pub if_none_match: Option<String>,
     }
     impl Params {
         #[must_use]
         pub const fn new(product_id: i64) -> Self {
-            Self { product_id }
+            Self {
+                product_id,
+                if_none_match: None,
+            }
         }
     }
     pub mod builders {
@@ -229,7 +387,9 @@ pub mod get_product {
             required {
                 product_id: R0: i64 = "productId",
             }
-            optional {}
+            optional {
+                if_none_match(if_none_match): String = "If-None-Match" => some, None,
+            }
             fixed {}
         }
     }
@@ -275,6 +435,148 @@ pub mod get_product {
         ApiKey(A::ApiKey),
     }
     impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::ApiKey(v0) => Self::ApiKey(v0.clone()),
+            }
+        }
+    }
+    pub mod links {
+        #[derive(Debug, Clone, Default, PartialEq, Eq)]
+        pub struct DeleteProduct {
+            pub product_id: Option<i64>,
+        }
+        impl DeleteProduct {
+            #[must_use]
+            pub fn new(request: &super::Params, _body: &serde_json::Value) -> Self {
+                Self {
+                    product_id: (serde::Serialize::serialize(
+                            &request.product_id,
+                            serde_json::value::Serializer,
+                        )
+                        .ok())
+                        .and_then(::honig::__private::link_value),
+                }
+            }
+        }
+    }
+}
+pub mod delete_product {
+    use super::super::types;
+    pub const METHOD: &str = "DELETE";
+    pub const PATH: &str = "/products/{productId}";
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct Params {
+        pub product_id: i64,
+    }
+    impl Params {
+        #[must_use]
+        pub const fn new(product_id: i64) -> Self {
+            Self { product_id }
+        }
+    }
+    pub mod builders {
+        ::honig::typestate_builder! {
+            Params => super::Params;
+            required {
+                product_id: R0: i64 = "productId",
+            }
+            optional {}
+            fixed {}
+        }
+    }
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub enum Response {
+        /// Deleted
+        NoContent,
+        /// Not found
+        NotFound(types::Error),
+    }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
+    ::honig::response_error!(
+        Response {
+            Self::NoContent => "status 204 (NoContent)",
+            Self::NotFound(..) => "status 404 (NotFound)",
+        }
+    );
+    impl Response {
+        /// Returns `NotFound` from each of its values.
+        #[must_use]
+        pub const fn not_found(body: types::Error) -> Self {
+            Self::NotFound(body)
+        }
+    }
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
+        pub fn into_result(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+                other @ Self::NotFound(..) => Err(Box::new(other)),
+            }
+        }
+    }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `ApiKey`, with what each `verify_` method found.
+        ApiKey(A::ApiKey),
+    }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::ApiKey(v0) => Self::ApiKey(v0.clone()),
+            }
+        }
+    }
+}
+pub mod create_product_product_created_post {
+    use super::super::types;
+    pub const METHOD: &str = "POST";
+    pub const PATH: &str = "";
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct Params {
+        pub body: Option<types::Product>,
+    }
+    impl Params {
+        #[must_use]
+        pub const fn new() -> Self {
+            Self { body: None }
+        }
+    }
+    ::honig::default_from_new!(Params);
+    pub mod builders {
+        use super::types;
+        ::honig::typestate_builder! {
+            Params => super::Params;
+            required {}
+            optional {
+                body(body): types::Product = "body" => some, None,
+            }
+            fixed {}
+        }
+    }
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub enum Response {
+        /// Received
+        NoContent,
+    }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
+    ::honig::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
+        pub fn into_result(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Webhooks> {
+        /// The alternative of `ApiKey`, with what each `verify_` method found.
+        ApiKey(A::ApiKey),
+    }
+    impl<A: super::super::server::Webhooks> Clone for Security<A> {
         fn clone(&self) -> Self {
             match self {
                 Self::ApiKey(v0) => Self::ApiKey(v0.clone()),

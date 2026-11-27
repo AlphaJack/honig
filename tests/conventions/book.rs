@@ -1,6 +1,7 @@
 //! The Rust of the book is compiled and run. Every ```` ```rust ```` block of `docs/book/src` only includes an anchor
 //! of a file that a test builds (`{{#include ../../../tests/e2e/tests/v32_shop.rs:client}}`). So an example cannot
-//! drift from the code that it shows.
+//! drift from the code that it shows. It comes from the running example, the catalog of `examples/shop`, so the
+//! examples of every page call one API.
 
 use std::fs;
 
@@ -42,6 +43,71 @@ fn rust_in_the_book_comes_from_tested_files() {
         "Rust blocks written in the book, not included from a tested file:\n{}",
         found.join("\n")
     );
+}
+
+/// Where the Rust of the running example is: the shop itself and the tests of its `catalog` fixture.
+const RUNNING_EXAMPLE: [&str; 2] = ["examples/shop/", "tests/e2e/tests/v32_catalog/"];
+
+/// The Rust includes that call another API, each with why.
+const OTHER_APIS: [(&str, &str); 13] = [
+    ("tests/e2e/tests/v32_shop/client.rs:device-flow", "the catalog accepts only an API key"),
+    ("tests/e2e/tests/v32_shop/client.rs:feed", "not on the catalog yet"),
+    ("tests/e2e/tests/v32_download.rs:download", "not on the catalog yet"),
+    ("tests/e2e/tests/v32_download.rs:media-range", "not on the catalog yet"),
+    ("tests/e2e/tests/v32_download.rs:preconditions", "not on the catalog yet"),
+    ("tests/e2e/tests/v32_uploads.rs:upload", "not on the catalog yet"),
+    ("tests/e2e/tests/v32_scopes.rs:problem-instance", "not on the catalog yet"),
+    ("tests/e2e/tests/v32_scopes.rs:scopes", "not on the catalog yet"),
+    ("tests/e2e/tests/v32_security.rs:both", "not on the catalog yet"),
+    ("tests/e2e/tests/v32_security.rs:optional-rate-limit", "not on the catalog yet"),
+    ("tests/e2e/tests/v32_lambda.rs:lambda", "not on the catalog yet"),
+    ("tests/e2e/tests/v32_validation.rs:builder", "not on the catalog yet"),
+    ("tests/e2e/tests/v32_kitchen_sink.rs:whole-schema", "not on the catalog yet"),
+];
+
+/// The `file:line: target` of each Rust include in `text` that is neither from the running example nor listed in
+/// [`OTHER_APIS`].
+fn elsewhere(file: &str, text: &str) -> Vec<String> {
+    let mut found = vec![];
+    let mut rust = false;
+    for (i, line) in text.lines().enumerate() {
+        let line = line.trim_start();
+        if line.starts_with("```") {
+            rust = line.starts_with("```rust");
+            continue;
+        }
+        let Some(target) = line.strip_prefix("{{#include ../../../").and_then(|t| t.strip_suffix("}}")) else {
+            continue;
+        };
+        let known = RUNNING_EXAMPLE.iter().any(|dir| target.starts_with(dir))
+            || OTHER_APIS.iter().any(|(other, _)| *other == target);
+        if rust && !known {
+            found.push(format!("{file}:{}: {target}", i + 1));
+        }
+    }
+    found
+}
+
+#[test]
+fn rust_in_the_book_calls_the_running_example() {
+    let book = root().join("docs").join("book").join("src");
+    let mut found = vec![];
+    for entry in fs::read_dir(&book).unwrap() {
+        let path = entry.unwrap().path();
+        if path.extension().is_some_and(|e| e == "md") {
+            let file = path.strip_prefix(root()).unwrap().display().to_string();
+            found.extend(elsewhere(&file, &fs::read_to_string(&path).unwrap()));
+        }
+    }
+    assert!(found.is_empty(), "Rust in the book that calls another API than the catalog:\n{}", found.join("\n"));
+}
+
+#[test]
+fn only_the_running_example_passes() {
+    let page = "```rust\n{{#include ../../../examples/shop/src/lib.rs:catalog}}\n```\n\n```rust\n\
+                {{#include ../../../tests/e2e/tests/v32_shop/client.rs:media}}\n```\n\n```yaml\n\
+                {{#include ../../../tests/fixtures/v32/shop.yaml:x}}\n```\n";
+    assert_eq!(elsewhere("p.md", page), ["p.md:6: tests/e2e/tests/v32_shop/client.rs:media"]);
 }
 
 #[test]

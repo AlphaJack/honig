@@ -81,6 +81,19 @@ impl Digital {
 }
 ::honig::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct ProductEvent {
+        pub event: ProductEventEvent,
+        pub product: Product,
+    }
+}
+impl ProductEvent {
+    #[must_use]
+    pub const fn new(event: ProductEventEvent, product: Product) -> Self {
+        Self { event, product }
+    }
+}
+::honig::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct Error {
         pub code: i32,
         pub message: String,
@@ -135,6 +148,14 @@ impl DigitalKind {
     pub const VALUE: &'static str = "digital";
 }
 ::honig::const_impls!(DigitalKind, VALUE);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum ProductEventEvent {
+    Created,
+    Deleted,
+}
+::honig::str_enum_impls!(
+    ProductEventEvent { Created => "created", Deleted => "deleted" }
+);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct ListProductsLimit(pub(super) i32);
@@ -196,6 +217,15 @@ pub mod builders {
         fixed {
             kind: types::DigitalKind {},
         }
+    }
+    ::honig::typestate_builder! {
+        ProductEvent => super::ProductEvent;
+        required {
+            event: R0: types::ProductEventEvent = "event",
+            product: R1: types::Product = "product",
+        }
+        optional {}
+        fixed {}
     }
     ::honig::typestate_builder! {
         Error => super::Error;

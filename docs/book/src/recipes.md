@@ -11,7 +11,7 @@ Its `src/api` is what `cargo honig generate` writes. Its `src/supplier` is a sec
 The description is `openapi.yaml`:
 
 ```yaml
-{{#include ../../../examples/shop/openapi.yaml}}
+{{#include ../../../examples/shop/openapi.yaml:all}}
 ```
 
 ### Server

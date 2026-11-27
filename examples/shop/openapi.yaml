@@ -1,3 +1,4 @@
+# ANCHOR: all
 openapi: 3.2.0
 info:
   title: Catalog
@@ -34,6 +35,11 @@ paths:
               schema: {$ref: '#/components/schemas/Error'}
     post:
       operationId: createProduct
+      parameters:
+        - name: notify
+          in: query
+          description: Where to send the new product
+          schema: {type: string, format: uri}
       requestBody:
         required: true
         content:
@@ -50,6 +56,44 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/Error'}
+      # ANCHOR: callback
+      callbacks:
+        productCreated:
+          '{$request.query.notify}':
+            post:
+              requestBody:
+                content:
+                  application/json:
+                    schema: {$ref: '#/components/schemas/Product'}
+              responses:
+                '204': {description: Received}
+      # ANCHOR_END: callback
+  # ANCHOR: media
+  /products/export:
+    get:
+      operationId: exportProducts
+      responses:
+        '200':
+          description: Every product, as JSON or as CSV
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: '#/components/schemas/Product'}}
+            text/csv:
+              schema: {type: string}
+  # ANCHOR_END: media
+  # ANCHOR: stream
+  /products/events:
+    get:
+      operationId: streamProductEvents
+      responses:
+        '200':
+          description: Each change to the catalog as it happens
+          content:
+            text/event-stream:
+              itemSchema: {$ref: '#/components/schemas/ProductEvent'}
+        '204':
+          description: The feed has ended
+  # ANCHOR_END: stream
   /products/{productId}:
     get:
       operationId: getProduct
@@ -58,17 +102,44 @@ paths:
           in: path
           required: true
           schema: {type: integer, format: int64}
+        # ANCHOR: not-modified
+        - name: If-None-Match
+          in: header
+          schema: {type: string}
+        # ANCHOR_END: not-modified
       responses:
         '200':
           description: A product
           content:
             application/json:
               schema: {$ref: '#/components/schemas/Product'}
+          # ANCHOR: links
+          links:
+            DeleteProduct:
+              operationId: deleteProduct
+              parameters: {productId: $request.path.productId}
+          # ANCHOR_END: links
         '404':
           description: Not found
           content:
             application/json:
               schema: {$ref: '#/components/schemas/Error'}
+    # ANCHOR: delete
+    delete:
+      operationId: deleteProduct
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: {type: integer, format: int64}
+      responses:
+        '204': {description: Deleted}
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+    # ANCHOR_END: delete
 components:
   securitySchemes:
     apiKey: {type: apiKey, in: header, name: X-API-Key}
@@ -98,9 +169,18 @@ components:
         kind: {const: digital}
         name: {type: string}
         downloads: {type: [integer, "null"], format: int32}
+    # ANCHOR: product-event
+    ProductEvent:
+      type: object
+      required: [event, product]
+      properties:
+        event: {type: string, enum: [created, deleted]}
+        product: {$ref: '#/components/schemas/Product'}
+    # ANCHOR_END: product-event
     Error:
       type: object
       required: [code, message]
       properties:
         code: {type: integer, format: int32}
         message: {type: string}
+# ANCHOR_END: all

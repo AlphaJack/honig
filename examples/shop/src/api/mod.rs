@@ -26,13 +26,18 @@ pub mod client;
 #[rustfmt::skip]
 pub use client::Client;
 #[rustfmt::skip]
+pub use client::WebhookClient;
+#[rustfmt::skip]
 pub mod server;
 #[rustfmt::skip]
 pub use server::Api;
 #[rustfmt::skip]
 pub use server::{Operation, Context, Rejection, RequestEvent, Server};
+#[rustfmt::skip]
+pub use server::{webhook, Webhooks, WebhookOperation, WebhookContext};
 pub use ::honig::{
-    ApiError, BuildError, ClientError, InstanceLocation, Message, Nullable, Passed,
-    ProblemSchema, Reason, Request, Response, Secured, ServerUrl, Transport, Verified,
-    Violation, send,
+    ApiError, Body, BuildError, ClientError, Exchange, Framing, InstanceLocation,
+    ItemStream, Items, Message, Nullable, Passed, ProblemSchema, Reason, Request,
+    Response, Secured, ServerUrl, Streamed, Transport, UriStr, Verified, Violation, send,
+    send_streaming,
 };
