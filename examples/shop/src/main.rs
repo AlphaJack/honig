@@ -56,12 +56,14 @@ enum Command {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
-    let transport = honig::ReqwestTransport::new(format!("http://{}/v1", cli.addr))?;
     let key = cli.api_key;
-    let client = || api::Client::new(transport.clone()).with_api_key(key.as_deref().unwrap_or(shop::API_KEY));
+    // ANCHOR: client
+    let transport = honig::ReqwestTransport::new(format!("http://{}/v1", cli.addr))?;
+    let client = api::Client::new(transport).with_api_key(key.as_deref().unwrap_or(shop::API_KEY));
+    // ANCHOR_END: client
     match cli.command {
         Command::Serve => {
-            let catalog = match key.clone() {
+            let catalog = match key {
                 Some(key) => Catalog::default().with_api_key(key),
                 None => {
                     println!("API key is '{}'", shop::API_KEY);
@@ -72,7 +74,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Command::List { limit } => {
             let params = ops::list_products::Params { limit, ..ops::list_products::Params::new() };
-            match client().list_products(params).await? {
+            match client.list_products(params).await? {
                 ops::list_products::Response::Ok { body, .. } => println!("{}", serde_json::to_string_pretty(&body)?),
                 ops::list_products::Response::Default { status, body } => {
                     return Err(answer(status.as_u16(), &body).into());
@@ -82,16 +84,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Command::AddPhysical { name, sku, fragile } => {
             let sku = sku.map(types::PhysicalSku::try_from).transpose()?;
             let product = types::Physical { sku, fragile: fragile.then_some(true), ..types::Physical::new(name) };
-            add(&client(), types::Product::Physical(product)).await?;
+            add(&client, types::Product::Physical(product)).await?;
         }
         Command::AddDigital { name, downloads } => {
             let product = types::Digital { downloads: downloads.into(), ..types::Digital::new(name) };
-            add(&client(), types::Product::Digital(product)).await?;
+            add(&client, types::Product::Digital(product)).await?;
         }
-        Command::Get { id } => match client().get_product(ops::get_product::Params::new(id)).await? {
-            ops::get_product::Response::Ok(product) => println!("{}", serde_json::to_string_pretty(&product)?),
-            ops::get_product::Response::NotFound(error) => return Err(error.message.into()),
-        },
+        Command::Get { id } => get(&client, id).await?,
     }
     Ok(())
 }
@@ -114,6 +113,8 @@ async fn log(resp: axum::response::Response) -> axum::response::Response {
 }
 // ANCHOR_END: server
 
+// ANCHOR: add
+/// Adds `product` to the catalog and prints it as the server stored it.
 async fn add(
     client: &api::Client<impl api::Transport>,
     product: types::Product,
@@ -125,6 +126,18 @@ async fn add(
     }
     Ok(())
 }
+// ANCHOR_END: add
+
+// ANCHOR: get
+/// Prints the product with this ID.
+async fn get(client: &api::Client<impl api::Transport>, id: i64) -> Result<(), Box<dyn std::error::Error>> {
+    match client.get_product(ops::get_product::Params::new(id)).await? {
+        ops::get_product::Response::Ok(product) => println!("{}", serde_json::to_string_pretty(&product)?),
+        ops::get_product::Response::NotFound(error) => return Err(error.message.into()),
+    }
+    Ok(())
+}
+// ANCHOR_END: get
 
 /// An error that the server answered with.
 fn answer(status: u16, error: &types::Error) -> String {
