@@ -89,11 +89,11 @@ pub trait Api: Send + Sync + Sized + 'static {
         params: ops::me::Params,
         ctx: &Context<'_, ops::me::Security<Self>>,
     ) -> impl Future<Output = ops::me::Result> + Send;
-    fn optional(
+    fn list_deals(
         &self,
-        params: ops::optional::Params,
-        ctx: &Context<'_, ops::optional::Security<Self>>,
-    ) -> impl Future<Output = ops::optional::Result> + Send;
+        params: ops::list_deals::Params,
+        ctx: &Context<'_, ops::list_deals::Security<Self>>,
+    ) -> impl Future<Output = ops::list_deals::Result> + Send;
     fn read(
         &self,
         params: ops::read::Params,
@@ -104,11 +104,11 @@ pub trait Api: Send + Sync + Sized + 'static {
         params: ops::write::Params,
         ctx: &Context<'_, ops::write::Security<Self>>,
     ) -> impl Future<Output = ops::write::Result> + Send;
-    fn both(
+    fn checkout(
         &self,
-        params: ops::both::Params,
-        ctx: &Context<'_, ops::both::Security<Self>>,
-    ) -> impl Future<Output = ops::both::Result> + Send;
+        params: ops::checkout::Params,
+        ctx: &Context<'_, ops::checkout::Security<Self>>,
+    ) -> impl Future<Output = ops::checkout::Result> + Send;
     fn login(
         &self,
         params: ops::login::Params,
@@ -129,10 +129,10 @@ pub trait Api: Send + Sync + Sized + 'static {
 pub enum Operation {
     Public,
     Me,
-    Optional,
+    ListDeals,
     Read,
     Write,
-    Both,
+    Checkout,
     Login,
     Cert,
     Oidc,
@@ -142,10 +142,10 @@ impl ::honig::Operation for Operation {
         match self {
             Self::Public => &PUBLIC_OP,
             Self::Me => &ME_OP,
-            Self::Optional => &OPTIONAL_OP,
+            Self::ListDeals => &LIST_DEALS_OP,
             Self::Read => &READ_OP,
             Self::Write => &WRITE_OP,
-            Self::Both => &BOTH_OP,
+            Self::Checkout => &CHECKOUT_OP,
             Self::Login => &LOGIN_OP,
             Self::Cert => &CERT_OP,
             Self::Oidc => &OIDC_OP,
@@ -334,10 +334,10 @@ const fn error_schema(
 static METHODS: &[&[(&str, Operation)]] = &[
     &[("GET", Operation::Public)],
     &[("GET", Operation::Me)],
-    &[("GET", Operation::Optional)],
+    &[("GET", Operation::ListDeals)],
     &[("GET", Operation::Read)],
     &[("POST", Operation::Write)],
-    &[("GET", Operation::Both)],
+    &[("POST", Operation::Checkout)],
     &[("GET", Operation::Login)],
     &[("GET", Operation::Cert)],
     &[("GET", Operation::Oidc)],
@@ -346,14 +346,14 @@ static ROUTES: &[::honig::__private::Node] = &[
     ::honig::__private::node(
         &[
             ("me", 2),
-            ("both", 6),
             ("cert", 8),
             ("oidc", 9),
             ("read", 4),
+            ("deals", 3),
             ("login", 7),
             ("write", 5),
             ("public", 1),
-            ("optional", 3),
+            ("checkout", 6),
         ],
         &[],
         ::honig::__private::Node::NONE,
@@ -370,12 +370,12 @@ static ROUTES: &[::honig::__private::Node] = &[
     ::honig::__private::node(&[], &[], ::honig::__private::Node::NONE, 8),
 ];
 static PATHS: &[&str] = &[
-    "/both",
     "/cert",
+    "/checkout",
+    "/deals",
     "/login",
     "/me",
     "/oidc",
-    "/optional",
     "/public",
     "/read",
     "/write",
@@ -560,10 +560,10 @@ async fn dispatch<A: Api>(
     match op {
         Operation::Public => Box::pin(public(api, routed, call)).await,
         Operation::Me => Box::pin(me(api, routed, call)).await,
-        Operation::Optional => Box::pin(optional(api, routed, call)).await,
+        Operation::ListDeals => Box::pin(list_deals(api, routed, call)).await,
         Operation::Read => Box::pin(read(api, routed, call)).await,
         Operation::Write => Box::pin(write(api, routed, call)).await,
-        Operation::Both => Box::pin(both(api, routed, call)).await,
+        Operation::Checkout => Box::pin(checkout(api, routed, call)).await,
         Operation::Login => Box::pin(login(api, routed, call)).await,
         Operation::Cert => Box::pin(cert(api, routed, call)).await,
         Operation::Oidc => Box::pin(oidc(api, routed, call)).await,
@@ -637,17 +637,17 @@ fn me_encode(resp: &ops::me::Response) -> ::honig::Response {
     let ops::me::Response::NoContent = resp;
     ::honig::__private::new_response(204)
 }
-static OPTIONAL_OP: ::honig::__private::Op = ::honig::__private::Op {
+static LIST_DEALS_OP: ::honig::__private::Op = ::honig::__private::Op {
     security: ops::SECURITY_1,
     ..::honig::__private::Op::new(
-        "optional",
+        "list_deals",
         "GET",
-        "/optional",
-        "GET /optional",
+        "/deals",
+        "GET /deals",
         error_schema,
     )
 };
-async fn optional<A: Api>(
+async fn list_deals<A: Api>(
     api: &A,
     routed: ::honig::__private::Routed<'_>,
     call: ::honig::__private::Call<
@@ -658,22 +658,22 @@ async fn optional<A: Api>(
 ) -> ::honig::Response {
     let steps = ::honig::__private::Steps {
         api,
-        decode: |_| Ok(ops::optional::Params {}),
-        call: |a, p, c| Box::pin(a.optional(p, c)),
-        encode: |r, _| Ok(optional_encode(&r)),
+        decode: |_| Ok(ops::list_deals::Params {}),
+        call: |a, p, c| Box::pin(a.list_deals(p, c)),
+        encode: |r, _| Ok(list_deals_encode(&r)),
     };
     ::honig::__private::serve_signed_in(
             routed,
             call
                 .map(|passed: Option<::honig::Passed<_>>| {
                     let Some(passed) = passed else {
-                        return Some(ops::optional::Security::Anonymous)
+                        return Some(ops::list_deals::Security::Anonymous)
                     };
                     let mut values = passed.values.into_iter();
                     match passed.alternative {
                         1usize => {
                             Some(
-                                ops::optional::Security::Bearer(values.next()?.bearer()?),
+                                ops::list_deals::Security::Bearer(values.next()?.bearer()?),
                             )
                         }
                         _ => None,
@@ -683,8 +683,8 @@ async fn optional<A: Api>(
         )
         .await
 }
-fn optional_encode(resp: &ops::optional::Response) -> ::honig::Response {
-    let ops::optional::Response::NoContent = resp;
+fn list_deals_encode(resp: &ops::list_deals::Response) -> ::honig::Response {
+    let ops::list_deals::Response::NoContent = resp;
     ::honig::__private::new_response(204)
 }
 static READ_OP: ::honig::__private::Op = ::honig::__private::Op {
@@ -768,11 +768,17 @@ fn write_encode(resp: &ops::write::Response) -> ::honig::Response {
     let ops::write::Response::NoContent = resp;
     ::honig::__private::new_response(204)
 }
-static BOTH_OP: ::honig::__private::Op = ::honig::__private::Op {
+static CHECKOUT_OP: ::honig::__private::Op = ::honig::__private::Op {
     security: ops::SECURITY_4,
-    ..::honig::__private::Op::new("both", "GET", "/both", "GET /both", error_schema)
+    ..::honig::__private::Op::new(
+        "checkout",
+        "POST",
+        "/checkout",
+        "POST /checkout",
+        error_schema,
+    )
 };
-async fn both<A: Api>(
+async fn checkout<A: Api>(
     api: &A,
     routed: ::honig::__private::Routed<'_>,
     call: ::honig::__private::Call<
@@ -783,9 +789,9 @@ async fn both<A: Api>(
 ) -> ::honig::Response {
     let steps = ::honig::__private::Steps {
         api,
-        decode: |_| Ok(ops::both::Params {}),
-        call: |a, p, c| Box::pin(a.both(p, c)),
-        encode: |r, _| Ok(both_encode(&r)),
+        decode: |_| Ok(ops::checkout::Params {}),
+        call: |a, p, c| Box::pin(a.checkout(p, c)),
+        encode: |r, _| Ok(checkout_encode(&r)),
     };
     ::honig::__private::serve_signed_in(
             routed,
@@ -796,7 +802,7 @@ async fn both<A: Api>(
                     match passed.alternative {
                         0usize => {
                             Some(
-                                ops::both::Security::KeyAndSession(
+                                ops::checkout::Security::KeyAndSession(
                                     values.next()?.key()?,
                                     values.next()?.session()?,
                                 ),
@@ -809,8 +815,8 @@ async fn both<A: Api>(
         )
         .await
 }
-fn both_encode(resp: &ops::both::Response) -> ::honig::Response {
-    let ops::both::Response::NoContent = resp;
+fn checkout_encode(resp: &ops::checkout::Response) -> ::honig::Response {
+    let ops::checkout::Response::NoContent = resp;
     ::honig::__private::new_response(204)
 }
 static LOGIN_OP: ::honig::__private::Op = ::honig::__private::Op {

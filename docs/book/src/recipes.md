@@ -54,7 +54,11 @@ A JWT or session layer that you already run puts its claims in the request's ext
 
 ## Optional sign-in with a limit for anonymous callers
 
-An operation whose `security` contains an empty alternative, `[{}, {bearer: []}]`, accepts anonymous requests and signed-in ones. A public endpoint that limits anonymous callers and not signed-in ones is an `operation_layer`. It runs after the server checked the credentials, so `api::Passed` is in the request's extensions when the token passed. A token that the `Api` refuses is `401`, so a bad token never falls back to the anonymous limit:
+An operation whose `security` contains an empty alternative, `[{}, {bearer: []}]`, accepts anonymous requests and signed-in ones. A public endpoint that limits anonymous callers and not signed-in ones is an `operation_layer`. It runs after the server checked the credentials, so `api::Passed` is in the request's extensions when the token passed. A token that the `Api` refuses is `401`, so a bad token never falls back to the anonymous limit. Every operation of the catalog needs its key, so this recipe is a shop whose deals anyone may browse:
+
+```yaml
+{{#include ../../../tests/fixtures/v32/security.yaml:deals}}
+```
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_security.rs:optional-rate-limit}}

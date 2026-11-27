@@ -184,9 +184,9 @@ pub mod me {
         }
     }
 }
-pub mod optional {
+pub mod list_deals {
     pub const METHOD: &str = "GET";
-    pub const PATH: &str = "/optional";
+    pub const PATH: &str = "/deals";
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {}
     impl Params {
@@ -313,9 +313,9 @@ pub mod write {
         }
     }
 }
-pub mod both {
-    pub const METHOD: &str = "GET";
-    pub const PATH: &str = "/both";
+pub mod checkout {
+    pub const METHOD: &str = "POST";
+    pub const PATH: &str = "/checkout";
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {}
     impl Params {

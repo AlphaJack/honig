@@ -15,12 +15,15 @@ paths:
       operationId: me
       responses:
         "204": {description: Done.}
-  /optional:
+  # ANCHOR: deals
+  /deals:
     get:
-      operationId: optional
+      operationId: listDeals
+      # A shopper may browse the deals signed in or not.
       security: [{}, {bearer: []}]
       responses:
         "204": {description: Done.}
+  # ANCHOR_END: deals
   /read:
     get:
       operationId: read
@@ -33,12 +36,15 @@ paths:
       security: [{oauth: [read, write]}]
       responses:
         "204": {description: Done.}
-  /both:
-    get:
-      operationId: both
+  # ANCHOR: checkout
+  /checkout:
+    post:
+      operationId: checkout
+      # The key of the shop's app and the session of the shopper, together (AND).
       security: [{key: [], session: []}]
       responses:
         "204": {description: Done.}
+  # ANCHOR_END: checkout
   /login:
     get:
       operationId: login

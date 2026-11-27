@@ -52,9 +52,9 @@ const RUNNING_EXAMPLE: [&str; 2] = ["examples/shop/", "tests/e2e/tests/v32_catal
 const OTHER_APIS: [(&str, &str); 8] = [
     ("tests/e2e/tests/v32_shop/client.rs:device-flow", "the catalog accepts only an API key"),
     ("tests/e2e/tests/v32_scopes.rs:problem-instance", "the error body of the catalog is its own, not RFC 9457"),
-    ("tests/e2e/tests/v32_scopes.rs:scopes", "not on the catalog yet"),
-    ("tests/e2e/tests/v32_security.rs:both", "not on the catalog yet"),
-    ("tests/e2e/tests/v32_security.rs:optional-rate-limit", "not on the catalog yet"),
+    ("tests/e2e/tests/v32_scopes.rs:scopes", "the API key of the catalog grants no scopes"),
+    ("tests/e2e/tests/v32_security.rs:checkout", "the catalog has one API key, not two credentials at once"),
+    ("tests/e2e/tests/v32_security.rs:optional-rate-limit", "every operation of the catalog needs its key"),
     ("tests/e2e/tests/v32_lambda.rs:lambda", "not on the catalog yet"),
     ("tests/e2e/tests/v32_validation.rs:builder", "not on the catalog yet"),
     ("tests/e2e/tests/v32_kitchen_sink.rs:whole-schema", "not on the catalog yet"),

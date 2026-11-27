@@ -5,23 +5,25 @@ components:
     pat:
       type: http
       scheme: bearer
-      description: Fine-grained personal access token.
+      description: A personal access token of a shop owner.
 paths:
-  /issues:
+  # ANCHOR: scopes
+  /orders:
     get:
-      operationId: listIssues
+      operationId: listOrders
       # Either permission is enough (OR).
       security:
-        - pat: ["issues:read"]
-        - pat: ["issues:write"]
+        - pat: ["orders:read"]
+        - pat: ["orders:write"]
       responses:
         "204": {description: Listed.}
     post:
-      operationId: createIssue
+      operationId: createOrder
       security:
-        - pat: ["issues:write"]
+        - pat: ["orders:write"]
       responses:
         "204": {description: Created.}
+  # ANCHOR_END: scopes
   /public:
     get:
       operationId: open
