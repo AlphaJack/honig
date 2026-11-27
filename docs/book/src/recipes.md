@@ -87,3 +87,25 @@ OpenAPI cannot describe a WebSocket. So honig generates nothing for one. Serve i
 ```rust
 {{#include ../../../tests/e2e/tests/v32_catalog/websocket.rs:websocket}}
 ```
+
+## Storing API values
+
+Keep the types of your database plain and convert at the handler. A generated type such as `PhysicalSku` checks what the description says about the wire. A column holds what you stored, maybe under an older version of the description. So the API decides at one place what it serves, and a pattern tightened for new clients does not break every read of the old rows. Your database crate also stays free of honig: it does not depend on the crate of the generated module, which depends on it to run queries.
+
+The catalog's `Physical` has a SKU of a pattern:
+
+```yaml
+{{#include ../../../examples/shop/openapi.yaml:physical}}
+```
+
+A row stores it as text. The API type takes the checked SKU, so the conversion cannot be left out:
+
+```rust
+{{#include ../../../tests/e2e/tests/v32_catalog/recipes.rs:storage}}
+```
+
+To make the database itself refuse a malformed SKU, for every service that writes to it, add a constraint in a migration:
+
+```sql
+ALTER TABLE products ADD CONSTRAINT sku_format CHECK (sku ~ '^[A-Z]{3}-[0-9]{4}$');
+```
