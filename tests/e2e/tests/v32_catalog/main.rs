@@ -7,6 +7,7 @@ mod support;
 
 mod adapters;
 mod auth;
+mod client;
 mod layers;
 mod observability;
 mod recipes;
@@ -77,6 +78,40 @@ impl api::Api for Catalog {
             Some(product) => ops::get_product::Response::Ok(product),
             None => ops::get_product::Response::NotFound(types::Error::new(404, "no such product".to_owned())),
         })
+    }
+
+    /// Every product as JSON. The recipes ask for no CSV: it is `501`.
+    async fn export_products(
+        &self,
+        params: ops::export_products::Params,
+        _: &api::Context<'_, ops::export_products::Security<Self>>,
+    ) -> Result<ops::export_products::Response, api::ApiError> {
+        match params.media {
+            ops::export_products::Media::Json => {
+                Ok(ops::export_products::Response::Ok(ops::export_products::OkBody::Json(self.products()?.clone())))
+            }
+            ops::export_products::Media::Csv => {
+                Err(api::ApiError::new(honig::http::StatusCode::NOT_IMPLEMENTED, "no CSV in the recipes"))
+            }
+        }
+    }
+
+    /// The recipes delete nothing: every product is `404`.
+    async fn delete_product(
+        &self,
+        _: ops::delete_product::Params,
+        _: &api::Context<'_, ops::delete_product::Security<Self>>,
+    ) -> Result<ops::delete_product::Response, api::ApiError> {
+        Ok(ops::delete_product::Response::NotFound(types::Error::new(404, "no such product".to_owned())))
+    }
+
+    /// The recipes keep no history: the feed has ended.
+    async fn stream_product_events(
+        &self,
+        _: ops::stream_product_events::Params,
+        _: &api::Context<'_, ops::stream_product_events::Security<Self>>,
+    ) -> Result<ops::stream_product_events::Response, api::ApiError> {
+        Ok(ops::stream_product_events::Response::NoContent)
     }
 }
 

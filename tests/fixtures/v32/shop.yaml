@@ -826,6 +826,7 @@ components:
             read:account: read your account information
             write:products: modify products in your account
             read:products: read your products
+        # ANCHOR: device-flow
         deviceAuthorization:
           deviceAuthorizationUrl: https://shop.example.com/oauth/device
           tokenUrl: https://shop.example.com/oauth/token
@@ -833,6 +834,7 @@ components:
             read:account: read your account information
             write:products: modify products in your account
             read:products: read your products
+        # ANCHOR_END: device-flow
         implicit:
           authorizationUrl: https://shop.example.com/oauth/authorize
           scopes:

@@ -22,24 +22,45 @@ pub trait Api: Send + Sync + Sized + 'static {
         params: ops::create_product::Params,
         ctx: &Context<'_, ops::create_product::Security<Self>>,
     ) -> impl Future<Output = ops::create_product::Result> + Send;
+    fn export_products(
+        &self,
+        params: ops::export_products::Params,
+        ctx: &Context<'_, ops::export_products::Security<Self>>,
+    ) -> impl Future<Output = ops::export_products::Result> + Send;
+    fn stream_product_events(
+        &self,
+        params: ops::stream_product_events::Params,
+        ctx: &Context<'_, ops::stream_product_events::Security<Self>>,
+    ) -> impl Future<Output = ops::stream_product_events::Result> + Send;
     fn get_product(
         &self,
         params: ops::get_product::Params,
         ctx: &Context<'_, ops::get_product::Security<Self>>,
     ) -> impl Future<Output = ops::get_product::Result> + Send;
+    fn delete_product(
+        &self,
+        params: ops::delete_product::Params,
+        ctx: &Context<'_, ops::delete_product::Security<Self>>,
+    ) -> impl Future<Output = ops::delete_product::Result> + Send;
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {
     ListProducts,
     CreateProduct,
+    ExportProducts,
+    StreamProductEvents,
     GetProduct,
+    DeleteProduct,
 }
 impl ::honig::Operation for Operation {
     fn op(self) -> &'static ::honig::__private::Op {
         match self {
             Self::ListProducts => &LIST_PRODUCTS_OP,
             Self::CreateProduct => &CREATE_PRODUCT_OP,
+            Self::ExportProducts => &EXPORT_PRODUCTS_OP,
+            Self::StreamProductEvents => &STREAM_PRODUCT_EVENTS_OP,
             Self::GetProduct => &GET_PRODUCT_OP,
+            Self::DeleteProduct => &DELETE_PRODUCT_OP,
         }
     }
 }
@@ -87,9 +108,179 @@ const fn error_schema(
 ) -> Option<&'static ::honig::ProblemSchema> {
     None
 }
+/// Answers the webhooks of the API and the callbacks (`callbacks`) of its operations: the requests that it sends.
+pub trait Webhooks: Send + Sync + Sized + 'static {
+    /// What `verify_` finds for a credential of `apiKey`.
+    type ApiKey: Clone + Send + Sync + 'static;
+    /// Answers a request that the server refuses itself (no route, bad input, missing credentials, a handler `Err`) in the error body of the description. No standard defines its fields, so this maps them: `rejection.json(&body)` sends `body` with the status of the reason as `application/json`, and `rejection.message()` is the detail. `rejection.problem()` goes out as `application/problem+json` instead.
+    fn error_response(
+        rejection: ::honig::Rejection<WebhookOperation>,
+    ) -> ::honig::Response;
+    /// Checks a credential of `apiKey`: who is calling, or `None` when it is not valid (401).
+    fn verify_api_key(
+        &self,
+        credential: &str,
+        request: &::honig::Request,
+    ) -> impl Future<Output = Result<Option<Self::ApiKey>, ::honig::ApiError>> + Send;
+    fn create_product_product_created_post(
+        &self,
+        params: ops::create_product_product_created_post::Params,
+        ctx: &WebhookContext<
+            '_,
+            ops::create_product_product_created_post::Security<Self>,
+        >,
+    ) -> impl Future<Output = ops::create_product_product_created_post::Result> + Send;
+}
+pub struct WebhookRoutes<A> {
+    api: std::sync::Arc<A>,
+    name: &'static str,
+}
+/// Returns the server of the webhook or callback `name`, answered by `api`.
+#[must_use]
+pub fn webhook<A: Webhooks>(
+    api: std::sync::Arc<A>,
+    name: &'static str,
+) -> ::honig::Server<WebhookRoutes<A>> {
+    ::honig::Server::new(WebhookRoutes { api, name })
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum WebhookOperation {
+    CreateProductProductCreatedPost,
+}
+impl ::honig::Operation for WebhookOperation {
+    fn op(self) -> &'static ::honig::__private::Op {
+        match self {
+            Self::CreateProductProductCreatedPost => {
+                &CREATE_PRODUCT_PRODUCT_CREATED_POST_OP
+            }
+        }
+    }
+}
+pub type WebhookContext<'a, C = ()> = ::honig::Context<'a, C, WebhookOperation>;
+/// What the `verify_` method of a scheme found. The server carries it to the operation's `Security`. A layer
+/// finds the alternative that passed as `::honig::Passed` of it in the request's extensions.
+pub enum WebhookSchemeValue<A: Webhooks> {
+    ApiKey(A::ApiKey),
+}
+impl<A: Webhooks> Clone for WebhookSchemeValue<A> {
+    fn clone(&self) -> Self {
+        match self {
+            Self::ApiKey(v) => Self::ApiKey(v.clone()),
+        }
+    }
+}
+impl<A: Webhooks> WebhookSchemeValue<A> {
+    #[must_use]
+    pub fn api_key(self) -> Option<A::ApiKey> {
+        match self {
+            Self::ApiKey(v) => Some(v),
+        }
+    }
+}
+impl<A: Webhooks> ::honig::__private::Operations for WebhookRoutes<A> {
+    type Value = WebhookSchemeValue<A>;
+    type Operation = WebhookOperation;
+    fn error_response(
+        &self,
+    ) -> fn(::honig::Rejection<WebhookOperation>) -> ::honig::Response {
+        |rejection| A::error_response(rejection)
+    }
+    fn paths(&self) -> &'static [&'static str] {
+        &[]
+    }
+    fn route(
+        &self,
+        method: &str,
+        _: &str,
+    ) -> Result<(WebhookOperation, ::honig::__private::Spans), ::honig::Reason> {
+        match (self.name, method) {
+            ("productCreated", "POST") => {
+                Ok((
+                    WebhookOperation::CreateProductProductCreatedPost,
+                    ::honig::__private::Spans::default(),
+                ))
+            }
+            (name, _) => {
+                let allowed: Vec<&'static str> = WEBHOOK_METHODS
+                    .iter()
+                    .filter(|(n, _)| *n == name)
+                    .map(|(_, m)| *m)
+                    .collect();
+                Err(
+                    if allowed.is_empty() {
+                        ::honig::Reason::NotFound
+                    } else {
+                        ::honig::Reason::MethodNotAllowed(allowed)
+                    },
+                )
+            }
+        }
+    }
+    fn errors(&self) -> ::honig::__private::ProblemSchemas {
+        error_schema
+    }
+    fn verify<'r>(
+        &'r self,
+        scheme: &'static str,
+        credential: &'r str,
+        request: &'r ::honig::Request,
+    ) -> ::honig::__private::BoxFuture<
+        'r,
+        Result<Option<::honig::Verified<WebhookSchemeValue<A>>>, ::honig::ApiError>,
+    > {
+        let api = &*self.api;
+        Box::pin(async move {
+            match scheme {
+                "apiKey" => {
+                    Ok(
+                        api
+                            .verify_api_key(credential, request)
+                            .await?
+                            .map(|v| ::honig::Verified::new(
+                                WebhookSchemeValue::ApiKey(v),
+                            )),
+                    )
+                }
+                _ => Ok(None),
+            }
+        })
+    }
+    fn call<'r>(
+        &'r self,
+        req: ::honig::Request,
+        call: ::honig::__private::Call<
+            'r,
+            Option<::honig::Passed<WebhookSchemeValue<A>>>,
+            WebhookOperation,
+        >,
+    ) -> ::honig::__private::BoxFuture<'r, ::honig::Response> {
+        Box::pin(async move {
+            let api = &*self.api;
+            let mut req = req;
+            let uri = req.uri().clone();
+            let raw_query = uri.query().unwrap_or_default();
+            let query = ::honig::__private::parse_query(raw_query);
+            let routed = ::honig::__private::Routed {
+                request: &mut req,
+                caps: &[],
+                raw_query,
+                query: &query,
+            };
+            match (self.name, routed.request.method().as_str()) {
+                ("productCreated", "POST") => {
+                    create_product_product_created_post(api, routed, call).await
+                }
+                _ => ::honig::__private::new_response(404),
+            }
+        })
+    }
+}
+static WEBHOOK_METHODS: &[(&str, &str)] = &[("productCreated", "POST")];
 static METHODS: &[&[(&str, Operation)]] = &[
     &[("GET", Operation::ListProducts), ("POST", Operation::CreateProduct)],
-    &[("GET", Operation::GetProduct)],
+    &[("GET", Operation::ExportProducts)],
+    &[("GET", Operation::StreamProductEvents)],
+    &[("GET", Operation::GetProduct), ("DELETE", Operation::DeleteProduct)],
 ];
 static ROUTES: &[::honig::__private::Node] = &[
     ::honig::__private::node(
@@ -98,14 +289,20 @@ static ROUTES: &[::honig::__private::Node] = &[
         ::honig::__private::Node::NONE,
         ::honig::__private::Node::NONE,
     ),
-    ::honig::__private::node(&[], &[], 2, 0),
+    ::honig::__private::node(&[("events", 3), ("export", 2)], &[], 4, 0),
     ::honig::__private::node(&[], &[], ::honig::__private::Node::NONE, 1),
+    ::honig::__private::node(&[], &[], ::honig::__private::Node::NONE, 2),
+    ::honig::__private::node(&[], &[], ::honig::__private::Node::NONE, 3),
 ];
 static BASE_PATHS: &[&str] = &["/v1"];
 static PATHS: &[&str] = &[
     "/products",
+    "/products/events",
+    "/products/export",
     "/products/{s1}",
     "/v1/products",
+    "/v1/products/events",
+    "/v1/products/export",
     "/v1/products/{s1}",
 ];
 pub struct Routes<A>(std::sync::Arc<A>);
@@ -227,7 +424,12 @@ async fn dispatch<A: Api>(
     match op {
         Operation::ListProducts => Box::pin(list_products(api, routed, call)).await,
         Operation::CreateProduct => Box::pin(create_product(api, routed, call)).await,
+        Operation::ExportProducts => Box::pin(export_products(api, routed, call)).await,
+        Operation::StreamProductEvents => {
+            Box::pin(stream_product_events(api, routed, call)).await
+        }
         Operation::GetProduct => Box::pin(get_product(api, routed, call)).await,
+        Operation::DeleteProduct => Box::pin(delete_product(api, routed, call)).await,
     }
 }
 static LIST_PRODUCTS_OP: ::honig::__private::Op = ::honig::__private::Op {
@@ -379,12 +581,26 @@ async fn create_product<A: Api>(
 fn create_product_params(
     incoming: ::honig::__private::Incoming<'_>,
 ) -> Result<ops::create_product::Params, ::honig::Reason> {
-    let ::honig::__private::Incoming { request: req, body, .. } = incoming;
+    let ::honig::__private::Incoming { request: req, query, body, .. } = incoming;
     ::honig::__private::check_media(
         ::honig::Message::content_type(req),
         &["application/json"],
     )?;
     Ok(ops::create_product::Params {
+        notify: ::honig::__private::from_text(
+                ::honig::__private::query_text(query, "notify", "/query/notify")?,
+                "/query/notify",
+            )
+            .map(
+                ::honig::__private::formats::Validated::<
+                    Option<::honig::url::Url>,
+                    ::honig::__private::formats::Maybe<
+                        ::honig::__private::formats::Text<
+                            ::honig::__private::formats::format::Uri,
+                        >,
+                    >,
+                >::into_inner,
+            )?,
         body: ::honig::__private::json_decode(None, &body)?,
     })
 }
@@ -406,6 +622,151 @@ fn create_product_encode(
                     "application/json",
                     ::honig::__private::json_encode(body)?,
                 )
+            }
+        },
+    )
+}
+static EXPORT_PRODUCTS_OP: ::honig::__private::Op = ::honig::__private::Op {
+    security: ops::SECURITY_0,
+    produces: &["application/json", "text/csv"],
+    ..::honig::__private::Op::new(
+        "export_products",
+        "GET",
+        "/products/export",
+        "GET /products/export",
+        error_schema,
+    )
+};
+async fn export_products<A: Api>(
+    api: &A,
+    routed: ::honig::__private::Routed<'_>,
+    call: ::honig::__private::Call<
+        '_,
+        Option<::honig::Passed<<Routes<A> as ::honig::__private::Operations>::Value>>,
+        Operation,
+    >,
+) -> ::honig::Response {
+    let steps = ::honig::__private::Steps {
+        api,
+        decode: |i| Ok(export_products_params(&i)),
+        call: |a, p, c| Box::pin(a.export_products(p, c)),
+        encode: |r, _| export_products_encode(r),
+    };
+    ::honig::__private::serve_signed_in(
+            routed,
+            call
+                .map(|passed: Option<::honig::Passed<_>>| {
+                    let passed = passed?;
+                    let mut values = passed.values.into_iter();
+                    match passed.alternative {
+                        0usize => {
+                            Some(
+                                ops::export_products::Security::ApiKey(
+                                    values.next()?.api_key()?,
+                                ),
+                            )
+                        }
+                        _ => None,
+                    }
+                }),
+            &steps,
+        )
+        .await
+}
+const fn export_products_params(
+    incoming: &::honig::__private::Incoming<'_>,
+) -> ops::export_products::Params {
+    let ::honig::__private::Incoming { media, .. } = *incoming;
+    ops::export_products::Params {
+        media: ops::export_products::Media::from_index(media),
+    }
+}
+fn export_products_encode(
+    resp: ops::export_products::Response,
+) -> Result<::honig::Response, ::honig::ClientError> {
+    let ops::export_products::Response::Ok(body) = resp;
+    Ok({
+        let mut r = ::honig::__private::new_response(200);
+        match body {
+            ops::export_products::OkBody::Json(b) => {
+                ::honig::Message::set_body(
+                    &mut r,
+                    "application/json",
+                    ::honig::__private::json_encode(&b)?,
+                );
+            }
+            ops::export_products::OkBody::Csv(b) => {
+                ::honig::Message::set_body(&mut r, "text/csv", String::into_bytes(b));
+            }
+        }
+        r
+    })
+}
+static STREAM_PRODUCT_EVENTS_OP: ::honig::__private::Op = ::honig::__private::Op {
+    security: ops::SECURITY_0,
+    produces: &["text/event-stream"],
+    ..::honig::__private::Op::new(
+        "stream_product_events",
+        "GET",
+        "/products/events",
+        "GET /products/events",
+        error_schema,
+    )
+};
+async fn stream_product_events<A: Api>(
+    api: &A,
+    routed: ::honig::__private::Routed<'_>,
+    call: ::honig::__private::Call<
+        '_,
+        Option<::honig::Passed<<Routes<A> as ::honig::__private::Operations>::Value>>,
+        Operation,
+    >,
+) -> ::honig::Response {
+    let steps = ::honig::__private::Steps {
+        api,
+        decode: |_| Ok(ops::stream_product_events::Params {
+        }),
+        call: |a, p, c| Box::pin(a.stream_product_events(p, c)),
+        encode: |r, _| stream_product_events_encode(r),
+    };
+    ::honig::__private::serve_signed_in(
+            routed,
+            call
+                .map(|passed: Option<::honig::Passed<_>>| {
+                    let passed = passed?;
+                    let mut values = passed.values.into_iter();
+                    match passed.alternative {
+                        0usize => {
+                            Some(
+                                ops::stream_product_events::Security::ApiKey(
+                                    values.next()?.api_key()?,
+                                ),
+                            )
+                        }
+                        _ => None,
+                    }
+                }),
+            &steps,
+        )
+        .await
+}
+fn stream_product_events_encode(
+    resp: ops::stream_product_events::Response,
+) -> Result<::honig::Response, ::honig::ClientError> {
+    Ok(
+        match resp {
+            ops::stream_product_events::Response::Ok(body) => {
+                let mut r = ::honig::__private::new_response(200);
+                ::honig::__private::set_items(
+                    &mut r,
+                    "text/event-stream",
+                    body,
+                    ::honig::Framing::Sse,
+                )?;
+                r
+            }
+            ops::stream_product_events::Response::NoContent => {
+                ::honig::__private::new_response(204)
             }
         },
     )
@@ -460,13 +821,18 @@ async fn get_product<A: Api>(
 fn get_product_params(
     incoming: &::honig::__private::Incoming<'_>,
 ) -> Result<ops::get_product::Params, ::honig::Reason> {
-    let ::honig::__private::Incoming { caps, .. } = *incoming;
+    let ::honig::__private::Incoming { request: req, caps, .. } = *incoming;
     Ok(ops::get_product::Params {
         product_id: ::honig::__private::path_param(
             caps,
             0,
             ::honig::__private::Style::Simple,
             "/path/productId",
+        )?,
+        if_none_match: ::honig::__private::from_text(
+            ::honig::__private::joined_header(req.headers(), "If-None-Match")
+                .map(::honig::__private::trimmed_header),
+            "/header/If-None-Match",
         )?,
     })
 }
@@ -491,4 +857,153 @@ fn get_product_encode(
             }
         },
     )
+}
+static DELETE_PRODUCT_OP: ::honig::__private::Op = ::honig::__private::Op {
+    security: ops::SECURITY_0,
+    ..::honig::__private::Op::new(
+        "delete_product",
+        "DELETE",
+        "/products/{productId}",
+        "DELETE /products/{productId}",
+        error_schema,
+    )
+};
+async fn delete_product<A: Api>(
+    api: &A,
+    routed: ::honig::__private::Routed<'_>,
+    call: ::honig::__private::Call<
+        '_,
+        Option<::honig::Passed<<Routes<A> as ::honig::__private::Operations>::Value>>,
+        Operation,
+    >,
+) -> ::honig::Response {
+    let steps = ::honig::__private::Steps {
+        api,
+        decode: |i| delete_product_params(&i),
+        call: |a, p, c| Box::pin(a.delete_product(p, c)),
+        encode: |r, _| delete_product_encode(&r),
+    };
+    ::honig::__private::serve_signed_in(
+            routed,
+            call
+                .map(|passed: Option<::honig::Passed<_>>| {
+                    let passed = passed?;
+                    let mut values = passed.values.into_iter();
+                    match passed.alternative {
+                        0usize => {
+                            Some(
+                                ops::delete_product::Security::ApiKey(
+                                    values.next()?.api_key()?,
+                                ),
+                            )
+                        }
+                        _ => None,
+                    }
+                }),
+            &steps,
+        )
+        .await
+}
+fn delete_product_params(
+    incoming: &::honig::__private::Incoming<'_>,
+) -> Result<ops::delete_product::Params, ::honig::Reason> {
+    let ::honig::__private::Incoming { caps, .. } = *incoming;
+    Ok(ops::delete_product::Params {
+        product_id: ::honig::__private::path_param(
+            caps,
+            0,
+            ::honig::__private::Style::Simple,
+            "/path/productId",
+        )?,
+    })
+}
+fn delete_product_encode(
+    resp: &ops::delete_product::Response,
+) -> Result<::honig::Response, ::honig::ClientError> {
+    Ok(
+        match resp {
+            ops::delete_product::Response::NoContent => {
+                ::honig::__private::new_response(204)
+            }
+            ops::delete_product::Response::NotFound(body) => {
+                ::honig::__private::body_response(
+                    404,
+                    "application/json",
+                    ::honig::__private::json_encode(body)?,
+                )
+            }
+        },
+    )
+}
+static CREATE_PRODUCT_PRODUCT_CREATED_POST_OP: ::honig::__private::Op = ::honig::__private::Op {
+    security: ops::SECURITY_0,
+    ..::honig::__private::Op::new(
+        "create_product_product_created_post",
+        "POST",
+        "productCreated",
+        "POST productCreated",
+        error_schema,
+    )
+};
+async fn create_product_product_created_post<A: Webhooks>(
+    api: &A,
+    routed: ::honig::__private::Routed<'_>,
+    call: ::honig::__private::Call<
+        '_,
+        Option<
+            ::honig::Passed<<WebhookRoutes<A> as ::honig::__private::Operations>::Value>,
+        >,
+        WebhookOperation,
+    >,
+) -> ::honig::Response {
+    let steps = ::honig::__private::Steps {
+        api,
+        decode: create_product_product_created_post_params,
+        call: |a, p, c| Box::pin(a.create_product_product_created_post(p, c)),
+        encode: |r, _| Ok(create_product_product_created_post_encode(&r)),
+    };
+    ::honig::__private::serve_signed_in(
+            routed,
+            call
+                .map(|passed: Option<::honig::Passed<_>>| {
+                    let passed = passed?;
+                    let mut values = passed.values.into_iter();
+                    match passed.alternative {
+                        0usize => {
+                            Some(
+                                ops::create_product_product_created_post::Security::ApiKey(
+                                    values.next()?.api_key()?,
+                                ),
+                            )
+                        }
+                        _ => None,
+                    }
+                }),
+            &steps,
+        )
+        .await
+}
+fn create_product_product_created_post_params(
+    incoming: ::honig::__private::Incoming<'_>,
+) -> Result<ops::create_product_product_created_post::Params, ::honig::Reason> {
+    let ::honig::__private::Incoming { request: req, body, .. } = incoming;
+    ::honig::__private::check_media(
+        ::honig::Message::content_type(req),
+        &["application/json"],
+    )?;
+    Ok(ops::create_product_product_created_post::Params {
+        body: if body.is_empty()
+            && ::honig::Message::header(req, "content-type").is_none()
+        {
+            None
+        } else {
+            Some(::honig::__private::json_decode(None, &body)?)
+        },
+    })
+}
+fn create_product_product_created_post_encode(
+    resp: &ops::create_product_product_created_post::Response,
+) -> ::honig::Response {
+    let ops::create_product_product_created_post::Response::NoContent = resp;
+    ::honig::__private::new_response(204)
 }

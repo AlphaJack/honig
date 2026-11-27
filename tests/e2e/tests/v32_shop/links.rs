@@ -4,12 +4,10 @@ use e2e::v32_shop::api::operations as ops;
 
 #[test]
 fn create_product_links_carry_the_new_id() {
-    // ANCHOR: links
     let request = ops::create_product::Params { body: None, ..Default::default() };
     let body = serde_json::json!({"id": 7, "name": "Desk lamp"});
     let update = ops::create_product::links::UpdateProduct::new(&request, &body);
     assert_eq!(update.product_id, Some(7));
-    // ANCHOR_END: links
     let get = ops::create_product::links::GetProduct::new(&request, &body);
     assert_eq!(get.product_id, Some(7));
 }

@@ -39,15 +39,21 @@ fn rate_limited(limit: u32) -> axum::Router {
 // ANCHOR_END: rate-limit
 
 // ANCHOR: per-operation
-/// Writes cost more than queries: only `createProduct` is limited. The match lists every operation, so one added to the
+/// Writes cost more than queries: only `createProduct` and `deleteProduct` are limited. The match lists every operation, so one added to the
 /// description fails to compile here until you decide its limit.
 fn writes_limited(limit: u32) -> axum::Router {
     let used = Arc::new(AtomicU32::new(0));
     api::Server::new(Catalog::default())
         .operation_layer(tower::filter::AsyncFilterLayer::new(move |req: api::Request| {
             let limited = match req.extensions().get::<api::Operation>() {
-                Some(api::Operation::CreateProduct) => true,
-                Some(api::Operation::ListProducts | api::Operation::GetProduct) | None => false,
+                Some(api::Operation::CreateProduct | api::Operation::DeleteProduct) => true,
+                Some(
+                    api::Operation::ListProducts
+                    | api::Operation::GetProduct
+                    | api::Operation::ExportProducts
+                    | api::Operation::StreamProductEvents,
+                )
+                | None => false,
             };
             let over = limited && used.fetch_add(1, Ordering::Relaxed) >= limit;
             std::future::ready(if over {

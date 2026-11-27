@@ -22,7 +22,6 @@ fn header<'r>(req: &'r api::Request, name: &str) -> Option<&'r str> {
     req.headers().get(name)?.to_str().ok()
 }
 
-// ANCHOR: media
 /// One product as XML from an operation that answers in JSON unless asked otherwise.
 async fn product_as_xml(
     client: &api::Client<impl api::Transport>,
@@ -30,7 +29,6 @@ async fn product_as_xml(
     let params = ops::get_product::Params { media: ops::get_product::Media::Xml, ..ops::get_product::Params::new(7) };
     client.get_product(params).await
 }
-// ANCHOR_END: media
 
 #[tokio::test]
 async fn the_client_asks_for_the_media_type_it_picks() {
@@ -41,7 +39,6 @@ async fn the_client_asks_for_the_media_type_it_picks() {
     assert_matches!(product_as_xml(&client).await, Err(api::ClientError::UnexpectedStatus { .. }));
 }
 
-// ANCHOR: not-modified
 /// The product or `None` when the copy tagged `etag` is still current.
 async fn product_if_changed(
     client: &api::Client<impl api::Transport>,
@@ -53,7 +50,6 @@ async fn product_if_changed(
         other => other.map(Some),
     }
 }
-// ANCHOR_END: not-modified
 
 #[tokio::test]
 async fn a_304_says_the_held_copy_is_current() {
@@ -104,7 +100,6 @@ async fn the_device_flow_polls_until_the_token_is_ready() {
     sign_in(&mut client).await.unwrap();
 }
 
-// ANCHOR: stream
 /// Every product event of the feed decoded as they arrive. The feed ends with `data: [DONE]`. That is not an event.
 async fn product_events(
     client: &api::Client<impl api::Transport>,
@@ -123,7 +118,6 @@ async fn product_events(
     }
     Ok(events)
 }
-// ANCHOR_END: stream
 
 #[tokio::test]
 async fn the_feed_is_read_until_done() {
@@ -136,13 +130,11 @@ async fn the_feed_is_read_until_done() {
     assert_eq!(events.len(), 1);
 }
 
-// ANCHOR: callback
 /// Where the `productCreated` callback goes: the URL the request's body names.
 fn created_callback(request: &api::Request) -> Option<String> {
     let exchange = api::Exchange { request: Some(request), method: "POST", ..Default::default() };
     ops::create_product::callbacks::product_created_url(&ops::create_product::Params::default(), &exchange)
 }
-// ANCHOR_END: callback
 
 #[test]
 fn the_callback_goes_where_the_request_says() {
@@ -175,7 +167,6 @@ fn feed(
 }
 // ANCHOR_END: feed
 
-// ANCHOR: reconnect
 /// Follows the feed. When the connection ends or breaks off the stream waits for the `retry` of the server. Then it
 /// asks again with `Last-Event-ID`. So no event is lost or received twice. It ends when the server answers `204` or
 /// after five failed reconnections in a row.
@@ -193,7 +184,6 @@ async fn follow(
     }
     Ok(())
 }
-// ANCHOR_END: reconnect
 
 #[tokio::test]
 async fn the_feed_resumes_after_the_last_event_read() {
@@ -231,9 +221,7 @@ async fn the_feed_resumes_after_the_last_event_read() {
 #[tokio::test]
 async fn into_result_gives_the_success_and_errs_with_the_rest() -> Result<(), Box<dyn std::error::Error>> {
     let gone = shop(|_| std::future::ready(honig::__private::new_response(204)));
-    // ANCHOR: into-ok
     gone.delete_product(ops::delete_product::Params { product_id: 7 }).await?.into_result()?;
-    // ANCHOR_END: into-ok
     let missing = shop(|_| {
         let mut r = honig::__private::new_response(404);
         r.headers_mut().insert("content-type", honig::http::HeaderValue::from_static("application/json"));

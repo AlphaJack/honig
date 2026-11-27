@@ -54,6 +54,27 @@ impl api::Api for Server {
     ) -> Result<ops::get_product::Response, api::ApiError> {
         Err(api::ApiError::new(honig::http::StatusCode::NOT_IMPLEMENTED, "not here"))
     }
+    async fn export_products(
+        &self,
+        _: ops::export_products::Params,
+        _: &api::Context<'_, ops::export_products::Security<Self>>,
+    ) -> Result<ops::export_products::Response, api::ApiError> {
+        Err(api::ApiError::new(honig::http::StatusCode::NOT_IMPLEMENTED, "not here"))
+    }
+    async fn delete_product(
+        &self,
+        _: ops::delete_product::Params,
+        _: &api::Context<'_, ops::delete_product::Security<Self>>,
+    ) -> Result<ops::delete_product::Response, api::ApiError> {
+        Err(api::ApiError::new(honig::http::StatusCode::NOT_IMPLEMENTED, "not here"))
+    }
+    async fn stream_product_events(
+        &self,
+        _: ops::stream_product_events::Params,
+        _: &api::Context<'_, ops::stream_product_events::Security<Self>>,
+    ) -> Result<ops::stream_product_events::Response, api::ApiError> {
+        Err(api::ApiError::new(honig::http::StatusCode::NOT_IMPLEMENTED, "not here"))
+    }
 }
 
 fn serve() -> axum::Router {
