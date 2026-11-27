@@ -184,6 +184,7 @@ components:
           physical: '#/components/schemas/Physical'
           digital: '#/components/schemas/Digital'
     # Each branch fixes its tag, so a value matches exactly one: `oneOf` is satisfied whatever the discriminator says.
+    # ANCHOR: physical
     Physical:
       type: object
       required: [kind, name]
@@ -192,6 +193,7 @@ components:
         name: {type: string}
         fragile: {type: boolean}
         sku: {type: string, pattern: '^[A-Z]{3}-[0-9]{4}$', description: Stock keeping unit}
+    # ANCHOR_END: physical
     Digital:
       type: object
       required: [kind, name]

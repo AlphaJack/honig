@@ -44,9 +44,7 @@ impl api::Api for Server {
 
 /// The response that API Gateway gets for `event` as JSON.
 fn invoke(event: Value) -> Value {
-    // ANCHOR: lambda
     let mut adapter = lambda_http::Adapter::from(api::Server::new(Server).into_axum());
-    // ANCHOR_END: lambda
     let payload: LambdaRequest = serde_json::from_value(event).unwrap();
     let event = lambda_http::LambdaEvent::new(payload, lambda_http::Context::default());
     serde_json::to_value(honig::block_on(adapter.call(event)).unwrap()).unwrap()

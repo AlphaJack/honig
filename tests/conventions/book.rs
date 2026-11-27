@@ -49,15 +49,13 @@ fn rust_in_the_book_comes_from_tested_files() {
 const RUNNING_EXAMPLE: [&str; 2] = ["examples/shop/", "tests/e2e/tests/v32_catalog/"];
 
 /// The Rust includes that call another API, each with why.
-const OTHER_APIS: [(&str, &str); 8] = [
+const OTHER_APIS: [(&str, &str); 6] = [
     ("tests/e2e/tests/v32_shop/client.rs:device-flow", "the catalog accepts only an API key"),
     ("tests/e2e/tests/v32_scopes.rs:problem-instance", "the error body of the catalog is its own, not RFC 9457"),
     ("tests/e2e/tests/v32_scopes.rs:scopes", "the API key of the catalog grants no scopes"),
     ("tests/e2e/tests/v32_security.rs:checkout", "the catalog has one API key, not two credentials at once"),
     ("tests/e2e/tests/v32_security.rs:optional-rate-limit", "every operation of the catalog needs its key"),
-    ("tests/e2e/tests/v32_lambda.rs:lambda", "not on the catalog yet"),
-    ("tests/e2e/tests/v32_validation.rs:builder", "not on the catalog yet"),
-    ("tests/e2e/tests/v32_kitchen_sink.rs:whole-schema", "not on the catalog yet"),
+    ("tests/e2e/tests/v32_kitchen_sink.rs:whole-schema", "the catalog has no keyword that a Rust type cannot say"),
 ];
 
 /// The `file:line: target` of each Rust include in `text` that is neither from the running example nor listed in

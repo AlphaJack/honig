@@ -8,6 +8,7 @@ mod support;
 mod adapters;
 mod auth;
 mod client;
+mod lambda;
 mod layers;
 mod observability;
 mod recipes;
