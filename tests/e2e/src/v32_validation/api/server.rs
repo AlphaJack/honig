@@ -9,11 +9,11 @@ pub trait Api: Send + Sync + Sized + 'static {
         params: ops::get_mode::Params,
         ctx: &Context<'_, ()>,
     ) -> impl Future<Output = ops::get_mode::Result> + Send;
-    fn create_user(
+    fn create_customer(
         &self,
-        params: ops::create_user::Params,
+        params: ops::create_customer::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = ops::create_user::Result> + Send;
+    ) -> impl Future<Output = ops::create_customer::Result> + Send;
     fn create_shipment(
         &self,
         params: ops::create_shipment::Params,
@@ -24,11 +24,11 @@ pub trait Api: Send + Sync + Sized + 'static {
         params: ops::login::Params,
         ctx: &Context<'_, ()>,
     ) -> impl Future<Output = ops::login::Result> + Send;
-    fn add_member(
+    fn add_customer(
         &self,
-        params: ops::add_member::Params,
+        params: ops::add_customer::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = ops::add_member::Result> + Send;
+    ) -> impl Future<Output = ops::add_customer::Result> + Send;
     fn add_closed(
         &self,
         params: ops::add_closed::Params,
@@ -43,10 +43,10 @@ pub trait Api: Send + Sync + Sized + 'static {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {
     GetMode,
-    CreateUser,
+    CreateCustomer,
     CreateShipment,
     Login,
-    AddMember,
+    AddCustomer,
     AddClosed,
     AddBadge,
 }
@@ -54,10 +54,10 @@ impl ::honig::Operation for Operation {
     fn op(self) -> &'static ::honig::__private::Op {
         match self {
             Self::GetMode => &GET_MODE_OP,
-            Self::CreateUser => &CREATE_USER_OP,
+            Self::CreateCustomer => &CREATE_CUSTOMER_OP,
             Self::CreateShipment => &CREATE_SHIPMENT_OP,
             Self::Login => &LOGIN_OP,
-            Self::AddMember => &ADD_MEMBER_OP,
+            Self::AddCustomer => &ADD_CUSTOMER_OP,
             Self::AddClosed => &ADD_CLOSED_OP,
             Self::AddBadge => &ADD_BADGE_OP,
         }
@@ -79,7 +79,7 @@ fn error_schema(
     status: u16,
 ) -> Option<&'static ::honig::ProblemSchema> {
     match operation {
-        Some("create_user") => {
+        Some("create_customer") => {
             match status {
                 400..=499 => None,
                 _ => Some(&ERROR_SCHEMA_0),
@@ -90,22 +90,21 @@ fn error_schema(
 }
 static METHODS: &[&[(&str, Operation)]] = &[
     &[("GET", Operation::GetMode)],
-    &[("POST", Operation::CreateUser)],
+    &[("POST", Operation::CreateCustomer)],
     &[("POST", Operation::CreateShipment)],
     &[("POST", Operation::Login)],
-    &[("POST", Operation::AddMember)],
     &[("POST", Operation::AddClosed)],
     &[("POST", Operation::AddBadge)],
+    &[("POST", Operation::AddCustomer)],
 ];
 static ROUTES: &[::honig::__private::Node] = &[
     ::honig::__private::node(
         &[
             ("mode", 1),
-            ("users", 2),
-            ("badges", 7),
-            ("closed", 6),
+            ("badges", 6),
+            ("closed", 5),
             ("logins", 4),
-            ("members", 5),
+            ("customers", 2),
             ("shipments", 3),
         ],
         &[],
@@ -113,7 +112,7 @@ static ROUTES: &[::honig::__private::Node] = &[
         ::honig::__private::Node::NONE,
     ),
     ::honig::__private::node(&[], &[], ::honig::__private::Node::NONE, 0),
-    ::honig::__private::node(&[], &[], ::honig::__private::Node::NONE, 1),
+    ::honig::__private::node(&[("import", 7)], &[], ::honig::__private::Node::NONE, 1),
     ::honig::__private::node(&[], &[], ::honig::__private::Node::NONE, 2),
     ::honig::__private::node(&[], &[], ::honig::__private::Node::NONE, 3),
     ::honig::__private::node(&[], &[], ::honig::__private::Node::NONE, 4),
@@ -123,11 +122,11 @@ static ROUTES: &[::honig::__private::Node] = &[
 static PATHS: &[&str] = &[
     "/badges",
     "/closed",
+    "/customers",
+    "/customers/import",
     "/logins",
-    "/members",
     "/mode",
     "/shipments",
-    "/users",
 ];
 pub struct Routes<A>(std::sync::Arc<A>);
 /// The server of this API: `Server::new(your_api)`, or `Server::new(arc)` to keep a handle on it. Add layers,
@@ -221,10 +220,10 @@ async fn dispatch<A: Api>(
 ) -> ::honig::Response {
     match op {
         Operation::GetMode => Box::pin(get_mode(api, routed, call)).await,
-        Operation::CreateUser => Box::pin(create_user(api, routed, call)).await,
+        Operation::CreateCustomer => Box::pin(create_customer(api, routed, call)).await,
         Operation::CreateShipment => Box::pin(create_shipment(api, routed, call)).await,
         Operation::Login => Box::pin(login(api, routed, call)).await,
-        Operation::AddMember => Box::pin(add_member(api, routed, call)).await,
+        Operation::AddCustomer => Box::pin(add_customer(api, routed, call)).await,
         Operation::AddClosed => Box::pin(add_closed(api, routed, call)).await,
         Operation::AddBadge => Box::pin(add_badge(api, routed, call)).await,
     }
@@ -262,17 +261,17 @@ fn get_mode_encode(
         ),
     )
 }
-static CREATE_USER_OP: ::honig::__private::Op = ::honig::__private::Op {
+static CREATE_CUSTOMER_OP: ::honig::__private::Op = ::honig::__private::Op {
     produces: &["application/json"],
     ..::honig::__private::Op::new(
-        "create_user",
+        "create_customer",
         "POST",
-        "/users",
-        "POST /users",
+        "/customers",
+        "POST /customers",
         error_schema,
     )
 };
-async fn create_user<A: Api>(
+async fn create_customer<A: Api>(
     api: &A,
     routed: ::honig::__private::Routed<'_>,
     call: ::honig::__private::Call<
@@ -283,21 +282,21 @@ async fn create_user<A: Api>(
 ) -> ::honig::Response {
     let steps = ::honig::__private::Steps {
         api,
-        decode: create_user_params,
-        call: |a, p, c| Box::pin(a.create_user(p, c)),
-        encode: |r, _| create_user_encode(&r),
+        decode: create_customer_params,
+        call: |a, p, c| Box::pin(a.create_customer(p, c)),
+        encode: |r, _| create_customer_encode(&r),
     };
     ::honig::__private::serve(routed, call.map(|_| ()), &steps).await
 }
-fn create_user_params(
+fn create_customer_params(
     incoming: ::honig::__private::Incoming<'_>,
-) -> Result<ops::create_user::Params, ::honig::Reason> {
+) -> Result<ops::create_customer::Params, ::honig::Reason> {
     let ::honig::__private::Incoming { request: req, query, body, .. } = incoming;
     ::honig::__private::check_media(
         ::honig::Message::content_type(req),
         &["application/json"],
     )?;
-    Ok(ops::create_user::Params {
+    Ok(ops::create_customer::Params {
         limit: ::honig::__private::from_text(
             ::honig::__private::query_text(query, "limit", "/query/limit")?,
             "/query/limit",
@@ -310,19 +309,19 @@ fn create_user_params(
         body: ::honig::__private::json_decode(None, &body)?,
     })
 }
-fn create_user_encode(
-    resp: &ops::create_user::Response,
+fn create_customer_encode(
+    resp: &ops::create_customer::Response,
 ) -> Result<::honig::Response, ::honig::ClientError> {
     Ok(
         match resp {
-            ops::create_user::Response::Created(body) => {
+            ops::create_customer::Response::Created(body) => {
                 ::honig::__private::body_response(
                     201,
                     "application/json",
                     ::honig::__private::json_encode(body)?,
                 )
             }
-            ops::create_user::Response::ClientError { status, body } => {
+            ops::create_customer::Response::ClientError { status, body } => {
                 ::honig::__private::body_response(
                     status.as_u16(),
                     "application/problem+json",
@@ -437,14 +436,14 @@ fn login_encode(
         ),
     )
 }
-static ADD_MEMBER_OP: ::honig::__private::Op = ::honig::__private::Op::new(
-    "add_member",
+static ADD_CUSTOMER_OP: ::honig::__private::Op = ::honig::__private::Op::new(
+    "add_customer",
     "POST",
-    "/members",
-    "POST /members",
+    "/customers/import",
+    "POST /customers/import",
     error_schema,
 );
-async fn add_member<A: Api>(
+async fn add_customer<A: Api>(
     api: &A,
     routed: ::honig::__private::Routed<'_>,
     call: ::honig::__private::Call<
@@ -455,40 +454,40 @@ async fn add_member<A: Api>(
 ) -> ::honig::Response {
     let steps = ::honig::__private::Steps {
         api,
-        decode: add_member_params,
-        call: |a, p, c| Box::pin(a.add_member(p, c)),
-        encode: |r, _| Ok(add_member_encode(&r)),
+        decode: add_customer_params,
+        call: |a, p, c| Box::pin(a.add_customer(p, c)),
+        encode: |r, _| Ok(add_customer_encode(&r)),
     };
     ::honig::__private::serve(routed, call.map(|_| ()), &steps).await
 }
-fn add_member_params(
+fn add_customer_params(
     incoming: ::honig::__private::Incoming<'_>,
-) -> Result<ops::add_member::Params, ::honig::Reason> {
+) -> Result<ops::add_customer::Params, ::honig::Reason> {
     let ::honig::__private::Incoming { request: req, body, .. } = incoming;
     ::honig::__private::check_media(
         ::honig::Message::content_type(req),
         &["application/json", "application/x-www-form-urlencoded"],
     )?;
-    Ok(ops::add_member::Params {
+    Ok(ops::add_customer::Params {
         body: if ::honig::__private::media_matches(
             ::honig::Message::content_type(req),
             "application/json",
         ) {
-            ops::add_member::Body::Json(::honig::__private::json_decode(None, &body)?)
+            ops::add_customer::Body::Json(::honig::__private::json_decode(None, &body)?)
         } else if ::honig::__private::media_matches(
             ::honig::Message::content_type(req),
             "application/x-www-form-urlencoded",
         ) {
-            ops::add_member::Body::XWwwFormUrlencoded(
+            ops::add_customer::Body::XWwwFormUrlencoded(
                 ::honig::__private::form_decode(None, &body)?,
             )
         } else {
-            ops::add_member::Body::Json(::honig::__private::json_decode(None, &body)?)
+            ops::add_customer::Body::Json(::honig::__private::json_decode(None, &body)?)
         },
     })
 }
-fn add_member_encode(resp: &ops::add_member::Response) -> ::honig::Response {
-    let ops::add_member::Response::Created = resp;
+fn add_customer_encode(resp: &ops::add_customer::Response) -> ::honig::Response {
+    let ops::add_customer::Response::Created = resp;
     ::honig::__private::new_response(201)
 }
 static ADD_CLOSED_OP: ::honig::__private::Op = ::honig::__private::Op::new(

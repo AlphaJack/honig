@@ -1696,33 +1696,33 @@ impl ::honig::__private::XmlShape for Price {
 }
 ::honig::object! {
     #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-    pub struct User {
-        pub name: UserName,
+    pub struct Customer {
+        pub name: CustomerName,
         #[optional]
-        pub handle: UserHandle,
+        pub handle: CustomerHandle,
         #[optional]
-        pub age: UserAge,
+        pub age: CustomerAge,
         #[optional]
-        pub score: UserScore,
+        pub score: CustomerScore,
         #[optional]
-        pub tags: UserTags,
-        pub role: UserRole,
+        pub tags: CustomerTags,
+        pub tier: CustomerTier,
         #[optional]
         pub email: ::honig::EmailStr,
         #[optional]
         pub site: ::honig::IdnHostnameStr,
         #[optional]
-        pub meta: UserMeta,
+        pub meta: CustomerMeta,
         #[optional]
-        pub loyalty: UserLoyalty,
+        pub loyalty: CustomerLoyalty,
         #[nullable]
-        pub note: UserNote,
+        pub note: CustomerNote,
     }
 }
-impl ::honig::__private::XmlShape for User {
+impl ::honig::__private::XmlShape for Customer {
     fn xml() -> &'static ::honig::__private::XmlNode {
         static NODE: ::honig::__private::XmlNode = ::honig::__private::XmlNode {
-            name: "User",
+            name: "Customer",
             namespace: "",
             prefix: "",
             fields: &[
@@ -1736,7 +1736,7 @@ impl ::honig::__private::XmlShape for User {
                 ::honig::__private::XmlField::new("tags"),
                 ::honig::__private::XmlField {
                     required: true,
-                    ..::honig::__private::XmlField::new("role")
+                    ..::honig::__private::XmlField::new("tier")
                 },
                 ::honig::__private::XmlField::new("email"),
                 ::honig::__private::XmlField::new("site"),
@@ -2895,11 +2895,11 @@ impl TryFrom<f64> for PriceAmount {
 ::honig::checked_num_impls!(PriceAmount, f64);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
-pub struct UserName(pub(super) String);
-impl UserName {
+pub struct CustomerName(pub(super) String);
+impl CustomerName {
     pub const PATTERN: &'static str = "^\\p{Lu}";
 }
-impl TryFrom<String> for UserName {
+impl TryFrom<String> for CustomerName {
     type Error = ::honig::BuildError;
     fn try_from(value: String) -> Result<Self, ::honig::BuildError> {
         let mut violations: Vec<::honig::Violation> = Vec::new();
@@ -2933,14 +2933,14 @@ impl TryFrom<String> for UserName {
             .map_err(::honig::BuildError::value)
     }
 }
-::honig::checked_str_impls!(UserName);
+::honig::checked_str_impls!(CustomerName);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
-pub struct UserHandle(pub(super) String);
-impl UserHandle {
+pub struct CustomerHandle(pub(super) String);
+impl CustomerHandle {
     pub const PATTERN: &'static str = "^(a+)+$";
 }
-impl TryFrom<String> for UserHandle {
+impl TryFrom<String> for CustomerHandle {
     type Error = ::honig::BuildError;
     fn try_from(value: String) -> Result<Self, ::honig::BuildError> {
         let mut violations: Vec<::honig::Violation> = Vec::new();
@@ -2974,11 +2974,11 @@ impl TryFrom<String> for UserHandle {
             .map_err(::honig::BuildError::value)
     }
 }
-::honig::checked_str_impls!(UserHandle);
+::honig::checked_str_impls!(CustomerHandle);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
-pub struct UserAge(pub(super) i64);
-impl TryFrom<i64> for UserAge {
+pub struct CustomerAge(pub(super) i64);
+impl TryFrom<i64> for CustomerAge {
     type Error = ::honig::BuildError;
     fn try_from(value: i64) -> Result<Self, ::honig::BuildError> {
         let mut violations: Vec<::honig::Violation> = Vec::new();
@@ -3000,7 +3000,7 @@ impl TryFrom<i64> for UserAge {
             .map_err(::honig::BuildError::value)
     }
 }
-impl UserAge {
+impl CustomerAge {
     /// Returns the value, or `None` when it breaks a limit. In a constant, `.expect(..)` on it makes a
     /// literal outside the limits a build error.
     #[must_use]
@@ -3008,11 +3008,11 @@ impl UserAge {
         if value >= 0 && value < 150 { Some(Self(value)) } else { None }
     }
 }
-::honig::checked_num_impls!(UserAge, i64);
+::honig::checked_num_impls!(CustomerAge, i64);
 #[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
 #[serde(transparent)]
-pub struct UserScore(pub(super) f64);
-impl TryFrom<f64> for UserScore {
+pub struct CustomerScore(pub(super) f64);
+impl TryFrom<f64> for CustomerScore {
     type Error = ::honig::BuildError;
     fn try_from(value: f64) -> Result<Self, ::honig::BuildError> {
         let mut violations: Vec<::honig::Violation> = Vec::new();
@@ -3030,12 +3030,12 @@ impl TryFrom<f64> for UserScore {
             .map_err(::honig::BuildError::value)
     }
 }
-::honig::checked_num_impls!(UserScore, f64);
+::honig::checked_num_impls!(CustomerScore, f64);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
-pub struct UserTagsItem(pub(super) ::std::borrow::Cow<'static, str>);
-::honig::checked_twin!(UserTagsItem, CodeVariant1, String);
-impl UserTagsItem {
+pub struct CustomerTagsItem(pub(super) ::std::borrow::Cow<'static, str>);
+::honig::checked_twin!(CustomerTagsItem, CodeVariant1, String);
+impl CustomerTagsItem {
     /// Returns `value`, or `None` when its length breaks a limit. In a constant, `.expect(..)` on it makes a
     /// literal outside the limits a build error.
     #[must_use]
@@ -3044,27 +3044,27 @@ impl UserTagsItem {
         if n <= 3u64 { Some(Self(::std::borrow::Cow::Borrowed(value))) } else { None }
     }
 }
-::honig::checked_str_impls!(UserTagsItem);
+::honig::checked_str_impls!(CustomerTagsItem);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum UserRole {
-    Admin,
-    User,
+pub enum CustomerTier {
+    Standard,
+    Gold,
 }
-::honig::str_enum_impls!(UserRole { Admin => "admin", User => "user" });
+::honig::str_enum_impls!(CustomerTier { Gold => "gold", Standard => "standard" });
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum UserLoyalty {
-    Variant1(UserLoyaltyVariant1),
-    Variant2(UserLoyaltyVariant2),
+pub enum CustomerLoyalty {
+    Variant1(CustomerLoyaltyVariant1),
+    Variant2(CustomerLoyaltyVariant2),
 }
-::honig::union_serialize!(UserLoyalty { Variant1, Variant2 });
+::honig::union_serialize!(CustomerLoyalty { Variant1, Variant2 });
 ::honig::by_kind_deserialize!(
-    UserLoyalty { Integer => Variant1, String => Variant2 }; Null | Bool | Number | Array
-    | Object => none
+    CustomerLoyalty { Integer => Variant1, String => Variant2 }; Null | Bool | Number |
+    Array | Object => none
 );
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
-pub struct UserLoyaltyVariant1(pub(super) i64);
-impl TryFrom<i64> for UserLoyaltyVariant1 {
+pub struct CustomerLoyaltyVariant1(pub(super) i64);
+impl TryFrom<i64> for CustomerLoyaltyVariant1 {
     type Error = ::honig::BuildError;
     fn try_from(value: i64) -> Result<Self, ::honig::BuildError> {
         let mut violations: Vec<::honig::Violation> = Vec::new();
@@ -3086,7 +3086,7 @@ impl TryFrom<i64> for UserLoyaltyVariant1 {
             .map_err(::honig::BuildError::value)
     }
 }
-impl UserLoyaltyVariant1 {
+impl CustomerLoyaltyVariant1 {
     /// Returns the value, or `None` when it breaks a limit. In a constant, `.expect(..)` on it makes a
     /// literal outside the limits a build error.
     #[must_use]
@@ -3094,12 +3094,12 @@ impl UserLoyaltyVariant1 {
         if value >= 1 && value <= 10 { Some(Self(value)) } else { None }
     }
 }
-::honig::checked_num_impls!(UserLoyaltyVariant1, i64);
+::honig::checked_num_impls!(CustomerLoyaltyVariant1, i64);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
-pub struct UserLoyaltyVariant2(pub(super) ::std::borrow::Cow<'static, str>);
-::honig::checked_twin!(UserLoyaltyVariant2, CodeVariant1, String);
-impl UserLoyaltyVariant2 {
+pub struct CustomerLoyaltyVariant2(pub(super) ::std::borrow::Cow<'static, str>);
+::honig::checked_twin!(CustomerLoyaltyVariant2, CodeVariant1, String);
+impl CustomerLoyaltyVariant2 {
     /// Returns `value`, or `None` when its length breaks a limit. In a constant, `.expect(..)` on it makes a
     /// literal outside the limits a build error.
     #[must_use]
@@ -3108,13 +3108,13 @@ impl UserLoyaltyVariant2 {
         if n <= 3u64 { Some(Self(::std::borrow::Cow::Borrowed(value))) } else { None }
     }
 }
-::honig::checked_str_impls!(UserLoyaltyVariant2);
-pub type UserNote = UserNote2;
+::honig::checked_str_impls!(CustomerLoyaltyVariant2);
+pub type CustomerNote = CustomerNote2;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
-pub struct UserNote2(pub(super) ::std::borrow::Cow<'static, str>);
-::honig::checked_twin!(UserNote2, NarrowStampAt, String);
-impl UserNote2 {
+pub struct CustomerNote2(pub(super) ::std::borrow::Cow<'static, str>);
+::honig::checked_twin!(CustomerNote2, NarrowStampAt, String);
+impl CustomerNote2 {
     /// Returns `value`, or `None` when its length breaks a limit. In a constant, `.expect(..)` on it makes a
     /// literal outside the limits a build error.
     #[must_use]
@@ -3123,7 +3123,7 @@ impl UserNote2 {
         if n <= 5u64 { Some(Self(::std::borrow::Cow::Borrowed(value))) } else { None }
     }
 }
-::honig::checked_str_impls!(UserNote2);
+::honig::checked_str_impls!(CustomerNote2);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum GetModeOk {
     On,
@@ -3132,8 +3132,8 @@ pub enum GetModeOk {
 ::honig::str_enum_impls!(GetModeOk { Off => "off", On => "on" });
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
-pub struct CreateUserLimit(pub(super) i64);
-impl TryFrom<i64> for CreateUserLimit {
+pub struct CreateCustomerLimit(pub(super) i64);
+impl TryFrom<i64> for CreateCustomerLimit {
     type Error = ::honig::BuildError;
     fn try_from(value: i64) -> Result<Self, ::honig::BuildError> {
         let mut violations: Vec<::honig::Violation> = Vec::new();
@@ -3155,7 +3155,7 @@ impl TryFrom<i64> for CreateUserLimit {
             .map_err(::honig::BuildError::value)
     }
 }
-impl CreateUserLimit {
+impl CreateCustomerLimit {
     /// Returns the value, or `None` when it breaks a limit. In a constant, `.expect(..)` on it makes a
     /// literal outside the limits a build error.
     #[must_use]
@@ -3163,15 +3163,15 @@ impl CreateUserLimit {
         if value >= 1 && value <= 100 { Some(Self(value)) } else { None }
     }
 }
-::honig::checked_num_impls!(CreateUserLimit, i64);
+::honig::checked_num_impls!(CreateCustomerLimit, i64);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
-pub struct CreateUserXTeam(pub(super) String);
-impl CreateUserXTeam {
+pub struct CreateCustomerXTeam(pub(super) String);
+impl CreateCustomerXTeam {
     pub const PATTERN: &'static str = "^[a-z]+$";
 }
-::honig::checked_twin!(CreateUserXTeam, SlugVariant2, String);
-::honig::checked_str_impls!(CreateUserXTeam);
+::honig::checked_twin!(CreateCustomerXTeam, SlugVariant2, String);
+::honig::checked_str_impls!(CreateCustomerXTeam);
 ::honig::object! {
     #[unique_keys]
     #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
@@ -4560,11 +4560,11 @@ impl TryFrom<serde_json::Value> for LooseV {
 ::honig::checked_impls!(LooseV, serde_json::Value);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
-pub struct UserTags(pub(super) Vec<UserTagsItem>);
-::honig::checked_deserialize!(UserTags, Vec < UserTagsItem >);
-impl TryFrom<Vec<UserTagsItem>> for UserTags {
+pub struct CustomerTags(pub(super) Vec<CustomerTagsItem>);
+::honig::checked_deserialize!(CustomerTags, Vec < CustomerTagsItem >);
+impl TryFrom<Vec<CustomerTagsItem>> for CustomerTags {
     type Error = ::honig::BuildError;
-    fn try_from(value: Vec<UserTagsItem>) -> Result<Self, ::honig::BuildError> {
+    fn try_from(value: Vec<CustomerTagsItem>) -> Result<Self, ::honig::BuildError> {
         let mut violations: Vec<::honig::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -4587,12 +4587,14 @@ impl TryFrom<Vec<UserTagsItem>> for UserTags {
             .map_err(::honig::BuildError::value)
     }
 }
-::honig::checked_impls!(UserTags, Vec < UserTagsItem >);
+::honig::checked_impls!(CustomerTags, Vec < CustomerTagsItem >);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
-pub struct UserMeta(pub(super) std::collections::BTreeMap<String, String>);
-::honig::checked_deserialize!(UserMeta, std::collections::BTreeMap < String, String >);
-impl TryFrom<std::collections::BTreeMap<String, String>> for UserMeta {
+pub struct CustomerMeta(pub(super) std::collections::BTreeMap<String, String>);
+::honig::checked_deserialize!(
+    CustomerMeta, std::collections::BTreeMap < String, String >
+);
+impl TryFrom<std::collections::BTreeMap<String, String>> for CustomerMeta {
     type Error = ::honig::BuildError;
     fn try_from(
         value: std::collections::BTreeMap<String, String>,
@@ -4614,7 +4616,7 @@ impl TryFrom<std::collections::BTreeMap<String, String>> for UserMeta {
             .map_err(::honig::BuildError::value)
     }
 }
-::honig::checked_impls!(UserMeta, std::collections::BTreeMap < String, String >);
+::honig::checked_impls!(CustomerMeta, std::collections::BTreeMap < String, String >);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Not13ObjectAmount(pub(super) serde_json::Value);
@@ -5175,21 +5177,21 @@ pub mod builders {
         fixed {}
     }
     ::honig::typestate_builder! {
-        User => super::User;
+        Customer => super::Customer;
         required {
-            name: R0: types::UserName = "name",
-            role: R1: types::UserRole = "role",
+            name: R0: types::CustomerName = "name",
+            tier: R1: types::CustomerTier = "tier",
         }
         optional {
-            handle(handle): types::UserHandle = "handle" => some, None,
-            age(age): types::UserAge = "age" => some, None,
-            score(score): types::UserScore = "score" => some, None,
-            tags(tags): types::UserTags = "tags" => some, None,
+            handle(handle): types::CustomerHandle = "handle" => some, None,
+            age(age): types::CustomerAge = "age" => some, None,
+            score(score): types::CustomerScore = "score" => some, None,
+            tags(tags): types::CustomerTags = "tags" => some, None,
             email(email): ::honig::EmailStr = "email" => some, None,
             site(site): ::honig::IdnHostnameStr = "site" => some, None,
-            meta(meta): types::UserMeta = "meta" => some, None,
-            loyalty(loyalty): types::UserLoyalty = "loyalty" => some, None,
-            note(note): types::UserNote = "note" => nullable, ::honig::Nullable::Absent,
+            meta(meta): types::CustomerMeta = "meta" => some, None,
+            loyalty(loyalty): types::CustomerLoyalty = "loyalty" => some, None,
+            note(note): types::CustomerNote = "note" => nullable, ::honig::Nullable::Absent,
         }
         fixed {}
     }

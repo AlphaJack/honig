@@ -36,19 +36,19 @@ pub mod get_mode {
         }
     }
 }
-pub mod create_user {
+pub mod create_customer {
     use super::super::types;
     pub const METHOD: &str = "POST";
-    pub const PATH: &str = "/users";
+    pub const PATH: &str = "/customers";
     #[derive(Debug, Clone, PartialEq)]
     pub struct Params {
-        pub limit: Option<types::CreateUserLimit>,
-        pub x_team: Option<types::CreateUserXTeam>,
-        pub body: types::User,
+        pub limit: Option<types::CreateCustomerLimit>,
+        pub x_team: Option<types::CreateCustomerXTeam>,
+        pub body: types::Customer,
     }
     impl Params {
         #[must_use]
-        pub const fn new(body: types::User) -> Self {
+        pub const fn new(body: types::Customer) -> Self {
             Self {
                 limit: None,
                 x_team: None,
@@ -61,11 +61,11 @@ pub mod create_user {
         ::honig::typestate_builder! {
             Params => super::Params;
             required {
-                body: R0: types::User = "body",
+                body: R0: types::Customer = "body",
             }
             optional {
-                limit(limit): types::CreateUserLimit = "limit" => some, None,
-                x_team(x_team): types::CreateUserXTeam = "X-Team" => some, None,
+                limit(limit): types::CreateCustomerLimit = "limit" => some, None,
+                x_team(x_team): types::CreateCustomerXTeam = "X-Team" => some, None,
             }
             fixed {}
         }
@@ -73,7 +73,7 @@ pub mod create_user {
     #[derive(Debug, Clone, PartialEq)]
     pub enum Response {
         /// Created.
-        Created(Box<types::User>),
+        Created(Box<types::Customer>),
         /// Refused.
         ClientError { status: ClientErrorStatus, body: types::Problem },
     }
@@ -100,7 +100,7 @@ pub mod create_user {
     impl Response {
         /// Returns `Created` from each of its values.
         #[must_use]
-        pub fn created(body: types::User) -> Self {
+        pub fn created(body: types::Customer) -> Self {
             Self::Created(Box::new(body))
         }
         /// Returns `ClientError` from each of its values.
@@ -114,7 +114,7 @@ pub mod create_user {
     }
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_result(self) -> Result<Box<types::User>, Box<Self>> {
+        pub fn into_result(self) -> Result<Box<types::Customer>, Box<Self>> {
             match self {
                 Self::Created(body) => Ok(body),
                 other @ Self::ClientError { .. } => Err(Box::new(other)),
@@ -228,10 +228,10 @@ pub mod login {
         }
     }
 }
-pub mod add_member {
+pub mod add_customer {
     use super::super::types;
     pub const METHOD: &str = "POST";
-    pub const PATH: &str = "/members";
+    pub const PATH: &str = "/customers/import";
     #[derive(Debug, Clone, PartialEq)]
     pub struct Params {
         pub body: Body,
@@ -254,8 +254,8 @@ pub mod add_member {
     }
     #[derive(Debug, Clone, PartialEq)]
     pub enum Body {
-        Json(types::User),
-        XWwwFormUrlencoded(types::User),
+        Json(types::Customer),
+        XWwwFormUrlencoded(types::Customer),
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {

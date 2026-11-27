@@ -50,12 +50,12 @@ impl<T: ::honig::Transport> Client<T> {
             })
         }
     }
-    pub async fn create_user(
+    pub async fn create_customer(
         &self,
-        p: impl ::honig::__private::IntoArg<'_, ops::create_user::Params>,
-    ) -> Result<ops::create_user::Response, ::honig::ClientError> {
+        p: impl ::honig::__private::IntoArg<'_, ops::create_customer::Params>,
+    ) -> Result<ops::create_customer::Response, ::honig::ClientError> {
         let p = ::honig::__private::IntoArg::into_arg(p);
-        let path = String::from("/users");
+        let path = String::from("/customers");
         let mut query: Vec<String> = Vec::new();
         ::honig::__private::encode_query(
             &mut query,
@@ -90,13 +90,13 @@ impl<T: ::honig::Transport> Client<T> {
             201 => {
                 ::honig::__private::check_media_of(&head, &body, &["application/json"])?;
                 Ok(
-                    ops::create_user::Response::Created(
+                    ops::create_customer::Response::Created(
                         Box::new(::honig::__private::json_decode(Some(status), &body)?),
                     ),
                 )
             }
             s if (400..500).contains(&s) => {
-                let Ok(typed) = ops::create_user::ClientErrorStatus::try_from(status)
+                let Ok(typed) = ops::create_customer::ClientErrorStatus::try_from(status)
                 else {
                     return Err(::honig::ClientError::UnexpectedStatus {
                         status: head.status,
@@ -108,7 +108,7 @@ impl<T: ::honig::Transport> Client<T> {
                     &body,
                     &["application/problem+json"],
                 )?;
-                Ok(ops::create_user::Response::ClientError {
+                Ok(ops::create_customer::Response::ClientError {
                     status: typed,
                     body: ::honig::__private::json_decode(Some(status), &body)?,
                 })
@@ -193,23 +193,23 @@ impl<T: ::honig::Transport> Client<T> {
             })
         }
     }
-    pub async fn add_member(
+    pub async fn add_customer(
         &self,
-        p: impl ::honig::__private::IntoArg<'_, ops::add_member::Params>,
-    ) -> Result<ops::add_member::Response, ::honig::ClientError> {
+        p: impl ::honig::__private::IntoArg<'_, ops::add_customer::Params>,
+    ) -> Result<ops::add_customer::Response, ::honig::ClientError> {
         let p = ::honig::__private::IntoArg::into_arg(p);
-        let path = String::from("/members");
+        let path = String::from("/customers/import");
         let query = Vec::new();
         let mut req = ::honig::__private::new_request("POST", path, query)?;
         match &p.body {
-            ops::add_member::Body::Json(b) => {
+            ops::add_customer::Body::Json(b) => {
                 ::honig::Message::set_body(
                     &mut req,
                     "application/json",
                     ::honig::__private::json_encode(b)?,
                 );
             }
-            ops::add_member::Body::XWwwFormUrlencoded(b) => {
+            ops::add_customer::Body::XWwwFormUrlencoded(b) => {
                 ::honig::Message::set_body(
                     &mut req,
                     "application/x-www-form-urlencoded",
@@ -224,7 +224,7 @@ impl<T: ::honig::Transport> Client<T> {
         let (body, _) = body.into_parts();
         let status = head.status.as_u16();
         if status == 201 {
-            Ok(ops::add_member::Response::Created)
+            Ok(ops::add_customer::Response::Created)
         } else {
             Err(::honig::ClientError::UnexpectedStatus {
                 status: head.status,

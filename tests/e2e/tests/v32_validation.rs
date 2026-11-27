@@ -9,14 +9,14 @@ use serde_json::json;
 /// A field that the handler adds to the wide event.
 const TENANT: honig::EventKey = honig::EventKey::new("tenant");
 
-struct Users;
+struct Customers;
 
 fn shipment(body: &serde_json::Value) -> api::Response {
     let mut req = honig::__private::new_request("POST", "/shipments".to_owned(), vec![]).unwrap();
     req.headers_mut()
         .insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::from_static("application/json"));
     *req.body_mut() = honig::Body::from(serde_json::to_vec(body).unwrap());
-    honig::block_on(api::Server::new(Users).into_service().handle(req))
+    honig::block_on(api::Server::new(Customers).into_service().handle(req))
 }
 
 /// Each entry of the RFC 9457 `errors` member of a 400 response: its `pointer` and `detail`.
@@ -84,7 +84,7 @@ fn not_and_max_contains_reject() {
     assert!(v.contains("contains 3 matching items, more than allowed"), "{v}");
 }
 
-impl api::Api for Users {
+impl api::Api for Customers {
     fn error_response(rejection: api::Rejection) -> api::Response {
         rejection.response()
     }
@@ -113,26 +113,26 @@ impl api::Api for Users {
     ) -> impl Future<Output = Result<ops::create_shipment::Response, api::ApiError>> + Send {
         std::future::ready(Ok(ops::create_shipment::Response::Created))
     }
-    fn create_user(
+    fn create_customer(
         &self,
-        p: ops::create_user::Params,
+        p: ops::create_customer::Params,
         _ctx: &api::Context<'_>,
-    ) -> impl Future<Output = Result<ops::create_user::Response, api::ApiError>> + Send {
+    ) -> impl Future<Output = Result<ops::create_customer::Response, api::ApiError>> + Send {
         std::future::ready(if p.body.name.as_str() == "Taken" {
             let detail = "the name is taken".to_owned();
             let body = types::Problem { code: types::ProblemCode::Taken, status: 409, detail: detail.clone() };
             Err(api::ApiError::new(honig::http::StatusCode::CONFLICT, detail)
                 .with_body("application/problem+json", &body))
         } else {
-            Ok(ops::create_user::Response::Created(Box::new(p.body)))
+            Ok(ops::create_customer::Response::Created(Box::new(p.body)))
         })
     }
-    fn add_member(
+    fn add_customer(
         &self,
-        _: ops::add_member::Params,
+        _: ops::add_customer::Params,
         _: &api::Context<'_>,
-    ) -> impl Future<Output = Result<ops::add_member::Response, api::ApiError>> + Send {
-        std::future::ready(Ok(ops::add_member::Response::Created))
+    ) -> impl Future<Output = Result<ops::add_customer::Response, api::ApiError>> + Send {
+        std::future::ready(Ok(ops::add_customer::Response::Created))
     }
     fn add_badge(
         &self,
@@ -155,22 +155,26 @@ fn post(path: &str, media: &str, body: Vec<u8>) -> api::Response {
     req.headers_mut()
         .insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::try_from(media.to_owned()).unwrap());
     *req.body_mut() = honig::Body::from(body);
-    honig::block_on(api::Server::new(Users).into_service().handle(req))
+    honig::block_on(api::Server::new(Customers).into_service().handle(req))
 }
 
 /// A body declared with several media types is checked whichever one arrives.
 #[test]
 fn every_media_type_of_a_body_is_validated() {
-    let ok = post("/members", "application/json", serde_json::to_vec(&json!({"name":"Ann","role":"admin"})).unwrap());
+    let ok = post(
+        "/customers/import",
+        "application/json",
+        serde_json::to_vec(&json!({"name":"Ann","tier":"gold"})).unwrap(),
+    );
     assert_eq!(ok.status().as_u16(), 201, "{}", String::from_utf8_lossy(ok.body().bytes()));
     let json = post(
-        "/members",
+        "/customers/import",
         "application/json",
-        serde_json::to_vec(&json!({"name":"Ann","role":"admin","age":150})).unwrap(),
+        serde_json::to_vec(&json!({"name":"Ann","tier":"gold","age":150})).unwrap(),
     );
     assert_eq!(json.status().as_u16(), 400, "{}", String::from_utf8_lossy(json.body().bytes()));
     assert!(violations(&json).join("\n").contains("#/age"), "{:?}", violations(&json));
-    let form = post("/members", "application/x-www-form-urlencoded", b"name=Ann&role=admin&age=150".to_vec());
+    let form = post("/customers/import", "application/x-www-form-urlencoded", b"name=Ann&tier=gold&age=150".to_vec());
     assert_eq!(form.status().as_u16(), 400, "{}", String::from_utf8_lossy(form.body().bytes()));
     assert!(violations(&form).join("\n").contains("#/age"), "{:?}", violations(&form));
 }
@@ -190,17 +194,17 @@ fn untyped_keywords_of_a_body_enum_are_checked_without_read_only_fields() {
 }
 
 fn send(query: &str, team: &str, body: &serde_json::Value) -> api::Response {
-    let mut req = honig::__private::new_request("POST", "/users".to_owned(), vec![query.to_owned()]).unwrap();
+    let mut req = honig::__private::new_request("POST", "/customers".to_owned(), vec![query.to_owned()]).unwrap();
     req.headers_mut().append("x-team", honig::http::HeaderValue::try_from(team.to_owned()).unwrap());
     req.headers_mut()
         .insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::from_static("application/json"));
     *req.body_mut() = honig::Body::from(serde_json::to_vec(body).unwrap());
-    honig::block_on(api::Server::new(Users).into_service().handle(req))
+    honig::block_on(api::Server::new(Customers).into_service().handle(req))
 }
 
 #[test]
 fn valid_requests_reach_the_handler() {
-    let r = send("limit=5", "core", &json!({"name":"Ann","role":"admin","age":30,"score":4.5,"tags":["a","b"]}));
+    let r = send("limit=5", "core", &json!({"name":"Ann","tier":"gold","age":30,"score":4.5,"tags":["a","b"]}));
     assert_eq!(r.status().as_u16(), 201, "{}", String::from_utf8_lossy(r.body().bytes()));
 }
 
@@ -213,19 +217,19 @@ fn the_first_violation_is_reported_with_its_path() {
         let v: serde_json::Value = serde_json::from_slice(r.body().bytes()).unwrap();
         v["errors"].clone()
     };
-    let ok = json!({"name": "Ann", "role": "admin"});
+    let ok = json!({"name": "Ann", "tier": "gold"});
     assert_eq!(first("limit=0", &ok), json!([{"detail": "0 is less than the minimum 1", "pointer": "#/query/limit"}]));
-    let old = json!({"name": "Ann", "role": "admin", "age": 150, "score": 1.2});
+    let old = json!({"name": "Ann", "tier": "gold", "age": 150, "score": 1.2});
     assert_eq!(first("limit=5", &old)[0]["pointer"], "#/age");
 }
 
 /// An enum is closed: a value that it does not list fails to decode. The request is refused for that value alone.
 #[test]
 fn an_unlisted_enum_value_is_a_bad_request() {
-    let r = send("limit=5", "core", &json!({"name":"Ann","role":"root","age":150}));
+    let r = send("limit=5", "core", &json!({"name":"Ann","tier":"platinum","age":150}));
     assert_eq!(r.status().as_u16(), 400);
     let v: serde_json::Value = serde_json::from_slice(r.body().bytes()).unwrap();
-    assert_eq!(v["errors"], json!([{"detail": "`root` is not one of `admin`, `user`", "pointer": "#/role"}]));
+    assert_eq!(v["errors"], json!([{"detail": "`platinum` is not one of `gold`, `standard`", "pointer": "#/tier"}]));
 }
 
 /// A string with a `pattern` is a type that only `TryFrom` (and decoding) builds.
@@ -233,20 +237,20 @@ fn an_unlisted_enum_value_is_a_bad_request() {
 /// bad request and not a list of violations.
 #[test]
 fn pattern_fields_are_checked_types() {
-    assert_eq!(types::UserName::try_from("Ann").map(types::UserName::into_inner), Ok("Ann".to_owned()));
-    assert!(types::UserName::try_from("ann").is_err(), "must start with an uppercase letter");
-    assert!(types::UserName::try_from("A").is_err(), "at least 2 characters");
-    assert!(types::UserName::try_from("Abcdefghijk").is_err(), "at most 10 characters");
-    let name = types::UserName::try_from("Ann").unwrap();
+    assert_eq!(types::CustomerName::try_from("Ann").map(types::CustomerName::into_inner), Ok("Ann".to_owned()));
+    assert!(types::CustomerName::try_from("ann").is_err(), "must start with an uppercase letter");
+    assert!(types::CustomerName::try_from("A").is_err(), "at least 2 characters");
+    assert!(types::CustomerName::try_from("Abcdefghijk").is_err(), "at most 10 characters");
+    let name = types::CustomerName::try_from("Ann").unwrap();
     assert_eq!(name.as_str(), "Ann", "derefs to `str`");
-    let r = send("limit=5", "core", &json!({"name": "ann", "role": "admin"}));
+    let r = send("limit=5", "core", &json!({"name": "ann", "tier": "gold"}));
     assert_eq!(r.status().as_u16(), 400);
     assert!(
         String::from_utf8_lossy(r.body().bytes()).contains("does not match"),
         "{}",
         String::from_utf8_lossy(r.body().bytes())
     );
-    let r = send("limit=5", "Core1", &json!({"name": "Ann", "role": "admin"}));
+    let r = send("limit=5", "Core1", &json!({"name": "Ann", "tier": "gold"}));
     assert_eq!(r.status().as_u16(), 400, "the X-Team header has a pattern too");
 }
 
@@ -280,20 +284,20 @@ impl api::Api for Recording {
     ) -> impl Future<Output = Result<ops::create_shipment::Response, api::ApiError>> + Send {
         std::future::ready(Ok(ops::create_shipment::Response::Created))
     }
-    fn create_user(
+    fn create_customer(
         &self,
-        p: ops::create_user::Params,
+        p: ops::create_customer::Params,
         ctx: &api::Context<'_>,
-    ) -> impl Future<Output = Result<ops::create_user::Response, api::ApiError>> + Send {
+    ) -> impl Future<Output = Result<ops::create_customer::Response, api::ApiError>> + Send {
         ctx.event.set(TENANT, "acme");
-        std::future::ready(Ok(ops::create_user::Response::Created(Box::new(p.body))))
+        std::future::ready(Ok(ops::create_customer::Response::Created(Box::new(p.body))))
     }
-    fn add_member(
+    fn add_customer(
         &self,
-        _: ops::add_member::Params,
+        _: ops::add_customer::Params,
         _: &api::Context<'_>,
-    ) -> impl Future<Output = Result<ops::add_member::Response, api::ApiError>> + Send {
-        std::future::ready(Ok(ops::add_member::Response::Created))
+    ) -> impl Future<Output = Result<ops::add_customer::Response, api::ApiError>> + Send {
+        std::future::ready(Ok(ops::add_customer::Response::Created))
     }
     fn add_badge(
         &self,
@@ -315,10 +319,11 @@ impl api::Api for Recording {
 fn one_wide_event_per_request() {
     let service = api::Server::new(Recording).into_service();
     let mut events = vec![];
-    for body in
-        [json!({"name": "Ann", "role": "user"}), json!({"name": "Ann", "role": "user", "age": 150, "score": 1.2})]
-    {
-        let mut req = honig::__private::new_request("POST", "/users".to_owned(), vec![]).unwrap();
+    for body in [
+        json!({"name": "Ann", "tier": "standard"}),
+        json!({"name": "Ann", "tier": "standard", "age": 150, "score": 1.2}),
+    ] {
+        let mut req = honig::__private::new_request("POST", "/customers".to_owned(), vec![]).unwrap();
         req.headers_mut()
             .insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::from_static("application/json"));
         *req.body_mut() = honig::Body::from(serde_json::to_vec(&body).unwrap());
@@ -327,8 +332,8 @@ fn one_wide_event_per_request() {
     }
     assert_eq!(events.len(), 2);
     let ok = &events[0];
-    assert_eq!(ok["operation"], "create_user");
-    assert_eq!(ok["route"], "/users");
+    assert_eq!(ok["operation"], "create_customer");
+    assert_eq!(ok["route"], "/customers");
     assert_eq!(ok["status"], 201);
     assert_eq!(ok["tenant"], "acme");
     assert!(ok["duration_us"].is_u64() && ok["request_bytes"].as_u64() > Some(0));
@@ -382,16 +387,16 @@ fn properties_without_type_hold_for_an_object_and_any_other_value_passes() {
 
 #[test]
 fn the_bounds_of_a_union_branch_are_checked() {
-    let user = |extra: serde_json::Value| {
-        let mut body = json!({"name": "Ann", "role": "user"});
+    let customer = |extra: serde_json::Value| {
+        let mut body = json!({"name": "Ann", "tier": "standard"});
         body.as_object_mut().unwrap().extend(extra.as_object().unwrap().clone());
         violations(&send("limit=5", "core", &body))
     };
-    assert!(user(json!({"loyalty": 4, "note": "fine"})).is_empty());
-    assert!(user(json!({"loyalty": "VIP", "note": null})).is_empty());
-    assert_eq!(user(json!({"loyalty": 11})), ["#/loyalty 11 is greater than the maximum 10"]);
-    assert_eq!(user(json!({"loyalty": "GOLD"})), ["#/loyalty at most 3 characters allowed, found 4"]);
-    assert_eq!(user(json!({"note": "too long"})), ["#/note at most 5 characters allowed, found 8"]);
+    assert!(customer(json!({"loyalty": 4, "note": "fine"})).is_empty());
+    assert!(customer(json!({"loyalty": "VIP", "note": null})).is_empty());
+    assert_eq!(customer(json!({"loyalty": 11})), ["#/loyalty 11 is greater than the maximum 10"]);
+    assert_eq!(customer(json!({"loyalty": "GOLD"})), ["#/loyalty at most 3 characters allowed, found 4"]);
+    assert_eq!(customer(json!({"note": "too long"})), ["#/note at most 5 characters allowed, found 8"]);
 }
 
 fn login(body: &serde_json::Value) -> api::Response {
@@ -399,7 +404,7 @@ fn login(body: &serde_json::Value) -> api::Response {
     req.headers_mut()
         .insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::from_static("application/json"));
     *req.body_mut() = honig::Body::from(serde_json::to_vec(body).unwrap());
-    honig::block_on(api::Server::new(Users).into_service().handle(req))
+    honig::block_on(api::Server::new(Customers).into_service().handle(req))
 }
 
 #[test]
@@ -432,18 +437,18 @@ fn a_lone_if_then_types_its_requirement() {
     assert_matches!(&*s, types::ShipmentVariants::International(i) if i.customs == "cn22");
 }
 
-fn create_user(body: &serde_json::Value) -> api::Response {
-    let mut req = honig::__private::new_request("POST", "/users".to_owned(), vec![]).unwrap();
+fn create_customer(body: &serde_json::Value) -> api::Response {
+    let mut req = honig::__private::new_request("POST", "/customers".to_owned(), vec![]).unwrap();
     req.headers_mut()
         .insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::from_static("application/json"));
     *req.body_mut() = honig::Body::from(serde_json::to_vec(body).unwrap());
-    honig::block_on(api::Server::new(Users).into_service().handle(req))
+    honig::block_on(api::Server::new(Customers).into_service().handle(req))
 }
 
 /// The own error type of the handler goes out as it is at its status.
 #[test]
 fn a_typed_error_is_sent_as_it_is() {
-    let r = create_user(&json!({"name": "Taken", "role": "user"}));
+    let r = create_customer(&json!({"name": "Taken", "tier": "standard"}));
     assert_eq!(
         (r.status().as_u16(), r.headers().get("content-type").map_or("", |v| v.to_str().unwrap_or(""))),
         (409, "application/problem+json")
@@ -457,7 +462,7 @@ fn a_typed_error_is_sent_as_it_is() {
 /// `Refusal`, which `createShipment` declares and honig can fill.
 #[test]
 fn an_unfillable_error_schema_falls_back_to_rfc_9457() {
-    let r = create_user(&json!({"name": "Ann", "role": "user", "age": 200}));
+    let r = create_customer(&json!({"name": "Ann", "tier": "standard", "age": 200}));
     assert_eq!(
         (r.status().as_u16(), r.headers().get("content-type").map_or("", |v| v.to_str().unwrap_or(""))),
         (400, "application/problem+json")
@@ -471,7 +476,7 @@ fn an_unfillable_error_schema_falls_back_to_rfc_9457() {
 /// request that contains another value is refused while decoding.
 #[test]
 fn mail_addresses_and_host_names_are_types() {
-    let ok = json!({"name": "Ann", "role": "user", "email": "ann@example.com", "site": "bücher.example"});
+    let ok = json!({"name": "Ann", "tier": "standard", "email": "ann@example.com", "site": "bücher.example"});
     assert_eq!(send("limit=5", "core", &ok).status().as_u16(), 201);
     for (field, bad) in [("email", "x"), ("site", "-bad-.example")] {
         let mut body = ok.clone();
@@ -544,8 +549,8 @@ fn a_whole_checked_schema_keeps_its_deep_keywords() {
 #[test]
 fn a_pattern_does_not_run_past_max_length() {
     let handle = format!("{}b", "a".repeat(30_000));
-    let err =
-        serde_json::from_value::<types::User>(json!({"name": "Alice", "role": "admin", "handle": handle})).unwrap_err();
+    let err = serde_json::from_value::<types::Customer>(json!({"name": "Alice", "tier": "gold", "handle": handle}))
+        .unwrap_err();
     assert_eq!(err.to_string(), "at most 20 characters allowed, found 30001");
 }
 
@@ -574,20 +579,20 @@ fn a_recursive_union_decides_each_value_once() {
 /// named as the description spells it. The required properties are the arguments of `builder`.
 #[test]
 fn a_builder_converts_each_field_and_returns_the_first_error() -> Result<(), Box<dyn std::error::Error>> {
-    let user = types::User::builder().name("Anna").role("admin").age(30).email("anna@example.com").build()?;
+    let customer = types::Customer::builder().name("Anna").tier("gold").age(30).email("anna@example.com").build()?;
     assert_eq!(
-        (user.name.as_str(), user.role, user.age.map(types::UserAge::get)),
-        ("Anna", types::UserRole::Admin, Some(30))
+        (customer.name.as_str(), customer.tier, customer.age.map(types::CustomerAge::get)),
+        ("Anna", types::CustomerTier::Gold, Some(30))
     );
-    let err = types::User::builder()
+    let err = types::Customer::builder()
         .name("Anna")
-        .role("admin")
+        .tier("gold")
         .age(150)
         .email("x")
         .build()
         .expect_err("150 is past the limit");
     assert_eq!(err.to_string(), "/age: 150 must be less than 150", "the first error");
-    let err = types::User::builder().name("anna").role("admin").age(30).build().expect_err("a lowercase name");
+    let err = types::Customer::builder().name("anna").tier("gold").age(30).build().expect_err("a lowercase name");
     assert_eq!(err.violation().instance_location, "/name", "{err}");
     assert!(err.to_string().starts_with("/name: "), "{err}");
     Ok(())
@@ -830,9 +835,9 @@ fn a_builder_checks_the_rules_across_fields() {
 /// literal that breaks them a build error.
 #[test]
 fn a_literal_of_a_bounded_integer_is_built_in_a_constant() {
-    const AGE: types::UserAge = types::UserAge::new(30).expect("within the limits");
+    const AGE: types::CustomerAge = types::CustomerAge::new(30).expect("within the limits");
     assert_eq!(AGE.get(), 30);
-    assert_eq!(types::UserAge::new(-1), None);
+    assert_eq!(types::CustomerAge::new(-1), None);
 }
 
 /// A `pattern` beside a format is checked on the text: a uuid that does not start with `0` is refused.
