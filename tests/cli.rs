@@ -287,3 +287,25 @@ fn generate_names_a_package_or_output_that_does_not_fit() {
     assert_eq!(code, Some(2));
     assert!(err.contains("Give each module its own `output`"), "{err}");
 }
+
+/// The `shop` description passes with one warning. `--deny-warnings` makes it an error: `validate` exits with 1, and
+/// `generate` writes nothing, with or without `--check`.
+#[test]
+fn deny_warnings_fails_on_a_warning() {
+    let spec = fixture("shop.yaml");
+    let spec = spec.to_str().unwrap();
+    assert_eq!(run(&["validate", spec]).status.code(), Some(0));
+    let denied = run(&["validate", spec, "--deny-warnings"]);
+    assert_eq!(denied.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&denied.stderr).starts_with("error: /components/schemas/Item/oneOf"));
+    let dir = scratch_crate("cli_deny_warnings");
+    in_crate(&dir, &["init", "openapi.yaml"]);
+    add_runtime(&dir, SHOP);
+    for args in [&["generate", "--deny-warnings"][..], &["generate", "--check", "--deny-warnings"]] {
+        let (code, _, err) = in_crate(&dir, args);
+        assert_eq!(code, Some(1), "{args:?}: {err}");
+        assert!(err.starts_with("error: "), "{args:?}: {err}");
+    }
+    assert!(!dir.join("src").join("api").exists(), "nothing written");
+    assert_eq!(in_crate(&dir, &["generate"]).0, Some(0), "a warning alone writes the module");
+}
