@@ -2,7 +2,7 @@
 
 use std::time::Duration;
 
-use e2e::v32_catalog::api;
+use e2e::v32_catalog::api::{self, types};
 use tower::ServiceExt;
 
 use super::Catalog;
@@ -160,4 +160,32 @@ async fn the_full_stack_runs_in_order() {
     let mallory = get(full_stack(), "/v1/products", Some("mallory")).await;
     assert_eq!(mallory.status(), 403, "the filter sees who is calling");
     assert!(text(mallory).await.contains("\"code\":403"));
+}
+
+// ANCHOR: storage
+/// A product as the database stores it: plain columns that know nothing of the API.
+pub struct ProductRow {
+    pub name: String,
+    pub sku: Option<String>,
+}
+
+/// The row as the API's product. `Physical` takes a checked SKU, so the conversion cannot be left out. A stored SKU
+/// that the pattern of the API refuses is an `Err` here, and `?` in a handler answers `500`.
+fn physical(row: ProductRow) -> Result<types::Physical, honig::BuildError> {
+    let sku = row.sku.map(types::PhysicalSku::try_from).transpose()?;
+    Ok(types::Physical { sku, ..types::Physical::new(row.name) })
+}
+
+/// The product of the API as a row. A checked value is valid text.
+fn row(product: types::Physical) -> ProductRow {
+    ProductRow { name: product.name, sku: product.sku.map(String::from) }
+}
+// ANCHOR_END: storage
+
+#[test]
+fn a_row_converts_at_the_seam() {
+    let lamp = physical(ProductRow { name: "Desk lamp".to_owned(), sku: Some("LMP-0042".to_owned()) }).unwrap();
+    assert_eq!(row(lamp).sku.as_deref(), Some("LMP-0042"));
+    let stale = physical(ProductRow { name: "Desk lamp".to_owned(), sku: Some("LMP-42".to_owned()) });
+    assert_eq!(api::ApiError::from(stale.unwrap_err()).status, 500, "stored data that the API refuses");
 }
