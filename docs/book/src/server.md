@@ -1,9 +1,9 @@
 # Server
 
-A server is your type that implements the generated `server::Api`. It has one method per operation:
+A server is your type that implements the generated `server::Api`. It has one method per operation. Here are the first ones of the shop; the eye button shows the rest, and the sections below show each of them beside its YAML:
 
 ```rust
-{{#include ../../../examples/shop/src/lib.rs:catalog}}
+{{#rustdoc_include ../../../examples/shop/src/lib.rs:catalog}}
 ```
 
 `api::Server::new(Catalog::default())` builds the server. `into_axum()` serves it as an axum `Router`. `into_service()` serves it as a tower `Service` for hyper and other servers. See [Adapters](adapters.md).

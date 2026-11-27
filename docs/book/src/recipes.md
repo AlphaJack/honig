@@ -19,7 +19,7 @@ The description is `openapi.yaml`:
 The server implements the generated `Api` trait, which has one method per operation:
 
 ```rust
-{{#include ../../../examples/shop/src/lib.rs:catalog}}
+{{#include ../../../examples/shop/src/lib.rs:server}}
 ```
 
 Serve it with axum in `src/main.rs`:

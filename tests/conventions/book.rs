@@ -7,6 +7,12 @@ use std::fs;
 
 use super::root;
 
+/// The target of an `{{#include}}` line, or of a `{{#rustdoc_include}}` line that hides the rest of its file: `a.rs:x`.
+fn included(line: &str) -> Option<&str> {
+    let rest = line.strip_prefix("{{#include ").or_else(|| line.strip_prefix("{{#rustdoc_include "))?;
+    rest.strip_suffix("}}")
+}
+
 /// The `file:line` of each Rust block in `text` that contains anything but `{{#include}}` lines.
 fn hand_written(file: &str, text: &str) -> Vec<String> {
     let mut found = vec![];
@@ -20,7 +26,7 @@ fn hand_written(file: &str, text: &str) -> Vec<String> {
                 }
                 block = None;
             }
-            (Some((_, written)), code) if !code.is_empty() && !code.starts_with("{{#include ") => *written = true,
+            (Some((_, written)), code) if !code.is_empty() && included(code).is_none() => *written = true,
             _ => {}
         }
     }
@@ -69,7 +75,7 @@ fn elsewhere(file: &str, text: &str) -> Vec<String> {
             rust = line.starts_with("```rust");
             continue;
         }
-        let Some(target) = line.strip_prefix("{{#include ../../../").and_then(|t| t.strip_suffix("}}")) else {
+        let Some(target) = included(line).and_then(|t| t.strip_prefix("../../../")) else {
             continue;
         };
         let known = RUNNING_EXAMPLE.iter().any(|dir| target.starts_with(dir))
@@ -99,12 +105,16 @@ fn rust_in_the_book_calls_the_running_example() {
 fn only_the_running_example_passes() {
     let page = "```rust\n{{#include ../../../examples/shop/src/lib.rs:catalog}}\n```\n\n```rust\n\
                 {{#include ../../../tests/e2e/tests/v32_shop/client.rs:media}}\n```\n\n```yaml\n\
-                {{#include ../../../tests/fixtures/v32/shop.yaml:x}}\n```\n";
-    assert_eq!(elsewhere("p.md", page), ["p.md:6: tests/e2e/tests/v32_shop/client.rs:media"]);
+                {{#include ../../../tests/fixtures/v32/shop.yaml:x}}\n```\n\n```rust\n\
+                {{#rustdoc_include ../../../tests/e2e/tests/v32_shop/client.rs:feed}}\n```\n";
+    let found =
+        ["p.md:6: tests/e2e/tests/v32_shop/client.rs:media", "p.md:14: tests/e2e/tests/v32_shop/client.rs:feed"];
+    assert_eq!(elsewhere("p.md", page), found);
 }
 
 #[test]
 fn only_includes_pass() {
-    let page = "```rust\n{{#include a.rs:x}}\n```\n\n```rust\nlet x = 1;\n```\n\n```toml\nx = 1\n```\n";
+    let page = "```rust\n{{#include a.rs:x}}\n```\n\n```rust\nlet x = 1;\n```\n\n```toml\nx = 1\n```\n\n\
+                ```rust\n{{#rustdoc_include a.rs:y}}\n```\n";
     assert_eq!(hand_written("p.md", page), ["p.md:5"]);
 }
