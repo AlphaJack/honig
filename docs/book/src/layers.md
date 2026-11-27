@@ -1,6 +1,6 @@
 # Layers
 
-Two places accept tower layers. The rustdoc of `Server::operation_layer` compares them:
+Tower layers wrap the whole server or each operation. The rustdoc of `Server::operation_layer` compares the two:
 
 {{#include generated/operation-layer.md}}
 

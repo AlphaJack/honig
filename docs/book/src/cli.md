@@ -1,6 +1,6 @@
 # Command line
 
-The command line has six commands. `cargo honig --help` lists them:
+`cargo honig --help` lists the commands:
 
 ```text
 {{#include generated/cli-help.txt}}

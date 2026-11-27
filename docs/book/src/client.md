@@ -118,9 +118,9 @@ Each piece of that stack does one job and has limits:
 
 | Piece | What it does | Limits |
 |---|---|---|
-| `RetryTransientMiddleware` | It retries a lost connection, a 5xx, a 408 or a 429 with exponential backoff. | It ignores `Retry-After`: the backoff alone sets the wait. It does not tell methods apart, so on its own it sends a failed `POST` again. |
-| `IdempotentOnly` | It lets only `GET`, `HEAD`, `OPTIONS`, `PUT` and `DELETE` through to the retry. | None. |
-| `Cache` | It keeps responses as RFC 9111 allows and revalidates a stale one with `If-None-Match` or `If-Modified-Since`. A `304` comes back as the cached `200`. | Only its 1.0 alpha builds on reqwest 0.13. |
+| `RetryTransientMiddleware` | It retries a lost connection, a 5xx, a 408 or a 429 with exponential backoff, as `reqwest-retry` 0.9 does. | It ignores `Retry-After`: the backoff alone sets the wait. It does not tell methods apart, so on its own it sends a failed `POST` again. |
+| `IdempotentOnly` | It lets only the methods that RFC 9110 calls idempotent through to the retry. | None. |
+| `Cache` | It keeps responses as RFC 9111 allows and revalidates a stale one with `If-None-Match` or `If-Modified-Since`. A `304` comes back as the cached `200`. | Only an alpha builds on `reqwest` 0.13: `http-cache-reqwest` =1.0.0-alpha.11. |
 
 A streamed upload cannot be sent twice. So retry middleware does not retry it.
 
