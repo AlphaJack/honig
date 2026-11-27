@@ -72,7 +72,7 @@ pub struct Head {
     put_file: up::api::operations::put_file::Params,
     upload_scan: mp::api::operations::upload_scan::Params,
     add_book: xml::api::operations::add_book::Params,
-    add_member: val::api::operations::add_member::Params,
+    add_customer: val::api::operations::add_customer::Params,
     replace_manifest: dl::api::operations::replace_manifest::Params,
 }
 
@@ -90,7 +90,7 @@ pub struct Base {
 struct Member {
     name: String,
     age: i64,
-    role: &'static str,
+    tier: &'static str,
 }
 
 #[derive(serde::Deserialize)]
@@ -119,13 +119,13 @@ pub fn at(size: usize) -> (Head, Base) {
         "Dune".to_owned(),
         authors(size).map(|(name, born)| xml::api::types::Author { name, born: Some(born) }).collect(),
     );
-    let user = val::api::types::User {
+    let customer = val::api::types::Customer {
         name: "Alice".try_into().expect("a valid name"),
         handle: None,
         age: Some(30.try_into().expect("a valid age")),
         score: None,
         tags: None,
-        role: val::api::types::UserRole::Admin,
+        tier: val::api::types::CustomerTier::Gold,
         email: None,
         site: None,
         meta: None,
@@ -149,8 +149,8 @@ pub fn at(size: usize) -> (Head, Base) {
             media: xml::api::operations::add_book::Media::Xml,
         },
         replace_manifest: dl::api::operations::replace_manifest::Params::new("x".to_owned(), cost::manifest()),
-        add_member: val::api::operations::add_member::Params::new(
-            val::api::operations::add_member::Body::XWwwFormUrlencoded(user),
+        add_customer: val::api::operations::add_customer::Params::new(
+            val::api::operations::add_customer::Body::XWwwFormUrlencoded(customer),
         ),
     };
     let base = Base {
@@ -165,7 +165,7 @@ pub fn at(size: usize) -> (Head, Base) {
                 author: authors(size).map(|(name, born)| cost::Author { name, born: Some(born) }).collect(),
             },
         },
-        member: Member { name: "Alice".to_owned(), age: 30, role: "admin" },
+        member: Member { name: "Alice".to_owned(), age: 30, tier: "gold" },
         manifest: cost::manifest(),
     };
     (head, base)
@@ -222,8 +222,8 @@ pub async fn head(c: &Head, trip: &str) -> Result<Seen, String> {
                 book(b.id, b.title, b.authors.into_iter().map(|a| (a.name, a.born)))
             }
         },
-        "form" => match c.val.add_member(&c.add_member).await.map_err(failed)? {
-            val::api::operations::add_member::Response::Created => Seen::Done,
+        "form" => match c.val.add_customer(&c.add_customer).await.map_err(failed)? {
+            val::api::operations::add_customer::Response::Created => Seen::Done,
         },
         other => return Err(format!("no roundtrip {other}")),
     })
@@ -301,7 +301,7 @@ pub async fn base(c: &Base, trip: &str) -> Result<Seen, String> {
         }
         "form" => {
             let form = serde_urlencoded::to_string(&c.member).map_err(|e| e.to_string())?;
-            call(r, post("POST", "/val/members", "application/x-www-form-urlencoded", form), 201).await?;
+            call(r, post("POST", "/val/customers/import", "application/x-www-form-urlencoded", form), 201).await?;
             Seen::Done
         }
         other => return Err(format!("no roundtrip {other}")),

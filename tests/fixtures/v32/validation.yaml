@@ -11,9 +11,9 @@ paths:
           content:
             application/json:
               schema: {type: string, enum: [on, off]}
-  /users:
+  /customers:
     post:
-      operationId: createUser
+      operationId: createCustomer
       parameters:
         - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100}}
         - {name: X-Team, in: header, schema: {type: string, pattern: '^[a-z]+$'}}
@@ -21,13 +21,13 @@ paths:
         required: true
         content:
           application/json:
-            schema: {$ref: '#/components/schemas/User'}
+            schema: {$ref: '#/components/schemas/Customer'}
       responses:
         "201":
           description: Created.
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/User'}
+              schema: {$ref: '#/components/schemas/Customer'}
         # A closed schema with a closed `code` list: the runtime cannot fill it, a handler's typed error can.
         "4XX":
           description: Refused.
@@ -46,7 +46,7 @@ paths:
         "201":
           description: Created.
         # An RFC 9457 body that the runtime fills by its members' names, with a `const` of its own. It is the API's most
-        # common one, and still not what `createUser` refuses in.
+        # common one, and still not what `createCustomer` refuses in.
         "400":
           description: Refused.
           content:
@@ -67,14 +67,14 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/Login'}
   # Several media types: the body is an enum, and each variant is checked.
-  /members:
+  /customers/import:
     post:
-      operationId: addMember
+      operationId: addCustomer
       requestBody:
         required: true
         content:
-          application/json: {schema: {$ref: '#/components/schemas/User'}}
-          application/x-www-form-urlencoded: {schema: {$ref: '#/components/schemas/User'}}
+          application/json: {schema: {$ref: '#/components/schemas/Customer'}}
+          application/x-www-form-urlencoded: {schema: {$ref: '#/components/schemas/Customer'}}
       responses:
         "201":
           description: Created.
@@ -411,9 +411,9 @@ components:
         # `null` alone: the only value it allows.
         retired: {type: 'null'}
 
-    User:
+    Customer:
       type: object
-      required: [name, role]
+      required: [name, tier]
       properties:
         name: {type: string, minLength: 2, maxLength: 10, pattern: '^\p{Lu}'}
         # A pattern that backtracks: past `maxLength` it does not run.
@@ -425,7 +425,7 @@ components:
           minItems: 1
           uniqueItems: true
           items: {type: string, maxLength: 3}
-        role: {type: string, enum: [admin, user]}
+        tier: {type: string, enum: [standard, gold]}
         email: {type: string, format: email}
         site: {type: string, format: idn-hostname}
         meta:

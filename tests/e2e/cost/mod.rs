@@ -230,11 +230,11 @@ impl val::api::Api for Members {
         rejection.response()
     }
 
-    fn create_user(
+    fn create_customer(
         &self,
-        _: val::api::operations::create_user::Params,
+        _: val::api::operations::create_customer::Params,
         _: &val::api::Context<'_, ()>,
-    ) -> impl Future<Output = Result<val::api::operations::create_user::Response, val::api::ApiError>> + Send {
+    ) -> impl Future<Output = Result<val::api::operations::create_customer::Response, val::api::ApiError>> + Send {
         not_here()
     }
     fn get_mode(
@@ -258,12 +258,12 @@ impl val::api::Api for Members {
     ) -> impl Future<Output = Result<val::api::operations::login::Response, val::api::ApiError>> + Send {
         not_here()
     }
-    async fn add_member(
+    async fn add_customer(
         &self,
-        _: val::api::operations::add_member::Params,
+        _: val::api::operations::add_customer::Params,
         _: &val::api::Context<'_, ()>,
-    ) -> Result<val::api::operations::add_member::Response, val::api::ApiError> {
-        Ok(val::api::operations::add_member::Response::Created)
+    ) -> Result<val::api::operations::add_customer::Response, val::api::ApiError> {
+        Ok(val::api::operations::add_customer::Response::Created)
     }
     fn add_badge(
         &self,
@@ -386,20 +386,20 @@ async fn baseline_book(body: Bytes) -> Response {
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
-enum Role {
-    Admin,
-    User,
+enum Tier {
+    Standard,
+    Gold,
 }
 
 #[derive(serde::Deserialize)]
 struct Member {
     name: String,
     age: Option<i64>,
-    role: Role,
+    tier: Tier,
 }
 
-/// What the `User` schema asks of the fields that the form sends: `name` 2 to 10 characters from an uppercase letter,
-/// `age` from 0 below 150 and `role` one of its values. The generated side checks them all.
+/// What the `Customer` schema asks of the fields that the form sends: `name` 2 to 10 characters from an uppercase letter,
+/// `age` from 0 below 150 and `tier` one of its values. The generated side checks them all.
 async fn baseline_member(axum::Form(m): axum::Form<Member>) -> StatusCode {
     static NAME: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
     let pattern = NAME.get_or_init(|| regex::Regex::new(r"^\p{Lu}").expect("a valid pattern"));
@@ -407,7 +407,7 @@ async fn baseline_member(axum::Form(m): axum::Form<Member>) -> StatusCode {
     if !name_ok || m.age.is_some_and(|a| !(0..150).contains(&a)) {
         return StatusCode::BAD_REQUEST;
     }
-    std::hint::black_box((m.name, m.age, matches!(m.role, Role::Admin | Role::User)));
+    std::hint::black_box((m.name, m.age, matches!(m.tier, Tier::Standard | Tier::Gold)));
     StatusCode::CREATED
 }
 
@@ -427,7 +427,7 @@ pub fn baseline() -> Router {
             Router::new().route("/tiles/stream", get(baseline_events)).route("/tiles/lines", get(baseline_lines)),
         )
         .nest("/xml", Router::new().route("/books", post(baseline_book)))
-        .nest("/val", Router::new().route("/members", post(baseline_member)))
+        .nest("/val", Router::new().route("/customers/import", post(baseline_member)))
         .layer(axum::extract::DefaultBodyLimit::max(LIMIT))
 }
 
@@ -477,7 +477,7 @@ pub fn manifest_body() -> Bytes {
 
 /// A form of a member: it is small whatever the size.
 pub fn member_body() -> Bytes {
-    Bytes::from_static(b"name=Alice&age=30&role=admin")
+    Bytes::from_static(b"name=Alice&age=30&tier=gold")
 }
 
 /// The sizes that both benches check every kind at. A kind keeps one budget across them.
@@ -622,7 +622,7 @@ pub fn paths(size: usize) -> Vec<Path> {
         Path {
             content_type: "application/x-www-form-urlencoded",
             body: member_body(),
-            ..path("form", "POST", "/val/members", "*/*", (1.15, 1.95))
+            ..path("form", "POST", "/val/customers/import", "*/*", (1.15, 1.95))
         },
     ]
 }
