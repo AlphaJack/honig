@@ -28,10 +28,10 @@ fn help_lists_every_command() {
     assert!(out.status.success());
     let help = String::from_utf8_lossy(&out.stdout);
     assert!(help.starts_with(&format!("cargo honig: {}\n", env!("CARGO_PKG_DESCRIPTION"))), "{help}");
-    for command in ["init", "generate", "check", "validate"] {
+    for command in ["init", "generate", "validate"] {
         assert!(help.contains(&format!("  {command} ")), "{command} missing from:\n{help}");
     }
-    assert!(!help.contains("  upgrade ") && !help.contains("  bundle "), "{help}");
+    assert!(!help.contains("  upgrade ") && !help.contains("  bundle ") && !help.contains("  check "), "{help}");
     assert!(help.contains("-m, --manifest <PATH>"), "{help}");
     assert!(help.trim_end().ends_with(&format!("{}/settings.html", env!("CARGO_PKG_HOMEPAGE"))), "{help}");
 }
@@ -122,7 +122,7 @@ fn init_then_generate_writes_a_module_that_check_finds_up_to_date() {
     assert!(err.contains(&format!("is missing. Run `cargo add honig@={version} -F {}`", SHOP.join(","))), "{err}");
     add_runtime(&dir, SHOP);
 
-    let (code, _, err) = in_crate(&dir, &["check"]);
+    let (code, _, err) = in_crate(&dir, &["generate", "--check"]);
     assert_eq!(code, Some(1), "check passed before generate");
     assert!(err.contains("stale generated code in") && err.contains("run `cargo honig generate`"), "{err}");
 
@@ -132,7 +132,7 @@ fn init_then_generate_writes_a_module_that_check_finds_up_to_date() {
     assert!(err.contains("hint: add `pub mod api;` to src/lib.rs"), "{err}");
     assert!(dir.join("src").join("api").join("mod.rs").is_file(), "generate wrote no module");
 
-    let (code, out, err) = in_crate(&dir, &["check"]);
+    let (code, out, err) = in_crate(&dir, &["generate", "--check"]);
     assert_eq!(code, Some(0), "{err}");
     assert!(out.contains("up to date: "), "{out}");
 }
@@ -143,7 +143,7 @@ fn quiet_prints_no_progress_and_no_hints() {
     assert_eq!(in_crate(&dir, &["init", "openapi.yaml", "--quiet"]), (Some(0), String::new(), String::new()));
     add_runtime(&dir, SHOP);
     assert_eq!(in_crate(&dir, &["generate", "--quiet"]), (Some(0), String::new(), String::new()));
-    assert_eq!(in_crate(&dir, &["check", "--quiet"]), (Some(0), String::new(), String::new()));
+    assert_eq!(in_crate(&dir, &["generate", "--check", "--quiet"]), (Some(0), String::new(), String::new()));
 }
 
 #[test]
@@ -155,7 +155,7 @@ fn check_finds_a_module_file_edited_after_generate() {
     let types = dir.join("src").join("api").join("types.rs");
     let text = std::fs::read_to_string(&types).unwrap();
     std::fs::write(&types, text + "\npub struct Extra;\n").unwrap();
-    let (code, _, err) = in_crate(&dir, &["check", "api"]);
+    let (code, _, err) = in_crate(&dir, &["generate", "api", "--check"]);
     assert_eq!(code, Some(1), "{err}");
     assert!(err.contains("types.rs"), "{err}");
 }
@@ -194,11 +194,11 @@ fn a_workspace_generates_its_members_and_names_a_missing_one() {
     assert_eq!(code, Some(2));
     assert!(err.contains("has no member with the module `other`"), "{err}");
 
-    assert_eq!(in_crate(&root, &["check"]).0, Some(1));
+    assert_eq!(in_crate(&root, &["generate", "--check"]).0, Some(1));
     let (code, _, err) = in_crate(&root, &["generate", "--package", "cli_workspace_member"]);
     assert_eq!(code, Some(0), "{err}");
     assert!(member.join("src").join("api").join("mod.rs").is_file());
-    assert_eq!(in_crate(&root, &["check", "api"]).0, Some(0));
+    assert_eq!(in_crate(&root, &["generate", "api", "--check"]).0, Some(0));
 }
 
 /// A description with a warning: a link to an operation that no file of it describes.
@@ -277,7 +277,7 @@ fn generate_names_a_package_or_output_that_does_not_fit() {
     let (code, _, err) = in_crate(&dir, &["generate", "--package", "other"]);
     assert_eq!(code, Some(2));
     assert!(err.contains("is `cli_misfit`, not `other`"), "{err}");
-    assert_eq!(in_crate(&dir, &["check", "--package", "cli_misfit"]).0, Some(1), "its own name is fine");
+    assert_eq!(in_crate(&dir, &["generate", "--check", "--package", "cli_misfit"]).0, Some(1), "its own name is fine");
 
     let manifest = std::fs::read_to_string(dir.join("Cargo.toml")).unwrap();
     let twice =

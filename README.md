@@ -49,7 +49,7 @@ The book's [recipes](https://alphajack.github.io/honig/recipes.html) build whole
 `cargo honig generate` updates the module after every change to the description.
 Every place your code must change becomes a compile error: a new operation is a missing method, a new response is a missing match arm.
 
-Run `cargo honig check` in CI to assert that the module is up to date with the description or the generator.
+Run `cargo honig generate --check` in CI to assert that the module is up to date with the description or the generator.
 <!-- ANCHOR_END: update -->
 
 ### Update honig
