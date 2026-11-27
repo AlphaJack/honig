@@ -112,7 +112,7 @@ paths:
             application/json:
               schema: {type: array, items: {$ref: '#/components/schemas/Product'}}
               examples:
-                one: {summary: One product, dataValue: [{id: 1, name: Lamp, kind: book}], serializedValue: '[{"id":1,"name":"Lamp","kind":"book"}]'}
+                one: {summary: One product, dataValue: [{id: 1, name: Lamp, kind: gadget}], serializedValue: '[{"id":1,"name":"Lamp","kind":"gadget"}]'}
             application/jsonl:
               itemSchema: {$ref: '#/components/schemas/Product'}
           links:
@@ -222,7 +222,7 @@ components:
       discriminator: {propertyName: kind, mapping: {book: '#/components/schemas/Book', gadget: '#/components/schemas/Gadget'}, defaultMapping: '#/components/schemas/Product'}
       xml: {name: product, namespace: https://example.com/ns, prefix: p, nodeType: element}
       externalDocs: {url: https://example.com/product}
-      example: {id: 1, name: Lamp, kind: book}
+      example: {id: 1, name: Lamp, kind: gadget}
       x-rust-type: {crate: products, version: '1', path: products::Product}
     # ANCHOR_END: product
     Book:

@@ -70,7 +70,7 @@ fn documented_examples_decode() {
     >(
         &mut bad,
         "/paths/~1products/get/responses/200/content/application~1json/examples/one",
-        "[{\"id\":1,\"name\":\"Lamp\",\"kind\":\"book\"}]",
+        "[{\"id\":1,\"name\":\"Lamp\",\"kind\":\"gadget\"}]",
     );
     let got = serde_json::from_str::<Vec<String>>("[\"a\",\"b\"]")
         .map_err(|e| ::honig::ClientError::Encode(e.to_string()))

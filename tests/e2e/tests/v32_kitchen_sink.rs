@@ -83,8 +83,9 @@ fn received() -> api::Request {
     .unwrap();
     req.headers_mut()
         .insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::from_static("application/json"));
-    *req.body_mut() =
-        honig::Body::from(br#"{"name":"Lamp","kind":"book","callbackUrl":"https://hooks.example.com/adopt"}"#.to_vec());
+    *req.body_mut() = honig::Body::from(
+        br#"{"name":"Lamp","kind":"gadget","callbackUrl":"https://hooks.example.com/adopt"}"#.to_vec(),
+    );
     req
 }
 
@@ -122,11 +123,11 @@ fn a_closed_enum_refuses_unknown_values_and_writes_every_value_back() {
 
 #[test]
 fn a_pattern_newtype_reads_back_the_text_it_was_built_from() {
-    let name = types::ProductName::try_from("Lamp the Book").unwrap_or_else(|e| panic!("{e}"));
-    assert_eq!(name.as_str(), "Lamp the Book");
-    assert_eq!(AsRef::<str>::as_ref(&name), "Lamp the Book");
-    assert_eq!(name.to_string(), "Lamp the Book");
-    assert_eq!(name.into_inner(), "Lamp the Book");
+    let name = types::ProductName::try_from("Desk Lamp").unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(name.as_str(), "Desk Lamp");
+    assert_eq!(AsRef::<str>::as_ref(&name), "Desk Lamp");
+    assert_eq!(name.to_string(), "Desk Lamp");
+    assert_eq!(name.into_inner(), "Desk Lamp");
     assert!(types::ProductName::try_from("Rex1").is_err(), "breaks `^[A-Za-z ]+$`");
 }
 
@@ -193,7 +194,8 @@ fn lamp() -> types::Product {
 /// The lamp with the id `id`. Its schema is checked whole (`types::Product` wraps `types::ProductFields`).
 fn lamp_numbered(id: i64) -> Result<types::Product, api::BuildError> {
     // ANCHOR: whole-schema
-    let lamp: types::Product = types::Product::builder().id(id).name("Lamp").kind(types::ProductKind::Book).build()?;
+    let lamp: types::Product =
+        types::Product::builder().id(id).name("Lamp").kind(types::ProductKind::Gadget).build()?;
     let fields: &types::ProductFields = &lamp; // reads as its fields
     // ANCHOR_END: whole-schema
     assert_eq!(fields.name.as_str(), "Lamp");
@@ -480,7 +482,7 @@ fn create_product_reads_each_body_media_type() {
     let products = std::sync::Arc::new(Products::default());
     let client = served(&products);
     let product: types::ProductRequest =
-        serde_json::from_value(serde_json::json!({"name": "Lamp", "kind": "book"})).unwrap_or_else(|e| panic!("{e}"));
+        serde_json::from_value(serde_json::json!({"name": "Lamp", "kind": "gadget"})).unwrap_or_else(|e| panic!("{e}"));
     let form =
         types::CreateProductBodyRequest { meta: Some(product.clone()), photo: Some(api::Binary::from(vec![1, 2, 3])) };
     let part: std::collections::BTreeMap<String, serde_json::Value> = [("a".to_owned(), serde_json::json!(1))].into();
@@ -573,7 +575,7 @@ fn an_error_inside_a_checked_value_keeps_its_pointer() {
         Err(api::ClientError::Decode { pointer, .. }) => pointer,
         other => panic!("{other:?}"),
     };
-    let nested = br#"{"name": "Lamp", "kind": "book", "owner": {"children": [{"children": 5}]}}"#;
+    let nested = br#"{"name": "Lamp", "kind": "gadget", "owner": {"children": [{"children": 5}]}}"#;
     assert_eq!(pointer(nested), "/owner/children/0/children");
-    assert_eq!(pointer(br#"{"name": "Lamp", "kind": "book", "tags": "x"}"#), "/tags");
+    assert_eq!(pointer(br#"{"name": "Lamp", "kind": "gadget", "tags": "x"}"#), "/tags");
 }
