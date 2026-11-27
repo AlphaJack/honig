@@ -148,14 +148,18 @@ impl<T: ::honig::Transport> Client<T> {
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
         let status = head.status.as_u16();
-        if status == 201 {
-            {
+        match status {
+            201 => {
                 ::honig::__private::check_media_of(&head, &body, &["application/json"])?;
                 ::honig::__private::json_decode(Some(status), &body)
                     .map(ops::create_product::Response::Created)
             }
-        } else {
-            {
+            403 => {
+                ::honig::__private::check_media_of(&head, &body, &["application/json"])?;
+                ::honig::__private::json_decode(Some(status), &body)
+                    .map(ops::create_product::Response::Forbidden)
+            }
+            _ => {
                 let Ok(typed) = ops::create_product::DefaultStatus::try_from(status)
                 else {
                     return Err(::honig::ClientError::UnexpectedStatus {

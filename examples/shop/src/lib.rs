@@ -10,14 +10,26 @@ use std::sync::{Mutex, MutexGuard};
 
 use api::{operations as ops, types};
 
-/// The API key that the shop takes. A real one reads it from its configuration.
+/// The API key of the staff when the shop is given no other: see [`Catalog::with_api_key`].
 pub const API_KEY: &str = "secret";
+/// The API key of a partner.
+pub const PARTNER_KEY: &str = "partner";
+
+/// Who a valid key belongs to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Caller {
+    /// Changes the catalog.
+    Staff,
+    /// Only looks at the catalog.
+    Partner,
+}
 
 // ANCHOR: server
 // ANCHOR: catalog
 /// The catalog in memory. The ID of a product is its index. A deleted product leaves its place empty.
 #[derive(Default)]
 pub struct Catalog {
+    api_key: Option<String>,
     products: Mutex<Vec<Option<types::Product>>>,
     photos: Mutex<BTreeMap<i64, Photo>>,
 }
@@ -43,26 +55,35 @@ fn lock<T>(mutex: &Mutex<T>) -> Result<MutexGuard<'_, T>, api::ApiError> {
 }
 
 impl Catalog {
+    /// Sets the API key of the staff. Without it the key is [`API_KEY`].
+    #[must_use]
+    pub fn with_api_key(mut self, key: String) -> Self {
+        self.api_key = Some(key);
+        self
+    }
+
     fn products(&self) -> Result<MutexGuard<'_, Vec<Option<types::Product>>>, api::ApiError> {
         lock(&self.products)
     }
 }
 
 impl api::Api for Catalog {
-    /// Who a valid key is: the shop has one caller.
-    type ApiKey = ();
+    type ApiKey = Caller;
 
-    /// Checks the `X-API-Key` of a request: the shop's key is someone, any other key is nobody (401).
-    async fn verify_api_key(&self, key: &str, _: &api::Request) -> Result<Option<()>, api::ApiError> {
-        Ok((key == API_KEY).then_some(()))
+    /// Checks the `X-API-Key` of a request: who the key belongs to, or nobody (401).
+    async fn verify_api_key(&self, key: &str, _: &api::Request) -> Result<Option<Caller>, api::ApiError> {
+        Ok(if key == self.api_key.as_deref().unwrap_or(API_KEY) {
+            Some(Caller::Staff)
+        } else {
+            (key == PARTNER_KEY).then_some(Caller::Partner)
+        })
     }
 
     // ANCHOR: error_response
     /// A request that the server refuses itself (no route, bad input, a handler `Err`) in the shop's `Error`: the
-    /// status goes in `code`, the detail in `message`.
+    /// detail goes in `message`.
     fn error_response(rejection: api::Rejection) -> api::Response {
-        let code = i32::from(rejection.status().as_u16());
-        rejection.json(&types::Error::new(code, rejection.message()))
+        rejection.json(&types::Error::new(rejection.message()))
     }
     // ANCHOR_END: error_response
 
@@ -79,8 +100,13 @@ impl api::Api for Catalog {
     async fn create_product(
         &self,
         params: ops::create_product::Params,
-        _: &api::Context<'_, ops::create_product::Security<Self>>,
+        ctx: &api::Context<'_, ops::create_product::Security<Self>>,
     ) -> Result<ops::create_product::Response, api::ApiError> {
+        let ops::create_product::Security::ApiKey(caller) = ctx.security;
+        if caller != Caller::Staff {
+            let error = types::Error::new("only staff add products".to_owned());
+            return Ok(ops::create_product::Response::Forbidden(error));
+        }
         self.products()?.push(Some(params.body.clone()));
         Ok(ops::create_product::Response::Created(params.body))
     }
@@ -93,7 +119,7 @@ impl api::Api for Catalog {
         let found = usize::try_from(params.product_id).ok().and_then(|i| self.products().ok()?.get(i).cloned());
         Ok(match found.flatten() {
             Some(product) => ops::get_product::Response::Ok(product),
-            None => ops::get_product::Response::NotFound(types::Error::new(404, "no such product".to_owned())),
+            None => ops::get_product::Response::NotFound(types::Error::new("no such product".to_owned())),
         })
     }
     // ANCHOR_END: catalog
@@ -107,7 +133,7 @@ impl api::Api for Catalog {
         let gone = usize::try_from(params.product_id).ok().and_then(|i| products.get_mut(i)?.take());
         Ok(match gone {
             Some(_) => ops::delete_product::Response::NoContent,
-            None => ops::delete_product::Response::NotFound(types::Error::new(404, "no such product".to_owned())),
+            None => ops::delete_product::Response::NotFound(types::Error::new("no such product".to_owned())),
         })
     }
 

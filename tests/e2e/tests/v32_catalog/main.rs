@@ -19,13 +19,12 @@ use std::sync::{Mutex, MutexGuard};
 
 use e2e::v32_catalog::api::{self, operations as ops, types};
 
-/// Answers a request that the server refuses itself in the catalog's own error body, `Error {code, message}`. No
-/// standard defines its fields, so this maps them: the status goes in `code`, the detail in `message`. A body that a
-/// handler or layer set itself goes out as it is.
+/// Answers a request that the server refuses itself in the catalog's own error body, `Error {message}`. No standard
+/// defines its field, so this fills it: the detail goes in `message`. A body that a handler or layer set itself goes
+/// out as it is.
 // ANCHOR: error_response
 pub fn error_body(rejection: api::Rejection) -> api::Response {
-    let code = i32::from(rejection.status().as_u16());
-    rejection.json(&types::Error { code, message: rejection.message() })
+    rejection.json(&types::Error { message: rejection.message() })
 }
 // ANCHOR_END: error_response
 
@@ -77,7 +76,7 @@ impl api::Api for Catalog {
         let found = usize::try_from(params.product_id).ok().and_then(|i| self.products().ok()?.get(i).cloned());
         Ok(match found {
             Some(product) => ops::get_product::Response::Ok(product),
-            None => ops::get_product::Response::NotFound(types::Error::new(404, "no such product".to_owned())),
+            None => ops::get_product::Response::NotFound(types::Error::new("no such product".to_owned())),
         })
     }
 
@@ -103,7 +102,7 @@ impl api::Api for Catalog {
         _: ops::delete_product::Params,
         _: &api::Context<'_, ops::delete_product::Security<Self>>,
     ) -> Result<ops::delete_product::Response, api::ApiError> {
-        Ok(ops::delete_product::Response::NotFound(types::Error::new(404, "no such product".to_owned())))
+        Ok(ops::delete_product::Response::NotFound(types::Error::new("no such product".to_owned())))
     }
 
     /// The recipes keep no photos.

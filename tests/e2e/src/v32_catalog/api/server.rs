@@ -640,6 +640,13 @@ fn create_product_encode(
                     ::honig::__private::json_encode(body)?,
                 )
             }
+            ops::create_product::Response::Forbidden(body) => {
+                ::honig::__private::body_response(
+                    403,
+                    "application/json",
+                    ::honig::__private::json_encode(body)?,
+                )
+            }
             ops::create_product::Response::Default { status, body } => {
                 ::honig::__private::body_response(
                     status.as_u16(),

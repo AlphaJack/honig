@@ -51,6 +51,11 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/Product'}
+        '403':
+          description: The caller is not staff
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
         default:
           description: Error
           content:
@@ -211,8 +216,7 @@ components:
     # ANCHOR_END: product-event
     Error:
       type: object
-      required: [code, message]
+      required: [message]
       properties:
-        code: {type: integer, format: int32}
         message: {type: string}
 # ANCHOR_END: all

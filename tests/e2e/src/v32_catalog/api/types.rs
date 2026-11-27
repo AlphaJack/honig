@@ -95,14 +95,13 @@ impl ProductEvent {
 ::honig::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct Error {
-        pub code: i32,
         pub message: String,
     }
 }
 impl Error {
     #[must_use]
-    pub const fn new(code: i32, message: String) -> Self {
-        Self { code, message }
+    pub const fn new(message: String) -> Self {
+        Self { message }
     }
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
@@ -230,8 +229,7 @@ pub mod builders {
     ::honig::typestate_builder! {
         Error => super::Error;
         required {
-            code: R0: i32 = "code",
-            message: R1: String = "message",
+            message: R0: String = "message",
         }
         optional {}
         fixed {}
