@@ -55,3 +55,15 @@ fn an_email_is_checked_when_it_is_made() -> Result<(), Box<dyn std::error::Error
     assert_eq!(to, "ann@example.com");
     Ok(())
 }
+
+/// A builder converts each field and returns the first one that does not convert, with its pointer.
+#[test]
+fn a_builder_needs_one_question_mark() -> Result<(), Box<dyn std::error::Error>> {
+    // ANCHOR: builder
+    let lamp = types::Physical::builder().name("Desk lamp").sku("LMP-0042").fragile(true).build()?;
+    // ANCHOR_END: builder
+    assert_eq!(lamp.sku.as_ref().map(types::PhysicalSku::as_str), Some("LMP-0042"));
+    let err = types::Physical::builder().name("Desk lamp").sku("lamp").build().expect_err("a SKU off its pattern");
+    assert_eq!(err.to_string(), "/sku: does not match `^[A-Z]{3}-[0-9]{4}$`");
+    Ok(())
+}

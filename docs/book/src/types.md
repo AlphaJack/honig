@@ -172,13 +172,17 @@ Where the field type is known, `try_into` builds the value. A spec `default` is 
 
 A `default` that its own schema refuses fails generation. JSON Schema leaves a `default` unchecked, but a field that starts at it would hold a value that its type cannot hold. The seven tests of the JSON Schema test suite that expect such a `default` to pass are listed as known failures in `tests/fixtures/json-schema-test-suite.known`.
 
-A builder converts every field and returns the first one that does not convert, from `build`. So the whole value needs one `?`. Each setter accepts anything that converts to the type of its field: a number for a checked number, a `&str` for a string, a checked string or an enum:
+A builder converts every field and returns the first one that does not convert, from `build`. So the whole value needs one `?`. Each setter accepts anything that converts to the type of its field: a number for a checked number, a `&str` for a string, a checked string or an enum. The catalog's `Physical` has a SKU of a pattern:
 
-```rust
-{{#include ../../../tests/e2e/tests/v32_validation.rs:builder}}
+```yaml
+{{#include ../../../examples/shop/openapi.yaml:physical}}
 ```
 
-The error points to the field with a JSON pointer, as a refused request does: `/age: 150 must be less than 150`. The builder of `User` is `types::builders::User`. Where `new` exists, it and struct update build the value with no `?`.
+```rust
+{{#include ../../../tests/e2e/tests/v32_catalog/schemas.rs:builder}}
+```
+
+The error points to the field with a JSON pointer, as a refused request does: ``/sku: does not match `^[A-Z]{3}-[0-9]{4}$` ``. The builder of `Physical` is `types::builders::Physical`. Where `new` exists, it and struct update build the value with no `?`.
 
 `try_from`, `parse` and `build` all fail with `api::BuildError`, so a function that mixes them needs no `Box<dyn Error>`. In a handler, `?` turns it into a `500`: the handler's inputs are checked already, so a value that its schema refuses came from the server's own data.
 
@@ -196,7 +200,11 @@ widest struct on the first line of the crate root (`src/lib.rs` or `src/main.rs`
 
 ## Whole schemas
 
-Some keywords say what no Rust type can: `not`, `contains`, `dependentRequired`, `if`/`then` beyond the constants of one property, the one branch that a `oneOf` accepts when a discriminator picks branches it does not pin, tuples and `$dynamicRef`. A struct or union whose own schema has them is a checked type of its shape: `Product` wraps a `ProductFields`, `Vehicle` wraps a `VehicleVariants`. It derefs to its shape. `try_from` and decoding check the whole schema. Its builder fills the fields and checks the whole value in `build`:
+Some keywords say what no Rust type can: `not`, `contains`, `dependentRequired`, `if`/`then` beyond the constants of one property, the one branch that a `oneOf` accepts when a discriminator picks branches it does not pin, tuples and `$dynamicRef`. A struct or union whose own schema has them is a checked type of its shape: `Product` wraps a `ProductFields`, `Vehicle` wraps a `VehicleVariants`. It derefs to its shape. `try_from` and decoding check the whole schema. Its builder fills the fields and checks the whole value in `build`. The catalog says nothing that a Rust type cannot, so this example is the product of a shop that uses every keyword:
+
+```yaml
+{{#include ../../../tests/fixtures/v32/kitchen-sink.yaml:product}}
+```
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_kitchen_sink.rs:whole-schema}}

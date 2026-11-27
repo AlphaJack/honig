@@ -574,9 +574,7 @@ fn a_recursive_union_decides_each_value_once() {
 /// named as the description spells it. The required properties are the arguments of `builder`.
 #[test]
 fn a_builder_converts_each_field_and_returns_the_first_error() -> Result<(), Box<dyn std::error::Error>> {
-    // ANCHOR: builder
     let user = types::User::builder().name("Anna").role("admin").age(30).email("anna@example.com").build()?;
-    // ANCHOR_END: builder
     assert_eq!(
         (user.name.as_str(), user.role, user.age.map(types::UserAge::get)),
         ("Anna", types::UserRole::Admin, Some(30))
