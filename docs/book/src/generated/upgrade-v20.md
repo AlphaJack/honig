@@ -1,8 +1,6 @@
 <!-- Generated from src/upgrade/v20_to_v30.rs by src/tests/docs_pages.rs. Edit the source, not this file. -->
 
-Swagger 2.0 to OpenAPI 3.0.
-
-| 2.0 | Becomes |
+| Swagger 2.0 | OpenAPI 3.0 |
 | --- | --- |
 | `host`, `basePath`, `schemes` | `servers` |
 | `definitions`, `parameters`, `responses`, `securityDefinitions` | `components`, with every `$ref` rewritten |

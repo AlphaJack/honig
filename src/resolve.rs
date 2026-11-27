@@ -57,12 +57,6 @@ impl Base<'_> {
     }
 }
 
-/// Bundles external file refs into the root document. `base` is the directory
-/// of the root file (`None` for documents loaded from a string).
-pub(crate) fn bundle(root: Value, base: Option<&Path>, diags: &mut Diagnostics) -> Value {
-    bundle_with(root, Base::new(base), diags)
-}
-
 /// Rounds of adopting component files: a handful reaches a fixpoint for any realistic nesting.
 const MAX_ADOPTION_PASSES: usize = 16;
 
@@ -70,7 +64,7 @@ const MAX_ADOPTION_PASSES: usize = 16;
 #[cfg(feature = "remote-refs")]
 const FETCH_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
 
-/// Returns [`bundle`] with explicit options.
+/// Bundles the external file refs of `root` into it. `base` says where they resolve from.
 pub(crate) fn bundle_with(mut root: Value, base: Base<'_>, diags: &mut Diagnostics) -> Value {
     crate::schema_ids::rebase(&mut root, diags);
     let mut cache: BTreeMap<PathBuf, Value> = BTreeMap::new();
@@ -750,7 +744,7 @@ mod tests {
     fn a_reference_by_another_scheme_is_an_error() {
         let root = json!({"openapi": "3.2.0", "components": {"schemas": {"A": {"$ref": "ftp://example.com/a.json"}}}});
         let mut d = Diagnostics::default();
-        let out = bundle(root, None, &mut d);
+        let out = bundle_with(root, Base::new(None), &mut d);
         assert!(
             d.iter().any(|x| x.message.contains("the scheme of `ftp://example.com/a.json` is not supported")),
             "{d:?}"
@@ -777,7 +771,7 @@ mod tests {
             "paths": {"/p": {"get": {"responses": {"200": {"$ref": "resp.yaml"}}}}}
         });
         let mut d = Diagnostics::default();
-        let out = bundle(root, Some(&dir), &mut d);
+        let out = bundle_with(root, Base::new(Some(&dir)), &mut d);
         assert!(d.is_empty(), "{d:?}");
         assert_eq!(out["paths"]["/p"]["get"]["responses"]["200"]["$ref"], "#/components/responses/resp");
         let schema = &out["components"]["responses"]["resp"]["content"]["application/json"]["schema"];
@@ -803,7 +797,7 @@ mod tests {
             }}}
         });
         let mut d = Diagnostics::default();
-        let out = bundle(root, Some(&dir), &mut d);
+        let out = bundle_with(root, Base::new(Some(&dir)), &mut d);
         assert!(d.is_empty(), "{d:?}");
         let get = &out["paths"]["/orders"]["get"];
         // The own sections of 2.0. The 2.0 to 3.0 upgrade moves them with their refs.
@@ -848,7 +842,7 @@ mod tests {
             }}
         });
         let mut d = Diagnostics::default();
-        let out = bundle(split, Some(&dir), &mut d);
+        let out = bundle_with(split, Base::new(Some(&dir)), &mut d);
         assert!(d.is_empty(), "{d:?}");
         assert_eq!(out, single);
         std::fs::remove_dir_all(dir).ok();
@@ -868,7 +862,7 @@ mod tests {
         let root =
             json!({"openapi": "3.2.0", "components": {"schemas": {"A": {"$ref": "https://example.invalid/a.yaml"}}}});
         let mut d = Diagnostics::default();
-        bundle(root, None, &mut d);
+        bundle_with(root, Base::new(None), &mut d);
         assert!(d.has_errors(), "{d:?}");
         assert!(d.iter().any(|x| x.message.contains("remote-refs")), "{d:?}");
     }
@@ -892,7 +886,7 @@ mod tests {
             }
         });
         let mut d = Diagnostics::default();
-        let out = bundle(root, Some(&dir), &mut d);
+        let out = bundle_with(root, Base::new(Some(&dir)), &mut d);
         assert!(d.is_empty(), "{d:?}");
         // One component adopted under its declared name and shared by both operations.
         assert_eq!(out["components"]["parameters"].as_object().unwrap().len(), 1);
@@ -938,7 +932,7 @@ mod tests {
             "components": {"parameters": {"lang": {"name": "own", "in": "query"}}}
         });
         let mut d = Diagnostics::default();
-        let out = bundle(root, Some(&dir), &mut d);
+        let out = bundle_with(root, Base::new(Some(&dir)), &mut d);
         assert!(d.is_empty(), "{d:?}");
         let names = |kind: &str| -> Vec<&String> { out["components"][kind].as_object().unwrap().keys().collect() };
         assert_eq!(names("schemas"), ["Order", "Order2", "Order3"]);
@@ -963,7 +957,7 @@ mod tests {
                 "content": {"application/json": {"schema": {"$ref": "defs.yaml#id"}}}}}}}}
         });
         let mut d = Diagnostics::default();
-        let out = bundle(root, Some(&dir), &mut d);
+        let out = bundle_with(root, Base::new(Some(&dir)), &mut d);
         assert!(d.is_empty(), "{d:?}");
         let response = &out["paths"]["/a"]["get"]["responses"]["200"];
         assert_eq!(response["headers"]["X-Rate"]["$ref"], "#/components/headers/rate");
@@ -987,7 +981,7 @@ mod tests {
             "components": {"securitySchemes": {"key": {"type": "http", "scheme": "basic"}}}
         });
         let mut d = Diagnostics::default();
-        let out = bundle(root, Some(&dir), &mut d);
+        let out = bundle_with(root, Base::new(Some(&dir)), &mut d);
         assert!(!d.has_errors(), "{d:?}");
         let names: Vec<&String> =
             out["security"].as_array().unwrap().iter().flat_map(|r| r.as_object().unwrap().keys()).collect();

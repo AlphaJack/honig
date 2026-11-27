@@ -7,15 +7,12 @@ Commands:
   generate  Generate the modules set in Cargo.toml files
   check     Fail if a module is stale
   validate  Validate under its own OpenAPI version and print diagnostics
-  upgrade   Print the document upgraded to OpenAPI 3.2 JSON
-  bundle    Print a description split over files as one document, in its own OpenAPI version
   help      Print this message or the help of the given subcommand(s)
 
 Options:
-      --manifest-path <PATH>  Cargo.toml to use [default: Cargo.toml]
-  -q, --quiet                 Only print errors
-  -h, --help                  Print help
-  -V, --version               Print version
+  -m, --manifest <PATH>  Cargo.toml to use [default: Cargo.toml]
+  -q, --quiet            Only print errors
+  -h, --help             Print help
+  -V, --version          Print version
 
-SETTINGS ([package.metadata.honig.<module>] in Cargo.toml): descriptions, output, mod_rs, client, server, operations, tests, keep_unknown_fields, overlays, formats, derives
-The Settings page of the book explains each one: https://alphajack.github.io/honig/settings.html
+Settings of a module: https://alphajack.github.io/honig/settings.html

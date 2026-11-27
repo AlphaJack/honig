@@ -21,14 +21,27 @@ fn version_prints_the_package_and_its_version() {
     assert_eq!(String::from_utf8_lossy(&out.stdout), expected);
 }
 
+/// `--help` opens with the description of the package and ends with the page of the settings in the book.
 #[test]
 fn help_lists_every_command() {
     let out = run(&["--help"]);
     assert!(out.status.success());
     let help = String::from_utf8_lossy(&out.stdout);
-    for command in ["init", "generate", "check", "validate", "upgrade", "bundle"] {
+    assert!(help.starts_with(&format!("cargo honig: {}\n", env!("CARGO_PKG_DESCRIPTION"))), "{help}");
+    for command in ["init", "generate", "check", "validate"] {
         assert!(help.contains(&format!("  {command} ")), "{command} missing from:\n{help}");
     }
+    assert!(!help.contains("  upgrade ") && !help.contains("  bundle "), "{help}");
+    assert!(help.contains("-m, --manifest <PATH>"), "{help}");
+    assert!(help.trim_end().ends_with(&format!("{}/settings.html", env!("CARGO_PKG_HOMEPAGE"))), "{help}");
+}
+
+/// The README opens with the description of the package: crates.io, `--help` and the book show one text.
+#[test]
+fn the_readme_opens_with_the_description() {
+    let readme = std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("README.md")).unwrap();
+    let lead = readme.split("<!-- ANCHOR: lead -->\n").nth(1).unwrap();
+    assert!(lead.starts_with(&format!("honig: {}.", env!("CARGO_PKG_DESCRIPTION"))), "{lead}");
 }
 
 #[test]
@@ -44,20 +57,6 @@ fn validate_accepts_a_valid_description() {
     let spec = fixture("shop.yaml");
     let out = run(&["validate", spec.to_str().unwrap()]);
     assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
-}
-
-#[test]
-fn bundle_prints_the_same_document_as_json_or_yaml() {
-    let spec = fixture("shop.yaml");
-    let bundle = |format: &str| {
-        let out = run(&["bundle", spec.to_str().unwrap(), "--format", format]);
-        assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
-        String::from_utf8(out.stdout).unwrap()
-    };
-    let json: serde_json::Value = serde_json::from_str(&bundle("json")).unwrap();
-    let yaml: serde_json::Value = serde_saphyr::from_str(&bundle("yaml")).unwrap();
-    assert_eq!(json, yaml);
-    assert_eq!(json["openapi"], "3.2.0");
 }
 
 /// A crate of its own under the target directory: a `Cargo.toml`, an empty `src/lib.rs` and the `shop` description.
@@ -90,7 +89,7 @@ fn add_runtime(dir: &Path, features: &[&str]) {
 
 fn in_crate(dir: &Path, args: &[&str]) -> (Option<i32>, String, String) {
     let manifest = dir.join("Cargo.toml");
-    let out = run(&[args, &["--manifest-path", manifest.to_str().unwrap()]].concat());
+    let out = run(&[args, &["--manifest", manifest.to_str().unwrap()]].concat());
     (out.status.code(), String::from_utf8(out.stdout).unwrap(), String::from_utf8(out.stderr).unwrap())
 }
 

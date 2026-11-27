@@ -54,11 +54,12 @@ pub(crate) fn load_str(text: &str) -> Loaded {
 
 /// Loads a document from a file. External refs resolve against its directory;
 /// `http(s)://` refs are fetched when the generator is built with `remote-refs`.
+#[cfg(test)]
 pub(crate) fn load_path(path: &Path) -> Loaded {
     load_path_with(path, resolve::Base::new(path.parent()), &[])
 }
 
-/// Returns [`load_path`] that resolves refs from `base`. Tests pass `Base::offline` to check a document without the
+/// Loads a document from a file and resolves its refs from `base`. Tests pass `Base::offline` to check a document without the
 /// network. `overlays` apply in order to the document as written before its external refs are bundled.
 pub(crate) fn load_path_with(path: &Path, base: resolve::Base<'_>, overlays: &[PathBuf]) -> Loaded {
     let mut diagnostics = Diagnostics::default();
