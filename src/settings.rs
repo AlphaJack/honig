@@ -24,11 +24,7 @@ pub(crate) const SETTINGS: [(&str, Option<&str>, &str); 11] = [
         "the descriptions relative to Cargo.toml, like [\"openapi.yaml\"]; several, such as [\"a.yaml\", \"api/*.yaml\"], merge",
     ),
     ("output", Some("\"src/<module>\""), "the module directory"),
-    (
-        "mod_rs",
-        Some("the crate's clippy lints, else true"),
-        "true writes the root of the module as `<output>/mod.rs`, false as `<output>.rs`",
-    ),
+    ("mod_rs", Some("true"), "true writes the root of the module as `<output>/mod.rs`, false as `<output>.rs`"),
     ("client", Some("true"), "generate the client; a table sets allow_unknown_values = true"),
     ("server", Some("true"), "generate the server; a table sets allow_unimplemented = true"),
     (
@@ -151,9 +147,6 @@ pub(crate) struct Manifest {
     lib: bool,
     /// The manifests of the workspace members when this is a virtual workspace manifest.
     members: Option<Vec<PathBuf>>,
-    /// The workspace root's manifest when it is another file than this one: its `[workspace.lints]` apply to a
-    /// package with `lints.workspace = true`.
-    workspace_doc: Option<DocumentMut>,
 }
 
 /// One dependency as cargo sees it.
@@ -180,12 +173,6 @@ impl Manifest {
         let here = crate::disk::canonical(path.to_path_buf());
         let manifest_of =
             |p: &cargo_metadata::Package| crate::disk::canonical(p.manifest_path.clone().into_std_path_buf());
-        let root = metadata.workspace_root.join("Cargo.toml").into_std_path_buf();
-        let workspace_path = (crate::disk::canonical(root.clone()) != here).then_some(root);
-        let workspace_doc = match &workspace_path {
-            Some(p) => Some(crate::disk::read(p)?.parse()?),
-            None => None,
-        };
         let Some(package) = metadata.packages.iter().find(|p| manifest_of(p) == here) else {
             let members = metadata
                 .workspace_packages()
@@ -211,32 +198,7 @@ impl Manifest {
             deps,
             lib: package.targets.iter().any(cargo_metadata::Target::is_lib),
             members: None,
-            workspace_doc,
         })
-    }
-
-    /// Returns what the crate's clippy lints ask of the root of a module: `Some(false)` when `mod_module_files` is on,
-    /// `Some(true)` when `self_named_module_files` is on. The package's `[lints.clippy]` is used, or the
-    /// `[workspace.lints.clippy]` of the workspace root under `lints.workspace = true`.
-    pub(crate) fn linted_mod_rs(&self) -> Option<bool> {
-        let lints = self.doc.get("lints");
-        let inherited = lints.and_then(|l| l.get("workspace")).and_then(Item::as_bool) == Some(true);
-        let clippy = if inherited {
-            self.workspace_doc.as_ref().unwrap_or(&self.doc).get("workspace")?.get("lints")?.get("clippy")?
-        } else {
-            lints?.get("clippy")?
-        };
-        // A level is `"deny"` or `{ level = "deny", priority = 1 }`.
-        let on = |lint: &str| {
-            let item = clippy.get(lint);
-            let level = item.and_then(|i| i.as_str().or_else(|| i.get("level")?.as_str()));
-            level.is_some_and(|l| l != "allow")
-        };
-        match (on("mod_module_files"), on("self_named_module_files")) {
-            (true, false) => Some(false),
-            (false, true) => Some(true),
-            (true, true) | (false, false) => None,
-        }
     }
 
     /// `text` alone: its own `[dependencies]` and target dependency tables, no workspace. Tests build manifests so.
@@ -470,7 +432,7 @@ pub(crate) fn settings<'a>(module: impl Into<Module<'a>>, path: &Path) -> Result
     named_types(module)?;
     let output = string("output")?.unwrap_or_else(|| format!("src/{}", module.name));
     let mod_rs = match table.get("mod_rs") {
-        None => manifest.linted_mod_rs().unwrap_or(true),
+        None => true,
         Some(item) => item.as_bool().ok_or_else(|| setting(&name, "mod_rs", "true or false", shown(item)))?,
     };
     let Halves { client, server, allow_unimplemented, strict_client } = halves(table, &name)?;
@@ -1061,8 +1023,10 @@ mod tests {
         );
     }
 
+    /// `mod_rs` alone places the root of a module. The clippy lints of the crate do not: a lint that disagrees fails
+    /// the build, where it shows.
     #[test]
-    fn the_root_of_a_module_follows_the_lints_of_the_crate_unless_set() {
+    fn the_root_of_a_module_follows_mod_rs_alone() {
         let root = |extra: &str| {
             let table = format!("[package.metadata.honig.api]\ndescriptions = [\"a.yaml\"]\n{extra}");
             modules_of(&table).ok().map(|ms| ms[0].root_path())
@@ -1070,15 +1034,8 @@ mod tests {
         let file = Some(Path::new("src").join("api.rs"));
         let mod_rs = Some(Path::new("src").join("api").join("mod.rs"));
         assert_eq!(root(""), mod_rs);
-        assert_eq!(root("\n[lints.clippy]\nmod_module_files = \"deny\""), file);
-        assert_eq!(root("\n[lints.clippy]\nmod_module_files = { level = \"warn\", priority = 1 }"), file);
-        assert_eq!(root("\n[lints.clippy]\nmod_module_files = \"allow\""), mod_rs);
-        assert_eq!(root("\n[lints.clippy]\nself_named_module_files = \"deny\""), mod_rs);
-        // A package that inherits the lints of the workspace it is the root of.
-        let inherited = "\n[lints]\nworkspace = true\n[workspace.lints.clippy]\nmod_module_files = \"deny\"";
-        assert_eq!(root(inherited), file);
+        assert_eq!(root("\n[lints.clippy]\nmod_module_files = \"deny\""), mod_rs);
         assert_eq!(root("mod_rs = false"), file);
-        assert_eq!(root("mod_rs = true\n[lints.clippy]\nmod_module_files = \"deny\""), mod_rs);
         assert_eq!(root("mod_rs = \"no\""), None);
     }
 }
