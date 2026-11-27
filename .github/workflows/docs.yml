@@ -24,8 +24,12 @@ jobs:
         uses: taiki-e/install-action@893d6ee8d714b6c7dfe2bcd94e5759e9a7958a7e # v2.90.10
         with:
           tool: mdbook
+      # The book shows the version it documents: in its title, and in place of each `x.y.z`.
       - name: Build the book
-        run: mdbook build docs/book
+        run: |
+          version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "honig") | .version')
+          sed -i "s/x\.y\.z/$version/g" README.md docs/book/src/*.md
+          MDBOOK_BOOK__TITLE="honig $version" mdbook build docs/book
       - name: Configure GitHub Pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
       - name: Upload Pages artifact
