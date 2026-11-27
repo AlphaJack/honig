@@ -140,6 +140,36 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/Error'}
     # ANCHOR_END: delete
+  /products/{productId}/photo:
+    # ANCHOR: photo-get
+    get:
+      operationId: getProductPhoto
+      parameters:
+        - {name: productId, in: path, required: true, schema: {type: integer, format: int64}}
+      responses:
+        '200':
+          description: The photo of the product, in whatever image format it was uploaded
+          headers:
+            ETag: {schema: {type: string}}
+          content:
+            image/*: {}
+        '404': {description: No photo}
+    # ANCHOR_END: photo-get
+    # ANCHOR: photo-put
+    put:
+      operationId: putProductPhoto
+      parameters:
+        - {name: productId, in: path, required: true, schema: {type: integer, format: int64}}
+        - {name: If-Match, in: header, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          image/*: {}
+      responses:
+        '204': {description: Stored}
+        '404': {description: No such product}
+        '412': {description: The photo changed since the client read it}
+    # ANCHOR_END: photo-put
 components:
   securitySchemes:
     apiKey: {type: apiKey, in: header, name: X-API-Key}

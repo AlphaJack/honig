@@ -105,6 +105,24 @@ impl api::Api for Catalog {
         Ok(ops::delete_product::Response::NotFound(types::Error::new(404, "no such product".to_owned())))
     }
 
+    /// The recipes keep no photos.
+    async fn get_product_photo(
+        &self,
+        _: ops::get_product_photo::Params,
+        _: &api::Context<'_, ops::get_product_photo::Security<Self>>,
+    ) -> Result<ops::get_product_photo::Response, api::ApiError> {
+        Ok(ops::get_product_photo::Response::NotFound)
+    }
+
+    /// The recipes keep no photos.
+    async fn put_product_photo(
+        &self,
+        _: ops::put_product_photo::Params,
+        _: &api::Context<'_, ops::put_product_photo::Security<Self>>,
+    ) -> Result<ops::put_product_photo::Response, api::ApiError> {
+        Ok(ops::put_product_photo::Response::NotFound)
+    }
+
     /// The recipes keep no history: the feed has ended.
     async fn stream_product_events(
         &self,

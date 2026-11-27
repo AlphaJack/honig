@@ -42,6 +42,16 @@ pub trait Api: Send + Sync + Sized + 'static {
         params: ops::delete_product::Params,
         ctx: &Context<'_, ops::delete_product::Security<Self>>,
     ) -> impl Future<Output = ops::delete_product::Result> + Send;
+    fn get_product_photo(
+        &self,
+        params: ops::get_product_photo::Params,
+        ctx: &Context<'_, ops::get_product_photo::Security<Self>>,
+    ) -> impl Future<Output = ops::get_product_photo::Result> + Send;
+    fn put_product_photo(
+        &self,
+        params: ops::put_product_photo::Params,
+        ctx: &Context<'_, ops::put_product_photo::Security<Self>>,
+    ) -> impl Future<Output = ops::put_product_photo::Result> + Send;
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {
@@ -51,6 +61,8 @@ pub enum Operation {
     StreamProductEvents,
     GetProduct,
     DeleteProduct,
+    GetProductPhoto,
+    PutProductPhoto,
 }
 impl ::honig::Operation for Operation {
     fn op(self) -> &'static ::honig::__private::Op {
@@ -61,6 +73,8 @@ impl ::honig::Operation for Operation {
             Self::StreamProductEvents => &STREAM_PRODUCT_EVENTS_OP,
             Self::GetProduct => &GET_PRODUCT_OP,
             Self::DeleteProduct => &DELETE_PRODUCT_OP,
+            Self::GetProductPhoto => &GET_PRODUCT_PHOTO_OP,
+            Self::PutProductPhoto => &PUT_PRODUCT_PHOTO_OP,
         }
     }
 }
@@ -281,6 +295,7 @@ static METHODS: &[&[(&str, Operation)]] = &[
     &[("GET", Operation::ExportProducts)],
     &[("GET", Operation::StreamProductEvents)],
     &[("GET", Operation::GetProduct), ("DELETE", Operation::DeleteProduct)],
+    &[("GET", Operation::GetProductPhoto), ("PUT", Operation::PutProductPhoto)],
 ];
 static ROUTES: &[::honig::__private::Node] = &[
     ::honig::__private::node(
@@ -292,7 +307,8 @@ static ROUTES: &[::honig::__private::Node] = &[
     ::honig::__private::node(&[("events", 3), ("export", 2)], &[], 4, 0),
     ::honig::__private::node(&[], &[], ::honig::__private::Node::NONE, 1),
     ::honig::__private::node(&[], &[], ::honig::__private::Node::NONE, 2),
-    ::honig::__private::node(&[], &[], ::honig::__private::Node::NONE, 3),
+    ::honig::__private::node(&[("photo", 5)], &[], ::honig::__private::Node::NONE, 3),
+    ::honig::__private::node(&[], &[], ::honig::__private::Node::NONE, 4),
 ];
 static BASE_PATHS: &[&str] = &["/v1"];
 static PATHS: &[&str] = &[
@@ -300,10 +316,12 @@ static PATHS: &[&str] = &[
     "/products/events",
     "/products/export",
     "/products/{s1}",
+    "/products/{s1}/photo",
     "/v1/products",
     "/v1/products/events",
     "/v1/products/export",
     "/v1/products/{s1}",
+    "/v1/products/{s1}/photo",
 ];
 pub struct Routes<A>(std::sync::Arc<A>);
 /// The server of this API: `Server::new(your_api)`, or `Server::new(arc)` to keep a handle on it. Add layers,
@@ -430,6 +448,12 @@ async fn dispatch<A: Api>(
         }
         Operation::GetProduct => Box::pin(get_product(api, routed, call)).await,
         Operation::DeleteProduct => Box::pin(delete_product(api, routed, call)).await,
+        Operation::GetProductPhoto => {
+            Box::pin(get_product_photo(api, routed, call)).await
+        }
+        Operation::PutProductPhoto => {
+            Box::pin(put_product_photo(api, routed, call)).await
+        }
     }
 }
 static LIST_PRODUCTS_OP: ::honig::__private::Op = ::honig::__private::Op {
@@ -934,6 +958,172 @@ fn delete_product_encode(
             }
         },
     )
+}
+static GET_PRODUCT_PHOTO_OP: ::honig::__private::Op = ::honig::__private::Op {
+    security: ops::SECURITY_0,
+    produces: &["image/*"],
+    ranges: true,
+    ..::honig::__private::Op::new(
+        "get_product_photo",
+        "GET",
+        "/products/{productId}/photo",
+        "GET /products/{productId}/photo",
+        error_schema,
+    )
+};
+async fn get_product_photo<A: Api>(
+    api: &A,
+    routed: ::honig::__private::Routed<'_>,
+    call: ::honig::__private::Call<
+        '_,
+        Option<::honig::Passed<<Routes<A> as ::honig::__private::Operations>::Value>>,
+        Operation,
+    >,
+) -> ::honig::Response {
+    let steps = ::honig::__private::Steps {
+        api,
+        decode: |i| get_product_photo_params(&i),
+        call: |a, p, c| Box::pin(a.get_product_photo(p, c)),
+        encode: |r, _| get_product_photo_encode(r),
+    };
+    ::honig::__private::serve_signed_in(
+            routed,
+            call
+                .map(|passed: Option<::honig::Passed<_>>| {
+                    let passed = passed?;
+                    let mut values = passed.values.into_iter();
+                    match passed.alternative {
+                        0usize => {
+                            Some(
+                                ops::get_product_photo::Security::ApiKey(
+                                    values.next()?.api_key()?,
+                                ),
+                            )
+                        }
+                        _ => None,
+                    }
+                }),
+            &steps,
+        )
+        .await
+}
+fn get_product_photo_params(
+    incoming: &::honig::__private::Incoming<'_>,
+) -> Result<ops::get_product_photo::Params, ::honig::Reason> {
+    let ::honig::__private::Incoming { caps, .. } = *incoming;
+    Ok(ops::get_product_photo::Params {
+        product_id: ::honig::__private::path_param(
+            caps,
+            0,
+            ::honig::__private::Style::Simple,
+            "/path/productId",
+        )?,
+    })
+}
+fn get_product_photo_encode(
+    resp: ops::get_product_photo::Response,
+) -> Result<::honig::Response, ::honig::ClientError> {
+    Ok(
+        match resp {
+            ops::get_product_photo::Response::Ok { body, e_tag } => {
+                let mut r = ::honig::__private::new_response(200);
+                if let Some(h) = ::honig::__private::encode_header(
+                    &e_tag,
+                    ::honig::__private::Enc::SIMPLE,
+                )? {
+                    ::honig::Message::set_header(&mut r, "ETag", h)?;
+                }
+                ::honig::__private::set_blob_in(&mut r, "image/*", body);
+                r
+            }
+            ops::get_product_photo::Response::NotFound => {
+                ::honig::__private::new_response(404)
+            }
+        },
+    )
+}
+static PUT_PRODUCT_PHOTO_OP: ::honig::__private::Op = ::honig::__private::Op {
+    security: ops::SECURITY_0,
+    takes_body: true,
+    ..::honig::__private::Op::new(
+        "put_product_photo",
+        "PUT",
+        "/products/{productId}/photo",
+        "PUT /products/{productId}/photo",
+        error_schema,
+    )
+};
+async fn put_product_photo<A: Api>(
+    api: &A,
+    routed: ::honig::__private::Routed<'_>,
+    call: ::honig::__private::Call<
+        '_,
+        Option<::honig::Passed<<Routes<A> as ::honig::__private::Operations>::Value>>,
+        Operation,
+    >,
+) -> ::honig::Response {
+    let steps = ::honig::__private::Steps {
+        api,
+        decode: put_product_photo_params,
+        call: |a, p, c| Box::pin(a.put_product_photo(p, c)),
+        encode: |r, _| Ok(put_product_photo_encode(&r)),
+    };
+    ::honig::__private::serve_signed_in(
+            routed,
+            call
+                .map(|passed: Option<::honig::Passed<_>>| {
+                    let passed = passed?;
+                    let mut values = passed.values.into_iter();
+                    match passed.alternative {
+                        0usize => {
+                            Some(
+                                ops::put_product_photo::Security::ApiKey(
+                                    values.next()?.api_key()?,
+                                ),
+                            )
+                        }
+                        _ => None,
+                    }
+                }),
+            &steps,
+        )
+        .await
+}
+fn put_product_photo_params(
+    incoming: ::honig::__private::Incoming<'_>,
+) -> Result<ops::put_product_photo::Params, ::honig::Reason> {
+    let ::honig::__private::Incoming { request: req, caps, body, stream, .. } = incoming;
+    ::honig::__private::check_media(::honig::Message::content_type(req), &["image/*"])?;
+    Ok(ops::put_product_photo::Params {
+        product_id: ::honig::__private::path_param(
+            caps,
+            0,
+            ::honig::__private::Style::Simple,
+            "/path/productId",
+        )?,
+        if_match: ::honig::__private::from_text(
+            ::honig::__private::joined_header(req.headers(), "If-Match")
+                .map(::honig::__private::trimmed_header),
+            "/header/If-Match",
+        )?,
+        body: ::honig::Blob::received(body, &stream)
+            .received_as(::honig::Message::content_type(req)),
+    })
+}
+fn put_product_photo_encode(
+    resp: &ops::put_product_photo::Response,
+) -> ::honig::Response {
+    match resp {
+        ops::put_product_photo::Response::NoContent => {
+            ::honig::__private::new_response(204)
+        }
+        ops::put_product_photo::Response::NotFound => {
+            ::honig::__private::new_response(404)
+        }
+        ops::put_product_photo::Response::PreconditionFailed => {
+            ::honig::__private::new_response(412)
+        }
+    }
 }
 static CREATE_PRODUCT_PRODUCT_CREATED_POST_OP: ::honig::__private::Op = ::honig::__private::Op {
     security: ops::SECURITY_0,

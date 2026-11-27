@@ -49,14 +49,9 @@ fn rust_in_the_book_comes_from_tested_files() {
 const RUNNING_EXAMPLE: [&str; 2] = ["examples/shop/", "tests/e2e/tests/v32_catalog/"];
 
 /// The Rust includes that call another API, each with why.
-const OTHER_APIS: [(&str, &str); 13] = [
+const OTHER_APIS: [(&str, &str); 8] = [
     ("tests/e2e/tests/v32_shop/client.rs:device-flow", "the catalog accepts only an API key"),
-    ("tests/e2e/tests/v32_shop/client.rs:feed", "not on the catalog yet"),
-    ("tests/e2e/tests/v32_download.rs:download", "not on the catalog yet"),
-    ("tests/e2e/tests/v32_download.rs:media-range", "not on the catalog yet"),
-    ("tests/e2e/tests/v32_download.rs:preconditions", "not on the catalog yet"),
-    ("tests/e2e/tests/v32_uploads.rs:upload", "not on the catalog yet"),
-    ("tests/e2e/tests/v32_scopes.rs:problem-instance", "not on the catalog yet"),
+    ("tests/e2e/tests/v32_scopes.rs:problem-instance", "the error body of the catalog is its own, not RFC 9457"),
     ("tests/e2e/tests/v32_scopes.rs:scopes", "not on the catalog yet"),
     ("tests/e2e/tests/v32_security.rs:both", "not on the catalog yet"),
     ("tests/e2e/tests/v32_security.rs:optional-rate-limit", "not on the catalog yet"),

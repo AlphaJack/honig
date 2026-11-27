@@ -101,16 +101,30 @@ fn the_callback_goes_where_the_request_says() {
     assert_eq!(created_callback(&params).as_deref(), Some("https://hooks.example.com/a"));
 }
 
-/// A `200` that sends `events` as server-sent events, each with its ID, and asks to reconnect at once.
-fn events_response(events: &[(&str, types::ProductEvent)]) -> api::Response {
-    let records = events.iter().map(|(id, item)| honig::Sse::Event {
-        id: Some((*id).to_owned()),
+// ANCHOR: feed
+/// The feed after the event that a reconnecting client received last. Each event carries its `id`. The client sends it
+/// back as `Last-Event-ID`. `retry` tells clients how long to wait before they reconnect. On a quiet minute a
+/// comment goes out. So proxies keep the connection open.
+fn feed(
+    events: &[(String, types::ProductEvent)],
+    last_event_id: Option<&str>,
+    retry: Duration,
+) -> api::Items<types::ProductEvent> {
+    let after = last_event_id.and_then(|id| events.iter().position(|(e, _)| e == id)).map_or(0, |i| i + 1);
+    let events = events.iter().skip(after);
+    let records = std::iter::once(honig::Sse::Retry(retry)).chain(events.map(|(id, item)| honig::Sse::Event {
+        id: Some(id.clone()),
         event: None,
         item: item.clone(),
-    });
-    let records = std::iter::once(honig::Sse::Retry(Duration::ZERO)).chain(records);
-    let items = api::Items::events(futures_util::stream::iter(records.collect::<Vec<_>>()));
+    }));
+    api::Items::events(futures_util::stream::iter(records.collect::<Vec<_>>())).heartbeat(Duration::from_secs(60))
+}
+// ANCHOR_END: feed
+
+/// A `200` with the feed of `events` after `last_event_id`, which asks to reconnect at once.
+fn events_response(events: &[(String, types::ProductEvent)], last_event_id: Option<&str>) -> api::Response {
     let mut resp = honig::__private::new_response(200);
+    let items = feed(events, last_event_id, Duration::ZERO);
     honig::__private::set_items(&mut resp, "text/event-stream", items, api::Framing::Sse).unwrap();
     resp
 }
@@ -141,7 +155,7 @@ async fn product_events(
 
 #[tokio::test]
 async fn the_feed_is_read_to_its_end() {
-    let client = catalog(|_| std::future::ready(events_response(&[("e1", created("Desk lamp"))])));
+    let client = catalog(|_| std::future::ready(events_response(&[("e1".to_owned(), created("Desk lamp"))], None)));
     assert_eq!(product_events(&client).await.unwrap(), [created("Desk lamp")]);
 }
 
@@ -167,6 +181,7 @@ async fn follow(
 
 #[tokio::test]
 async fn the_feed_resumes_after_the_last_event_read() {
+    let events = [("e1".to_owned(), created("Desk lamp")), ("e2".to_owned(), created("Office chair"))];
     let asked = std::sync::Arc::new(std::sync::Mutex::new(vec![]));
     let seen = std::sync::Arc::clone(&asked);
     // The first connection sends one event and closes. The second sends the next. The third finds the feed ended.
@@ -174,8 +189,8 @@ async fn the_feed_resumes_after_the_last_event_read() {
         let last = header(&req, "Last-Event-ID").map(str::to_owned);
         seen.lock().unwrap().push(last.clone());
         std::future::ready(match last.as_deref() {
-            None => events_response(&[("e1", created("Desk lamp"))]),
-            Some("e1") => events_response(&[("e2", created("Office chair"))]),
+            None => events_response(&events[..1], None),
+            Some("e1") => events_response(&events, Some("e1")),
             Some(_) => honig::__private::new_response(204),
         })
     });

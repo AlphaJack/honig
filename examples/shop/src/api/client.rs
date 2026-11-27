@@ -432,6 +432,178 @@ impl<T: ::honig::Transport> Client<T> {
             }
         }
     }
+    pub async fn get_product_photo(
+        &self,
+        p: impl ::honig::__private::IntoArg<'_, ops::get_product_photo::Params>,
+    ) -> Result<ops::get_product_photo::Response, ::honig::ClientError> {
+        let p = ::honig::__private::IntoArg::into_arg(p);
+        let mut path = String::from("/products/");
+        path.push_str(
+            &::honig::__private::encode_path(
+                "productId",
+                &p.product_id,
+                ::honig::__private::Enc::SIMPLE,
+            )?,
+        );
+        path.push_str("/photo");
+        let query = Vec::new();
+        let mut req = ::honig::__private::new_request("GET", path, query)?;
+        ::honig::Message::set_header(&mut req, "Accept", "image/*")?;
+        ::honig::__private::apply_auth(
+            &mut req,
+            &self.credentials,
+            ops::SECURITY_0,
+            Self::WITH,
+        )?;
+        ::honig::__private::propagate_trace(&mut req);
+        let resp = ::honig::send(&self.transport, req).await?;
+        let (head, body) = resp.into_parts();
+        let (body, _) = body.into_parts();
+        let status = head.status.as_u16();
+        let ct = ::honig::__private::content_type_of(&head.headers);
+        match status {
+            200 => {
+                ::honig::__private::check_media_of(&head, &body, &["image/*"])?;
+                Ok(ops::get_product_photo::Response::Ok {
+                    body: ::honig::Blob::from(body.to_vec()).received_as(ct),
+                    e_tag: ::honig::__private::from_param(
+                            ::honig::__private::decode_header(
+                                    ::honig::__private::joined_header(&head.headers, "ETag")
+                                        .as_deref(),
+                                    "/header/ETag",
+                                    ::honig::__private::Style::Simple,
+                                    ::honig::__private::Shape::Primitive,
+                                    false,
+                                )
+                                .map_err(|e| ::honig::ClientError::Decode {
+                                    status: Some(status),
+                                    message: e.to_string(),
+                                    body: body.clone(),
+                                    pointer: String::new(),
+                                })?,
+                            "/header/ETag",
+                        )
+                        .map_err(|e| ::honig::ClientError::Decode {
+                            status: Some(status),
+                            message: e.to_string(),
+                            body: body.clone(),
+                            pointer: String::new(),
+                        })?,
+                })
+            }
+            404 => Ok(ops::get_product_photo::Response::NotFound),
+            _ => {
+                Err(::honig::ClientError::UnexpectedStatus {
+                    status: head.status,
+                    body,
+                })
+            }
+        }
+    }
+    pub async fn get_product_photo_stream(
+        &self,
+        p: impl ::honig::__private::IntoArg<'_, ops::get_product_photo::Params>,
+    ) -> Result<
+        ::honig::Streamed<::honig::Response, ops::get_product_photo::Response>,
+        ::honig::ClientError,
+    > {
+        let p = ::honig::__private::IntoArg::into_arg(p);
+        let mut path = String::from("/products/");
+        path.push_str(
+            &::honig::__private::encode_path(
+                "productId",
+                &p.product_id,
+                ::honig::__private::Enc::SIMPLE,
+            )?,
+        );
+        path.push_str("/photo");
+        let query = Vec::new();
+        let mut req = ::honig::__private::new_request("GET", path, query)?;
+        ::honig::Message::set_header(&mut req, "Accept", "image/*")?;
+        ::honig::__private::apply_auth(
+            &mut req,
+            &self.credentials,
+            ops::SECURITY_0,
+            Self::WITH,
+        )?;
+        ::honig::__private::propagate_trace(&mut req);
+        let resp = ::honig::send_streaming(&self.transport, req).await?;
+        if resp.status() == 200 {
+            ::honig::__private::check_response_media(
+                200,
+                ::honig::Message::content_type(&resp),
+                None,
+                &["image/*"],
+            )?;
+            return Ok(::honig::Streamed::Ok(resp));
+        }
+        let (head, body) = resp.into_parts();
+        let resp = ::honig::Response::from_parts(
+            head,
+            ::honig::Body::new(body.collect().await?),
+        );
+        let other: Result<ops::get_product_photo::Response, ::honig::ClientError> = async move {
+            let (head, body) = resp.into_parts();
+            let (body, _) = body.into_parts();
+            let status = head.status.as_u16();
+            if status == 404 {
+                Ok(ops::get_product_photo::Response::NotFound)
+            } else {
+                Err(::honig::ClientError::UnexpectedStatus {
+                    status: head.status,
+                    body,
+                })
+            }
+        }
+            .await;
+        Ok(::honig::Streamed::Whole(other?))
+    }
+    pub async fn put_product_photo(
+        &self,
+        p: impl ::honig::__private::IntoArg<'_, ops::put_product_photo::Params>,
+    ) -> Result<ops::put_product_photo::Response, ::honig::ClientError> {
+        let p = ::honig::__private::IntoArg::into_arg(p).into_owned();
+        let mut path = String::from("/products/");
+        path.push_str(
+            &::honig::__private::encode_path(
+                "productId",
+                &p.product_id,
+                ::honig::__private::Enc::SIMPLE,
+            )?,
+        );
+        path.push_str("/photo");
+        let query = Vec::new();
+        let mut req = ::honig::__private::new_request("PUT", path, query)?;
+        if let Some(h) = ::honig::__private::encode_header(
+            &p.if_match,
+            ::honig::__private::Enc::SIMPLE,
+        )? {
+            ::honig::Message::set_header(&mut req, "If-Match", h)?;
+        }
+        ::honig::__private::set_blob_in(&mut req, "image/*", p.body);
+        ::honig::__private::apply_auth(
+            &mut req,
+            &self.credentials,
+            ops::SECURITY_0,
+            Self::WITH,
+        )?;
+        ::honig::__private::propagate_trace(&mut req);
+        let resp = ::honig::send(&self.transport, req).await?;
+        let (head, body) = resp.into_parts();
+        let (body, _) = body.into_parts();
+        let status = head.status.as_u16();
+        match status {
+            204 => Ok(ops::put_product_photo::Response::NoContent),
+            404 => Ok(ops::put_product_photo::Response::NotFound),
+            412 => Ok(ops::put_product_photo::Response::PreconditionFailed),
+            _ => {
+                Err(::honig::ClientError::UnexpectedStatus {
+                    status: head.status,
+                    body,
+                })
+            }
+        }
+    }
 }
 /// Sends the webhooks of the API and the callbacks (`callbacks`) of its operations.
 #[derive(Clone)]
