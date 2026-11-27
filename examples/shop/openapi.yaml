@@ -14,53 +14,71 @@ paths:
       parameters:
         - name: limit
           in: query
-          schema: {type: integer, format: int32, maximum: 100}
+          schema:
+            type: integer
+            format: int32
+            maximum: 100
         - name: tags
           in: query
           style: form
           explode: false
-          schema: {type: array, items: {type: string}}
+          schema:
+            type: array
+            items:
+              type: string
       responses:
         '200':
           description: A page of products
           headers:
-            X-Next: {schema: {type: string}}
+            X-Next:
+              schema:
+                type: string
           content:
             application/json:
-              schema: {type: array, items: {$ref: '#/components/schemas/Product'}}
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
         default:
           description: Error
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/Error'}
+              schema:
+                $ref: '#/components/schemas/Error'
     post:
       operationId: createProduct
       parameters:
         - name: notify
           in: query
           description: Where to send the new product
-          schema: {type: string, format: uri}
+          schema:
+            type: string
+            format: uri
       requestBody:
         required: true
         content:
           application/json:
-            schema: {$ref: '#/components/schemas/Product'}
+            schema:
+              $ref: '#/components/schemas/Product'
       responses:
         '201':
           description: Created
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/Product'}
+              schema:
+                $ref: '#/components/schemas/Product'
         '403':
           description: The caller is not staff
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/Error'}
+              schema:
+                $ref: '#/components/schemas/Error'
         default:
           description: Error
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/Error'}
+              schema:
+                $ref: '#/components/schemas/Error'
       # ANCHOR: callback
       callbacks:
         productCreated:
@@ -69,9 +87,11 @@ paths:
               requestBody:
                 content:
                   application/json:
-                    schema: {$ref: '#/components/schemas/Product'}
+                    schema:
+                      $ref: '#/components/schemas/Product'
               responses:
-                '204': {description: Received}
+                '204':
+                  description: Received
       # ANCHOR_END: callback
   # ANCHOR: media
   /products/export:
@@ -82,9 +102,13 @@ paths:
           description: Every product, as JSON or as CSV
           content:
             application/json:
-              schema: {type: array, items: {$ref: '#/components/schemas/Product'}}
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
             text/csv:
-              schema: {type: string}
+              schema:
+                type: string
   # ANCHOR_END: media
   # ANCHOR: stream
   /products/events:
@@ -95,7 +119,8 @@ paths:
           description: Each change to the catalog as it happens
           content:
             text/event-stream:
-              itemSchema: {$ref: '#/components/schemas/ProductEvent'}
+              itemSchema:
+                $ref: '#/components/schemas/ProductEvent'
         '204':
           description: The feed has ended
   # ANCHOR_END: stream
@@ -106,29 +131,35 @@ paths:
         - name: productId
           in: path
           required: true
-          schema: {type: integer, format: int64}
+          schema:
+            type: integer
+            format: int64
         # ANCHOR: not-modified
         - name: If-None-Match
           in: header
-          schema: {type: string}
+          schema:
+            type: string
         # ANCHOR_END: not-modified
       responses:
         '200':
           description: A product
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/Product'}
+              schema:
+                $ref: '#/components/schemas/Product'
           # ANCHOR: links
           links:
             DeleteProduct:
               operationId: deleteProduct
-              parameters: {productId: $request.path.productId}
+              parameters:
+                productId: $request.path.productId
           # ANCHOR_END: links
         '404':
           description: Not found
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/Error'}
+              schema:
+                $ref: '#/components/schemas/Error'
     # ANCHOR: delete
     delete:
       operationId: deleteProduct
@@ -136,48 +167,74 @@ paths:
         - name: productId
           in: path
           required: true
-          schema: {type: integer, format: int64}
+          schema:
+            type: integer
+            format: int64
       responses:
-        '204': {description: Deleted}
+        '204':
+          description: Deleted
         '404':
           description: Not found
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/Error'}
+              schema:
+                $ref: '#/components/schemas/Error'
     # ANCHOR_END: delete
   /products/{productId}/photo:
     # ANCHOR: photo-get
     get:
       operationId: getProductPhoto
       parameters:
-        - {name: productId, in: path, required: true, schema: {type: integer, format: int64}}
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
       responses:
         '200':
           description: The photo of the product, in whatever image format it was uploaded
           headers:
-            ETag: {schema: {type: string}}
+            ETag:
+              schema:
+                type: string
           content:
             image/*: {}
-        '404': {description: No photo}
+        '404':
+          description: No photo
     # ANCHOR_END: photo-get
     # ANCHOR: photo-put
     put:
       operationId: putProductPhoto
       parameters:
-        - {name: productId, in: path, required: true, schema: {type: integer, format: int64}}
-        - {name: If-Match, in: header, schema: {type: string}}
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: If-Match
+          in: header
+          schema:
+            type: string
       requestBody:
         required: true
         content:
           image/*: {}
       responses:
-        '204': {description: Stored}
-        '404': {description: No such product}
-        '412': {description: The photo changed since the client read it}
+        '204':
+          description: Stored
+        '404':
+          description: No such product
+        '412':
+          description: The photo changed since the client read it
     # ANCHOR_END: photo-put
 components:
   securitySchemes:
-    apiKey: {type: apiKey, in: header, name: X-API-Key}
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
   schemas:
     Product:
       oneOf:
@@ -192,31 +249,56 @@ components:
     # ANCHOR: physical
     Physical:
       type: object
-      required: [kind, name]
+      required:
+        - kind
+        - name
       properties:
-        kind: {const: physical}
-        name: {type: string}
-        fragile: {type: boolean}
-        sku: {type: string, pattern: '^[A-Z]{3}-[0-9]{4}$', description: Stock keeping unit}
+        kind:
+          const: physical
+        name:
+          type: string
+        fragile:
+          type: boolean
+        sku:
+          type: string
+          pattern: '^[A-Z]{3}-[0-9]{4}$'
+          description: Stock keeping unit
     # ANCHOR_END: physical
     Digital:
       type: object
-      required: [kind, name]
+      required:
+        - kind
+        - name
       properties:
-        kind: {const: digital}
-        name: {type: string}
-        downloads: {type: [integer, "null"], format: int32}
+        kind:
+          const: digital
+        name:
+          type: string
+        downloads:
+          type:
+            - integer
+            - "null"
+          format: int32
     # ANCHOR: product-event
     ProductEvent:
       type: object
-      required: [event, product]
+      required:
+        - event
+        - product
       properties:
-        event: {type: string, enum: [created, deleted]}
-        product: {$ref: '#/components/schemas/Product'}
+        event:
+          type: string
+          enum:
+            - created
+            - deleted
+        product:
+          $ref: '#/components/schemas/Product'
     # ANCHOR_END: product-event
     Error:
       type: object
-      required: [message]
+      required:
+        - message
       properties:
-        message: {type: string}
+        message:
+          type: string
 # ANCHOR_END: all
