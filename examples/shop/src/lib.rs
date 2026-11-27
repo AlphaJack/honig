@@ -13,6 +13,7 @@ use api::{operations as ops, types};
 /// The API key that the shop takes. A real one reads it from its configuration.
 pub const API_KEY: &str = "secret";
 
+// ANCHOR: server
 // ANCHOR: catalog
 /// The catalog in memory. The ID of a product is its index. A deleted product leaves its place empty.
 #[derive(Default)]
@@ -95,6 +96,7 @@ impl api::Api for Catalog {
             None => ops::get_product::Response::NotFound(types::Error::new(404, "no such product".to_owned())),
         })
     }
+    // ANCHOR_END: catalog
 
     async fn delete_product(
         &self,
@@ -184,5 +186,7 @@ impl api::Api for Catalog {
     ) -> Result<ops::stream_product_events::Response, api::ApiError> {
         Ok(ops::stream_product_events::Response::NoContent)
     }
+    // ANCHOR: catalog
 }
 // ANCHOR_END: catalog
+// ANCHOR_END: server
