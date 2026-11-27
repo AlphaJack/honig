@@ -59,7 +59,7 @@ pub mod list_orders {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `Pat`, with what each `verify_` method found.
         Pat(A::Pat),
@@ -100,7 +100,7 @@ pub mod create_order {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `Pat`, with what each `verify_` method found.
         Pat(A::Pat),

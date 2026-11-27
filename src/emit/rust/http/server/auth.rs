@@ -27,8 +27,8 @@ fn verify_name(variant: &str) -> proc_macro2::Ident {
     ident(&format!("verify_{}", crate::emit::rust::names::snake(&Name::new(variant))))
 }
 
-/// Returns one method per scheme that `ops` use: it checks the credential and returns who is calling, or `None` for a
-/// credential that is not valid. A scheme with scopes or roles returns the scopes that the credential grants too.
+/// Returns one method per scheme that `ops` use: it checks the credential and returns who sent the request, or `None`
+/// for a credential that is not valid. A scheme with scopes or roles returns the scopes that the credential grants too.
 /// With `allow_unimplemented` each has a default that refuses every credential.
 pub(crate) fn verify_methods(api: &Api, ops: &[&Operation], allow_unimplemented: bool) -> TokenStream {
     let methods = used_schemes(api, ops).into_iter().map(|(scheme, variant)| {
@@ -46,7 +46,7 @@ pub(crate) fn verify_methods(api: &Api, ops: &[&Operation], allow_unimplemented:
             }
         };
         let doc = lit(&format!(
-            " Checks a credential of `{}`: who is calling, or `None` when it is not valid (401).",
+            " Checks a credential of `{}`: who sent the request, or `None` when it is not valid (401).",
             scheme.name
         ));
         let body = if allow_unimplemented {
@@ -178,7 +178,7 @@ pub(crate) fn security_enum(api: &Api, op: &Operation) -> Option<TokenStream> {
         .collect();
     // A derive would demand `A: Clone`, the whole `Api`: each value is `Clone` already.
     Some(quote! {
-        /// Who is calling: the alternative of the operation's `security` that the request passed.
+        /// Who sent the request: the alternative of the operation's `security` that the request passed.
         pub enum Security<A: super::super::server::#tr> {
             #(#variants)*
         }

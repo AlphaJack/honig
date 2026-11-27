@@ -521,7 +521,7 @@ fn refused<Id: crate::Operation>(
     event.finish(for_method(method, resp), started)
 }
 
-/// Returns who is calling: the first alternative of `requirements` whose every scheme the `Api` accepts and whose
+/// Returns who sent the request: the first alternative of `requirements` whose every scheme the `Api` accepts and whose
 /// scopes its credentials grant, with the value of each of its schemes. `None` when no alternative passes but an empty
 /// one (`{}`) lets an anonymous request in. A credential that the `Api` refuses never falls back to anonymous.
 ///

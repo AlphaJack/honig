@@ -171,7 +171,7 @@ pub mod me {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `Bearer`, with what each `verify_` method found.
         Bearer(A::Bearer),
@@ -212,7 +212,7 @@ pub mod list_deals {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// No credentials: the `security` of the operation allows an anonymous request.
         Anonymous,
@@ -256,7 +256,7 @@ pub mod read {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `Oauth`, with what each `verify_` method found.
         Oauth(A::Oauth),
@@ -300,7 +300,7 @@ pub mod write {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `Oauth`, with what each `verify_` method found.
         Oauth(A::Oauth),
@@ -341,7 +341,7 @@ pub mod checkout {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `Key` and `Session`, with what each `verify_` method found.
         KeyAndSession(A::Key, A::Session),
@@ -384,7 +384,7 @@ pub mod login {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `Login`, with what each `verify_` method found.
         Login(A::Login),
@@ -428,7 +428,7 @@ pub mod cert {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `Cert`, with what each `verify_` method found.
         Cert(A::Cert),
@@ -469,7 +469,7 @@ pub mod oidc {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `Oidc`, with what each `verify_` method found.
         Oidc(A::Oidc),

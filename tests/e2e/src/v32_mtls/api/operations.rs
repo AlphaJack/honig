@@ -49,7 +49,7 @@ pub mod private {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `Cert`, with what each `verify_` method found.
         Cert(A::Cert),
@@ -90,7 +90,7 @@ pub mod token {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `Bearer`, with what each `verify_` method found.
         Bearer(A::Bearer),
@@ -131,7 +131,7 @@ pub mod keyed {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `ApiKey` and `BasicAuth`, with what each `verify_` method found.
         ApiKeyAndBasicAuth(A::ApiKey, A::BasicAuth),
