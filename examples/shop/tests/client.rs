@@ -134,3 +134,15 @@ fn serve_prints_the_key_only_when_none_is_set() {
     assert_eq!(first_line_of_serve(None), "API key is 'secret'\n");
     assert!(first_line_of_serve(Some("s3cret")).starts_with("serving the catalog on "));
 }
+
+/// `add` refuses an argument that describes the other kind of product, before it sends anything.
+#[test]
+fn add_refuses_an_argument_of_the_other_kind() {
+    let out = std::process::Command::new(env!("CARGO_BIN_EXE_shop"))
+        .args(["add", "E-book", "--kind", "digital", "--sku", "LMP-0001"])
+        .output()
+        .unwrap();
+    assert!(!out.status.success());
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(err.contains("--sku and --fragile describe a physical product"), "{err}");
+}

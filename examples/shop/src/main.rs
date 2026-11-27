@@ -3,7 +3,7 @@
 //! 1. `cargo run -p shop -- serve` serves the catalog on `http://127.0.0.1:3000/v1`. It prints one wide event per
 //!    request. The API key of the staff is `SHOP_API_KEY` or `--api-key`. Without one the server prints the key that it takes.
 //! 2. In another terminal the other commands call it with the generated client:
-//!    `cargo run -p shop -- add-physical "Desk lamp" --sku LMP-0001 --fragile`,
+//!    `cargo run -p shop -- add "Desk lamp" --kind physical --sku LMP-0001 --fragile`,
 //!    `cargo run -p shop -- list --limit 10` and `cargo run -p shop -- get 0`.
 
 use clap::{Parser, Subcommand};
@@ -33,24 +33,29 @@ enum Command {
         #[arg(long)]
         limit: Option<types::ListProductsLimit>,
     },
-    /// Add a physical product
-    AddPhysical {
+    /// Add a product
+    Add {
         name: String,
-        /// The stock keeping unit, such as LMP-0001
+        #[arg(long, value_enum)]
+        kind: Kind,
+        /// The stock keeping unit of a physical product, such as LMP-0001
         #[arg(long)]
         sku: Option<types::PhysicalSku>,
+        /// A physical product that breaks easily
         #[arg(long)]
         fragile: bool,
-    },
-    /// Add a digital product
-    AddDigital {
-        name: String,
-        /// How many times it may be downloaded
+        /// How many times a digital product may be downloaded
         #[arg(long)]
         downloads: Option<i32>,
     },
     /// Show the product with this ID
     Get { id: i64 },
+}
+
+#[derive(Clone, Copy, clap::ValueEnum)]
+enum Kind {
+    Physical,
+    Digital,
 }
 
 #[tokio::main]
@@ -81,13 +86,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         }
-        Command::AddPhysical { name, sku, fragile } => {
-            let product = types::Physical { sku, fragile: fragile.then_some(true), ..types::Physical::new(name) };
-            add(&client, types::Product::Physical(product)).await?;
-        }
-        Command::AddDigital { name, downloads } => {
-            let product = types::Digital { downloads: downloads.into(), ..types::Digital::new(name) };
-            add(&client, types::Product::Digital(product)).await?;
+        Command::Add { name, kind, sku, fragile, downloads } => {
+            let product = match kind {
+                Kind::Physical if downloads.is_none() => {
+                    let fragile = fragile.then_some(true);
+                    types::Product::Physical(types::Physical { sku, fragile, ..types::Physical::new(name) })
+                }
+                Kind::Digital if sku.is_none() && !fragile => {
+                    types::Product::Digital(types::Digital { downloads: downloads.into(), ..types::Digital::new(name) })
+                }
+                _ => return Err("--sku and --fragile describe a physical product, --downloads a digital one".into()),
+            };
+            add(&client, product).await?;
         }
         Command::Get { id } => get(&client, id).await?,
     }
