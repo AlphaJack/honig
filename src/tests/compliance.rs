@@ -1694,3 +1694,20 @@ fn a_schema_that_false_empties_fails() {
         made(free.clone()).unwrap_or_else(|d| panic!("{free}: {:?}", d.0));
     }
 }
+
+/// XML maps an object. Another XML body, such as a `oneOf`, stays raw text: a warning at its schema says so. A string
+/// schema asks for the text itself and gets no warning.
+#[test]
+fn an_xml_body_that_stays_raw_text_is_a_warning() {
+    let object = json!({"type": "object", "properties": {"name": {"type": "string"}}});
+    let either = json!({"oneOf": [object, {"type": "string"}]});
+    for (schema, warns) in [(either, true), (object, false), (json!({"type": "string"}), false)] {
+        let paths = json!({"/a": {"get": {"operationId": "a", "responses": {"200": {"description": "ok",
+            "content": {"application/xml": {"schema": schema}}}}}}});
+        let path = common::write("xml-raw-text", &doc(&paths, &json!({})), &[]);
+        let made = crate::generate::generate(&path, &Options::default()).expect("a valid description generates");
+        let at = "/paths/~1a/get/responses/200/content/application~1xml/schema";
+        let warned = made.diagnostics.iter().any(|d| d.pointer == at && d.message.contains("raw text"));
+        assert_eq!(warned, warns, "{schema}: {:#?}", made.diagnostics);
+    }
+}
