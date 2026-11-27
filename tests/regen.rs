@@ -106,7 +106,7 @@ fn example_is_fresh() {
     }
     let manifest = dir.join("Cargo.toml").display().to_string();
     let run = |args: &[&str]| {
-        let args = args.iter().copied().chain(["--quiet", "--manifest-path", &manifest]).map(String::from);
+        let args = args.iter().copied().chain(["--quiet", "--manifest", &manifest]).map(String::from);
         cargo_honig::run(args)
     };
     assert_eq!(run(&["generate"]), ExitCode::SUCCESS);

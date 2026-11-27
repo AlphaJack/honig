@@ -1,7 +1,7 @@
 # honig
 
 <!-- ANCHOR: lead -->
-honig turns an OpenAPI description into typed Rust clients and servers.
+honig: OpenAPI 3.2 to a Rust client and server.
 
 It is meant for spec-first workflow and catches drift from the OpenAPI description at compile time.
 

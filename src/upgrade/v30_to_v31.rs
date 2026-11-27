@@ -1,6 +1,6 @@
-//! OpenAPI 3.0 to 3.1. Schemas move from the 3.0 dialect to JSON Schema 2020-12.
+//! Schemas move from the 3.0 dialect to JSON Schema 2020-12.
 //!
-//! | 3.0 | Becomes |
+//! | OpenAPI 3.0 | OpenAPI 3.1 |
 //! | --- | --- |
 //! | `nullable: true` | `"null"` in `type`, in `enum` or in an `anyOf` branch |
 //! | boolean `exclusiveMinimum` and `exclusiveMaximum` | their numeric form |

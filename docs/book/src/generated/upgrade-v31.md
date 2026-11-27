@@ -1,8 +1,6 @@
 <!-- Generated from src/upgrade/v31_to_v32.rs by src/tests/docs_pages.rs. Edit the source, not this file. -->
 
-OpenAPI 3.1 to 3.2.
-
-| 3.1 | Becomes |
+| OpenAPI 3.1 | OpenAPI 3.2 |
 | --- | --- |
 | array-form `items` (JSON Schema 2019-09 and older) | `prefixItems` |
 | `dependencies` (JSON Schema draft 7 and older) | `dependentRequired` and `dependentSchemas` |

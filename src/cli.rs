@@ -10,16 +10,16 @@ use crate::emit::Options;
 use crate::generate::{self, generate_all};
 use crate::settings;
 
-/// cargo honig: OpenAPI 3.2 to a Rust client and server
 #[derive(Parser)]
 #[command(name = env!("CARGO_PKG_NAME"), bin_name = "cargo honig", version, arg_required_else_help = true)]
-#[command(after_help = settings_help())]
+#[command(about = concat!("cargo honig: ", env!("CARGO_PKG_DESCRIPTION")))]
+#[command(after_help = concat!("Settings of a module: ", env!("CARGO_PKG_HOMEPAGE"), "/settings.html"))]
 struct Cli {
     #[command(subcommand)]
     command: Command,
     /// Cargo.toml to use
-    #[arg(long, global = true, value_name = "PATH", default_value = "Cargo.toml")]
-    manifest_path: PathBuf,
+    #[arg(short, long, global = true, value_name = "PATH", default_value = "Cargo.toml")]
+    manifest: PathBuf,
     /// Only print errors
     #[arg(short, long, global = true)]
     quiet: bool,
@@ -50,32 +50,6 @@ enum Command {
         /// A description file, or a module name for its spec. Default: all modules
         spec: Option<String>,
     },
-    /// Print the document upgraded to OpenAPI 3.2 JSON
-    Upgrade { spec: PathBuf },
-    /// Print a description split over files as one document, in its own OpenAPI version
-    Bundle {
-        spec: PathBuf,
-        #[arg(long, value_enum, default_value_t)]
-        format: Format,
-    },
-}
-
-/// How `bundle` prints the document.
-#[derive(Clone, Copy, Debug, Default, clap::ValueEnum)]
-enum Format {
-    #[default]
-    Json,
-    Yaml,
-}
-
-/// Returns the settings of a module after the list of commands. The Settings page of the book explains them.
-fn settings_help() -> String {
-    let keys: Vec<&str> = settings::SETTINGS.iter().map(|(key, _, _)| *key).collect();
-    format!(
-        "SETTINGS ([package.metadata.honig.<module>] in Cargo.toml): {}\n\
-         The Settings page of the book explains each one: https://alphajack.github.io/honig/settings.html",
-        keys.join(", ")
-    )
 }
 
 /// Why the command failed.
@@ -83,10 +57,6 @@ fn settings_help() -> String {
 enum Failure {
     /// A file, the manifest or the generated code.
     Generator(crate::error::Error),
-    /// Printing the document as JSON.
-    Json(serde_json::Error),
-    /// Printing the document as YAML.
-    Yaml(serde_saphyr::SerializeError),
     /// `init` on a manifest that already has `[package.metadata.honig]`.
     AlreadySet(PathBuf),
     /// No package that the workspace command names has the modules that it asks for.
@@ -97,8 +67,6 @@ impl std::fmt::Display for Failure {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Generator(e) => e.fmt(f),
-            Self::Json(e) => e.fmt(f),
-            Self::Yaml(e) => e.fmt(f),
             Self::AlreadySet(path) => write!(f, "{} already has [package.metadata.honig]", path.display()),
             Self::NoMember(why) => f.write_str(why),
         }
@@ -108,18 +76,6 @@ impl std::fmt::Display for Failure {
 impl From<crate::error::Error> for Failure {
     fn from(e: crate::error::Error) -> Self {
         Self::Generator(e)
-    }
-}
-
-impl From<serde_saphyr::SerializeError> for Failure {
-    fn from(e: serde_saphyr::SerializeError) -> Self {
-        Self::Yaml(e)
-    }
-}
-
-impl From<serde_json::Error> for Failure {
-    fn from(e: serde_json::Error) -> Self {
-        Self::Json(e)
     }
 }
 
@@ -147,38 +103,6 @@ fn print(d: &Diagnostics, quiet: bool) {
 fn dispatch(command: Command, args: &Args) -> Result<ExitCode, Failure> {
     match command {
         Command::Validate { spec } => validate(spec.as_deref(), args),
-        Command::Upgrade { spec } => {
-            let loaded = crate::load::load_path(&spec);
-            print(&loaded.diagnostics, true);
-            match loaded.value {
-                Some(v) => {
-                    let text = serde_json::to_string_pretty(&v)?;
-                    println!("{text}");
-                    Ok(ExitCode::SUCCESS)
-                }
-                None => Ok(ExitCode::FAILURE),
-            }
-        }
-        Command::Bundle { spec, format } => {
-            let root = match crate::parse::load_file(&spec) {
-                Ok((root, _)) => root,
-                Err(d) => {
-                    eprintln!("{d}");
-                    return Ok(ExitCode::FAILURE);
-                }
-            };
-            let mut diagnostics = Diagnostics::default();
-            let bundled = crate::resolve::bundle(root, spec.parent(), &mut diagnostics);
-            print(&diagnostics, args.quiet);
-            if diagnostics.has_errors() {
-                return Ok(ExitCode::FAILURE);
-            }
-            match format {
-                Format::Json => println!("{}", serde_json::to_string_pretty(&bundled)?),
-                Format::Yaml => print!("{}", serde_saphyr::to_string(&bundled)?),
-            }
-            Ok(ExitCode::SUCCESS)
-        }
         Command::Init { spec } => init(&spec, args),
         Command::Generate { module, package } => in_members(false, module.as_deref(), package.as_deref(), args),
         Command::Check { module, package } => in_members(true, module.as_deref(), package.as_deref(), args),
@@ -475,7 +399,7 @@ pub fn run(args: impl IntoIterator<Item = String>) -> ExitCode {
             return ExitCode::from(u8::try_from(e.exit_code()).unwrap_or(2));
         }
     };
-    let args = Args { manifest: cli.manifest_path, quiet: cli.quiet };
+    let args = Args { manifest: cli.manifest, quiet: cli.quiet };
     match dispatch(cli.command, &args) {
         Ok(code) => code,
         Err(e) => {

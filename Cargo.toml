@@ -1,13 +1,13 @@
 [package]
 name = "cargo-honig"
-description = "honig turns an OpenAPI description into typed Rust clients and servers."
+description = "OpenAPI 3.2 to a Rust client and server"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 readme = "README.md"
-documentation = "https://alphajack.github.io/honig"
+homepage.workspace = true
 keywords = ["openapi", "codegen", "swagger", "cargo-subcommand", "api"]
 categories = ["development-tools::cargo-plugins", "web-programming::http-server", "web-programming::http-client"]
 # What `cargo install` needs: the sources of the generator with its README and license.
@@ -56,7 +56,7 @@ prettyplease = "0.3"
 regress = "0.12"
 proc-macro2 = { version = "1", default-features = false }
 quote = { version = "1", default-features = false }
-serde-saphyr = { version = "2", default-features = false, features = ["deserialize", "serialize"] }
+serde-saphyr = { version = "2", default-features = false, features = ["deserialize"] }
 toml_edit = "0.25"
 # HTTPS checks certificates against the store of the OS (`platform-verifier`). There are no bundled roots.
 ureq = { version = "3", optional = true, default-features = false, features = ["rustls-no-provider", "platform-verifier"] }

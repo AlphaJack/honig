@@ -1,5 +1,6 @@
-//! Generates a Rust client and server from an `OpenAPI` description. 2.0, 3.0, 3.1 and 3.2 are each upgraded to 3.2
-//! first.
+#![doc = env!("CARGO_PKG_DESCRIPTION")]
+//!
+//! 2.0, 3.0 and 3.1 descriptions are upgraded to 3.2 first.
 //!
 //! [`run`] is `cargo honig` as a function. The command line is the interface: this crate has no other public API.
 //!
