@@ -36,14 +36,9 @@ enum Command {
         /// Only this workspace member
         #[arg(short, long)]
         package: Option<String>,
-    },
-    /// Fail if a module is stale
-    Check {
-        /// Only this module of [package.metadata.honig]
-        module: Option<String>,
-        /// Only this workspace member
-        #[arg(short, long)]
-        package: Option<String>,
+        /// Write nothing: fail when a module is stale
+        #[arg(long)]
+        check: bool,
     },
     /// Validate under its own OpenAPI version and print diagnostics
     Validate {
@@ -104,8 +99,7 @@ fn dispatch(command: Command, args: &Args) -> Result<ExitCode, Failure> {
     match command {
         Command::Validate { spec } => validate(spec.as_deref(), args),
         Command::Init { spec } => init(&spec, args),
-        Command::Generate { module, package } => in_members(false, module.as_deref(), package.as_deref(), args),
-        Command::Check { module, package } => in_members(true, module.as_deref(), package.as_deref(), args),
+        Command::Generate { module, package, check } => in_members(check, module.as_deref(), package.as_deref(), args),
     }
 }
 

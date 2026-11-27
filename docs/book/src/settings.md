@@ -72,7 +72,7 @@ actions:
 
 honig supports Overlay 1.0 to 1.2 with every action. That is `update`, `remove`, `copy` and the reusable actions under `components.actions`. Targets are RFC 9535 JSONPath.
 
-honig reports a broken action with its index and skips it. The others still apply. `cargo honig check` applies the overlays too. A changed overlay makes the module stale.
+honig reports a broken action with its index and skips it. The others still apply. `cargo honig generate --check` applies the overlays too. A changed overlay makes the module stale.
 
 ## Several APIs in one crate
 

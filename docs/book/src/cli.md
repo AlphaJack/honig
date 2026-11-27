@@ -21,7 +21,7 @@ Each diagnostic starts with a JSON pointer into the document. `generate` fails o
 
 ## A description from someone else
 
-honig follows every `$ref` and `externalValue` of a description. A file ref may name any path on your machine, also outside the folder of the description, such as `../../secrets.yaml` or an absolute path. A URL ref is fetched, also from a host of your internal network. So a description that you did not write can make `generate`, `check` and `validate` read your files and call your hosts.
+honig follows every `$ref` and `externalValue` of a description. A file ref may name any path on your machine, also outside the folder of the description, such as `../../secrets.yaml` or an absolute path. A URL ref is fetched, also from a host of your internal network. So a description that you did not write can make `generate` and `validate` read your files and call your hosts.
 
 Run honig only on descriptions you trust. To fetch no URL at all, install the generator without remote refs:
 

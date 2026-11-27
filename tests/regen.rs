@@ -118,8 +118,8 @@ fn example_is_fresh() {
         .map(|(path, _)| path.display().to_string())
         .collect();
     assert!(stale.is_empty(), "stale files in examples/shop: {stale:?}");
-    assert_eq!(run(&["check"]), ExitCode::SUCCESS);
-    assert_eq!(run(&["check", "supplier"]), ExitCode::SUCCESS);
+    assert_eq!(run(&["generate", "--check"]), ExitCode::SUCCESS);
+    assert_eq!(run(&["generate", "supplier", "--check"]), ExitCode::SUCCESS);
     assert_eq!(run(&["generate", "api"]), ExitCode::SUCCESS);
     assert_eq!(snapshot(&dir), after, "generating one module keeps the features the other needs");
 }
