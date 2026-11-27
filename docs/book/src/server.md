@@ -35,30 +35,38 @@ An operation may answer in several media types. It answers in the one that the `
 
 ## Streams
 
-Binary responses use `api::Blob`. Return bytes. Or pass any `Stream` of chunks to `Blob::stream` for a large download:
+Binary responses use `api::Blob`. Return bytes. Or pass any `Stream` of chunks to `Blob::stream` for a large download, or `Blob::ranged` for a file that it opens where a range starts.
 
-```rust
-{{#include ../../../tests/e2e/tests/v32_download.rs:download}}
+A response declared as a range, such as `image/*` or `*/*`, has no one type to send. Give the blob its type with `Blob::with_media`. It goes out as that type when it fits the range, else as `application/octet-stream`. The client gets it back with `Blob::media`. The catalog serves the photo of a product in the format it was uploaded in:
+
+```yaml
+{{#include ../../../examples/shop/openapi.yaml:photo-get}}
 ```
 
-A response declared as a range, such as `image/*` or `*/*`, has no one type to send. Give the blob its type with `Blob::with_media`. It goes out as that type when it fits the range, else as `application/octet-stream`. The client gets it back with `Blob::media`:
-
 ```rust
-{{#include ../../../tests/e2e/tests/v32_download.rs:media-range}}
+{{#include ../../../examples/shop/src/lib.rs:download}}
 ```
 
-Binary request bodies reach the handler as they arrive. A `Blob` is a `Stream` of its chunks. So the server never buffers a whole upload. A body past `max_body_bytes` fails its chunk. Then `?` answers `413`:
+Binary request bodies reach the handler as they arrive. A `Blob` is a `Stream` of its chunks. So the server never buffers a whole upload: a handler that writes a file writes each chunk as it comes. This one keeps the photo in memory, so `collect` gathers it. A body past `max_body_bytes` fails its chunk. Then `?` answers `413`:
+
+```yaml
+{{#include ../../../examples/shop/openapi.yaml:photo-put}}
+```
 
 ```rust
-{{#include ../../../tests/e2e/tests/v32_uploads.rs:upload}}
+{{#include ../../../examples/shop/src/lib.rs:upload}}
 ```
 
 Sequential responses use `api::Items<T>` in the same way. These are JSON Lines and JSON text sequences and server-sent events. Return `Items::List(vec)`. Or pass any `Stream` of items to `Items::stream`. A sequential request body is a `Stream` of its items too. Each item is checked as it is decoded, and the `minItems`, `maxItems` and `uniqueItems` of the sequence apply as it arrives: the item past `maxItems` and an item met before are an `Err`, and so is an end short of `minItems`. Items that your code produces are not checked.
 
 Server-sent events can also use `Items::events`. Its records carry the `id` and name of an event. They also carry a `retry` and comments. A client that reconnects sends the last `id` back as `Last-Event-ID`:
 
+```yaml
+{{#include ../../../examples/shop/openapi.yaml:stream}}
+```
+
 ```rust
-{{#include ../../../tests/e2e/tests/v32_shop/client.rs:feed}}
+{{#include ../../../tests/e2e/tests/v32_catalog/client.rs:feed}}
 ```
 
 Answer `204` to a client that should stop reconnecting.
@@ -67,11 +75,7 @@ Answer `204` to a client that should stop reconnecting.
 
 Some `GET` and `HEAD` requests get `304 Not Modified` (RFC 9110 section 13). This happens when the success response carries an `ETag` or a `Last-Modified`. The `If-None-Match` or `If-Modified-Since` of the request must also say that the client already has it. The 304 keeps the validators and caching headers and drops the body. Your handler still runs.
 
-Before a handler changes a resource `ctx.preconditions` checks `If-Match`, `If-Unmodified-Since` and `If-None-Match` against its current validators. It refuses with `412`:
-
-```rust
-{{#include ../../../tests/e2e/tests/v32_download.rs:preconditions}}
-```
+Before a handler changes a resource `ctx.preconditions` checks `If-Match`, `If-Unmodified-Since` and `If-None-Match` against its current validators. It refuses with `412`. The photo upload above calls it with the `ETag` of the photo it replaces.
 
 Pass `None` for a resource that does not exist yet. `If-None-Match: *` then lets a create through. `If-Match: *` refuses it.
 
@@ -105,7 +109,8 @@ server can still replace `error_response` with its own, for example to record ea
 ```
 
 `rejection.problem()` returns the default body as a typed RFC 9457 `Problem`. Set a member and send it with
-`into_response()`, for example `instance` from the request ID of the client:
+`into_response()`, for example `instance` from the request ID of the client. The catalog declares its own `Error`, so
+this example serves an API that declares no error body:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_scopes.rs:problem-instance}}

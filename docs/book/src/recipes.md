@@ -2,7 +2,7 @@
 
 Each recipe is a whole setup that combines the pieces of the other pages. Each one is a test, so it matches the code.
 
-## Web server and CLI client
+## API server and client
 
 The `examples/shop` crate runs a server and a client for a small catalog of products against each other. Every example in this book is a test that runs on each change. So each example matches the code.
 

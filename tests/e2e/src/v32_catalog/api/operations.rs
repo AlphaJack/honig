@@ -529,6 +529,153 @@ pub mod delete_product {
         }
     }
 }
+pub mod get_product_photo {
+    pub const METHOD: &str = "GET";
+    pub const PATH: &str = "/products/{productId}/photo";
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct Params {
+        pub product_id: i64,
+    }
+    impl Params {
+        #[must_use]
+        pub const fn new(product_id: i64) -> Self {
+            Self { product_id }
+        }
+    }
+    pub mod builders {
+        ::honig::typestate_builder! {
+            Params => super::Params;
+            required {
+                product_id: R0: i64 = "productId",
+            }
+            optional {}
+            fixed {}
+        }
+    }
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub enum Response {
+        /// The photo of the product, in whatever image format it was uploaded
+        Ok { body: ::honig::Blob, e_tag: Option<String> },
+        /// No photo
+        NotFound,
+    }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
+    ::honig::response_error!(
+        Response {
+            Self::Ok { .. } => "status 200 (Ok)",
+            Self::NotFound => "status 404 (NotFound)",
+        }
+    );
+    impl Response {
+        /// Returns `Ok` from each of its values.
+        #[must_use]
+        pub const fn ok(body: ::honig::Blob, e_tag: Option<String>) -> Self {
+            Self::Ok { body, e_tag }
+        }
+    }
+    /// The body and headers of the success by name: what `Response::into_result` gives.
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct Success {
+        pub body: ::honig::Blob,
+        pub e_tag: Option<String>,
+    }
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
+        pub fn into_result(self) -> Result<Success, Box<Self>> {
+            match self {
+                Self::Ok { body, e_tag } => Ok(Success { body, e_tag }),
+                other @ Self::NotFound => Err(Box::new(other)),
+            }
+        }
+    }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `ApiKey`, with what each `verify_` method found.
+        ApiKey(A::ApiKey),
+    }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::ApiKey(v0) => Self::ApiKey(v0.clone()),
+            }
+        }
+    }
+}
+pub mod put_product_photo {
+    pub const METHOD: &str = "PUT";
+    pub const PATH: &str = "/products/{productId}/photo";
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct Params {
+        pub product_id: i64,
+        pub if_match: Option<String>,
+        pub body: ::honig::Blob,
+    }
+    impl Params {
+        #[must_use]
+        pub const fn new(product_id: i64, body: ::honig::Blob) -> Self {
+            Self {
+                product_id,
+                if_match: None,
+                body,
+            }
+        }
+    }
+    pub mod builders {
+        ::honig::typestate_builder! {
+            Params => super::Params;
+            required {
+                product_id: R0: i64 = "productId",
+                body: R1: ::honig::Blob = "body",
+            }
+            optional {
+                if_match(if_match): String = "If-Match" => some, None,
+            }
+            fixed {}
+        }
+    }
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub enum Response {
+        /// Stored
+        NoContent,
+        /// No such product
+        NotFound,
+        /// The photo changed since the client read it
+        PreconditionFailed,
+    }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = ::honig::ApiError> = std::result::Result<T, E>;
+    ::honig::response_error!(
+        Response {
+            Self::NoContent => "status 204 (NoContent)",
+            Self::NotFound => "status 404 (NotFound)",
+            Self::PreconditionFailed => "status 412 (PreconditionFailed)",
+        }
+    );
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
+        pub fn into_result(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+                other @ (Self::NotFound | Self::PreconditionFailed) => {
+                    Err(Box::new(other))
+                }
+            }
+        }
+    }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `ApiKey`, with what each `verify_` method found.
+        ApiKey(A::ApiKey),
+    }
+    impl<A: super::super::server::Api> Clone for Security<A> {
+        fn clone(&self) -> Self {
+            match self {
+                Self::ApiKey(v0) => Self::ApiKey(v0.clone()),
+            }
+        }
+    }
+}
 pub mod create_product_product_created_post {
     use super::super::types;
     pub const METHOD: &str = "POST";

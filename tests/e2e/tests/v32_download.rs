@@ -30,7 +30,6 @@ struct Server {
 const LAST_MODIFIED: &str = "Sun, 06 Nov 2026 08:49:37 GMT";
 
 impl api::Api for Server {
-    // ANCHOR: download
     fn get_export(
         &self,
         p: ops::get_export::Params,
@@ -50,9 +49,7 @@ impl api::Api for Server {
         };
         std::future::ready(Ok(r))
     }
-    // ANCHOR_END: download
 
-    // ANCHOR: media-range
     fn get_thumbnail(
         &self,
         p: ops::get_thumbnail::Params,
@@ -67,7 +64,6 @@ impl api::Api for Server {
         };
         std::future::ready(Ok(ops::get_thumbnail::Response::Ok(preview)))
     }
-    // ANCHOR_END: media-range
 
     fn get_manifest(
         &self,
@@ -88,7 +84,6 @@ impl api::Api for Server {
         })
     }
 
-    // ANCHOR: preconditions
     async fn replace_manifest(
         &self,
         p: ops::replace_manifest::Params,
@@ -103,7 +98,6 @@ impl api::Api for Server {
         *manifest = (manifest.0 + 1, p.body);
         Ok(ops::replace_manifest::Response::NoContent)
     }
-    // ANCHOR_END: preconditions
 }
 
 /// A response the in-process server is still producing.

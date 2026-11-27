@@ -68,6 +68,20 @@ impl api::Api for Server {
     ) -> Result<ops::delete_product::Response, api::ApiError> {
         Err(api::ApiError::new(honig::http::StatusCode::NOT_IMPLEMENTED, "not here"))
     }
+    async fn get_product_photo(
+        &self,
+        _: ops::get_product_photo::Params,
+        _: &api::Context<'_, ops::get_product_photo::Security<Self>>,
+    ) -> Result<ops::get_product_photo::Response, api::ApiError> {
+        Err(api::ApiError::new(honig::http::StatusCode::NOT_IMPLEMENTED, "not here"))
+    }
+    async fn put_product_photo(
+        &self,
+        _: ops::put_product_photo::Params,
+        _: &api::Context<'_, ops::put_product_photo::Security<Self>>,
+    ) -> Result<ops::put_product_photo::Response, api::ApiError> {
+        Err(api::ApiError::new(honig::http::StatusCode::NOT_IMPLEMENTED, "not here"))
+    }
     async fn stream_product_events(
         &self,
         _: ops::stream_product_events::Params,

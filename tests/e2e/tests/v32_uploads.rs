@@ -16,7 +16,6 @@ impl api::Api for Server {
         params: ops::put_file::Params,
         _: &api::Context<'_, ()>,
     ) -> Result<ops::put_file::Response, api::ApiError> {
-        // ANCHOR: upload
         let mut body = params.body;
         if !body.is_streamed() {
             return Err(api::ApiError::new(
@@ -29,7 +28,6 @@ impl api::Api for Server {
             bytes += chunk?.len();
             chunks += 1;
         }
-        // ANCHOR_END: upload
         Ok(ops::put_file::Response::Ok(types::PutFileOk { bytes: bytes as i64, chunks }))
     }
 }

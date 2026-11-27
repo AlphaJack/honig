@@ -36,7 +36,7 @@ pub use server::{Operation, Context, Rejection, RequestEvent, Server};
 #[rustfmt::skip]
 pub use server::{webhook, Webhooks, WebhookOperation, WebhookContext};
 pub use ::honig::{
-    ApiError, Body, BuildError, ClientError, Exchange, Framing, InstanceLocation,
+    ApiError, Blob, Body, BuildError, ClientError, Exchange, Framing, InstanceLocation,
     ItemStream, Items, Message, Nullable, Passed, ProblemSchema, Reason, Request,
     Response, Secured, ServerUrl, Streamed, Transport, Verified, Violation, send,
     send_streaming, url,

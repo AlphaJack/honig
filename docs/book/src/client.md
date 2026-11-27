@@ -1,6 +1,6 @@
 # Client
 
-Each operation of the description is a method of the generated `Client`. It accepts a `Params` with one field per parameter and returns one variant per documented response. The examples of this page call the catalog of the [shop](recipes.md#web-server-and-cli-client): each section shows the part of its `openapi.yaml` that it relies on.
+Each operation of the description is a method of the generated `Client`. It accepts a `Params` with one field per parameter and returns one variant per documented response. The examples of this page call the catalog of the [shop](recipes.md#api-server-and-client): each section shows the part of its `openapi.yaml` that it relies on.
 
 ```rust
 {{#include ../../../examples/shop/tests/client.rs:client}}
