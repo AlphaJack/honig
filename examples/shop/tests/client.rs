@@ -91,7 +91,7 @@ async fn a_partner_reads_and_cannot_add() {
     let lamp = types::Product::Physical(types::Physical::new("Desk lamp".to_owned()));
     let refused = client.create_product(ops::create_product::Params::new(lamp)).await.unwrap();
     let ops::create_product::Response::Forbidden(error) = refused else { panic!("a partner added a product") };
-    assert_eq!(error, types::Error::new("only staff add products".to_owned()));
+    assert_eq!(error, types::Error::new("only staff members can add products".to_owned()));
     let missing = client.get_product(ops::get_product::Params::new(0)).await.unwrap();
     let ops::get_product::Response::NotFound(error) = missing else { panic!("the product exists") };
     assert_eq!(error, types::Error::new("no such product".to_owned()));

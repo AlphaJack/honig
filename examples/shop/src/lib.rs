@@ -104,7 +104,7 @@ impl api::Api for Catalog {
     ) -> Result<ops::create_product::Response, api::ApiError> {
         let ops::create_product::Security::ApiKey(caller) = ctx.security;
         if caller != Caller::Staff {
-            let error = types::Error::new("only staff add products".to_owned());
+            let error = types::Error::new("only staff members can add products".to_owned());
             return Ok(ops::create_product::Response::Forbidden(error));
         }
         self.products()?.push(Some(params.body.clone()));
