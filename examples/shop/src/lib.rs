@@ -15,6 +15,8 @@ pub const API_KEY: &str = "secret";
 /// The API key of a partner.
 pub const PARTNER_KEY: &str = "partner";
 
+// ANCHOR: server
+// ANCHOR: catalog
 /// Who a valid key belongs to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Caller {
@@ -24,8 +26,6 @@ pub enum Caller {
     Partner,
 }
 
-// ANCHOR: server
-// ANCHOR: catalog
 /// The catalog in memory. The ID of a product is its index. A deleted product leaves its place empty.
 #[derive(Default)]
 pub struct Catalog {
