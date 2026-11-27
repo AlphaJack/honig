@@ -19,7 +19,7 @@ Every struct has a builder that accepts each property by name: `build` exists on
 
 A property added to the description as required becomes an argument. Code that builds the type stops compiling until it sets it.
 
-A property that is optional and nullable is `api::Nullable<T>`. Its variants are `Absent`, `Null` and `Value(T)`. This is how a `PATCH` body tells "leave it" from "clear it". A property that is only one of required or nullable is `Option<T>`.
+A property that is optional and nullable is `api::Nullable<T>`. Its variants are `api::Nullable::Absent`, `api::Nullable::Null` and `api::Nullable::Value(T)`. This is how a `PATCH` body tells "leave it" from "clear it". A property that is only one of required or nullable is `Option<T>`.
 
 A `const` is a unit struct that only decodes its value. Arrays with `minItems == maxItems` are `[T; N]`. The formats `int8` to `uint16` are the Rust integers of the same width.
 
@@ -33,7 +33,7 @@ A schema that refers back to itself through `allOf`, `anyOf`, `then`, `else` or 
 
 ## Values the description does not list
 
-Two settings decide what happens to a property or a value that the description does not list. They answer different questions:
+These settings decide what happens to a property or a value that the description does not list. They answer different questions:
 
 | Setting | Applies to | What it does |
 |---|---|---|
@@ -120,7 +120,7 @@ formats = { date-time = "crate::Stamp", uuid = "crate::ids::OrderId" }
 
 The key is the name of the format. The value is the path of a type, without generic arguments. It wins over a feature for its format only: with `jiff` on, `date` above stays `jiff::civil::Date`. The type must implement `Debug`, `Clone`, `PartialEq`, `Eq` and the serde traits. It parses text that honig checked first, as a feature's type does. honig knows the quirks of its own feature types only. For any type of `date-time`, `date-time-local` and `time-local` it cuts a fraction of a second to nine digits. honig does not check the type: the compiler reports a wrong one. A struct with a required field of a type of yours derives no `Default`.
 
-`format: time` has an offset (`08:30:06+02:00`), and no `jiff` time type supports one. So it is `api::FullTime` with or without `jiff`: plain numbers (`hour`, `minute`, `second`, `nanosecond`, `offset_seconds`) and whether the second was a leap second. With `jiff` on, `time()` and `offset()` return it as `jiff` types.
+`format: time` has an offset (`08:30:06+02:00`), and no `jiff` time type supports one. So it is `api::FullTime` with or without `jiff`: each part of the time and its offset as a plain number, and whether the second was a leap second. With `jiff` on, `time()` and `offset()` return it as `jiff` types.
 
 A format without its feature is its checked text, such as `api::UuidStr` or `api::DateTimeStr`. Only text of the format is one: `try_from`, `parse` and decoding check it as the library would on parsing. It derefs to `str`. Some checks need a honig feature. `generate` stops and prints the `cargo add` line when it is off. [Adapters](adapters.md) lists the features.
 
@@ -170,7 +170,7 @@ Where the field type is known, `try_into` builds the value. A spec `default` is 
 {{#include ../../../tests/e2e/tests/v32_catalog/schemas.rs:try-into}}
 ```
 
-A `default` that its own schema refuses fails generation. JSON Schema leaves a `default` unchecked, but a field that starts at it would hold a value that its type cannot hold. The seven tests of the JSON Schema test suite that expect such a `default` to pass are listed as known failures in `tests/fixtures/json-schema-test-suite.known`.
+A `default` that its own schema refuses fails generation. JSON Schema leaves a `default` unchecked, but a field that starts at it would hold a value that its type cannot hold. The tests of the JSON Schema test suite that expect such a `default` to pass are listed as known failures in `tests/fixtures/json-schema-test-suite.known`.
 
 A builder converts every field and returns the first one that does not convert, from `build`. So the whole value needs one `?`. Each setter accepts anything that converts to the type of its field: a number for a checked number, a `&str` for a string, a checked string or an enum. The catalog's `Physical` has a SKU of a pattern:
 
@@ -192,11 +192,10 @@ Integer keywords are exact. A fractional bound rounds inward, `multipleOf: 2.5` 
 
 ## Wide structs
 
-`object!` writes a struct one field at a time, one level of macro expansion each. Under the default
-`recursion_limit` of 128 that is about 124 fields. A wider struct, such as a `Subscription` with 130 properties,
-fails with `recursion limit reached while expanding $crate::object!`. Raise the limit above the field count of the
-widest struct on the first line of the crate root (`src/lib.rs` or `src/main.rs`), never in the generated module:
-`#![recursion_limit = "256"]` holds about 250 fields, `"512"` about 500.
+`object!` writes a struct one field at a time, one level of macro expansion each. So a struct with about as many
+fields as the `recursion_limit` of the crate, 128 by default, fails with `recursion limit reached while expanding
+$crate::object!`. Raise the limit above the field count of the widest struct on the first line of the crate root
+(`src/lib.rs` or `src/main.rs`), never in the generated module, such as `#![recursion_limit = "256"]`.
 
 ## Whole schemas
 

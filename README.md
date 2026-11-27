@@ -21,7 +21,7 @@ cargo binstall cargo-honig
 ## Getting started
 
 <!-- ANCHOR: getting-started -->
-Three commands add honig to your crate:
+These commands add honig to your crate:
 
 ```sh
 cargo honig init path/to/openapi.yaml

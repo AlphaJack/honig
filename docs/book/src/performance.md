@@ -14,7 +14,7 @@ A body that fails to decode is decoded again by `serde_json`. Errors still point
 
 Leaving `simd` out of the features trades runtime performance for a lighter build. JSON goes through `serde_json` and base64 through the scalar engine of the `base64` crate. `memchr` stays.
 
-`sonic-rs` has SIMD on x86_64 and aarch64 only. On other targets JSON stays on `serde_json`. This includes wasm32 clients. The other two libraries still apply. On wasm32 they use SIMD when you build with `-C target-feature=+simd128`.
+`sonic-rs` has SIMD on x86_64 and aarch64 only. On other targets JSON stays on `serde_json`. This includes wasm32 clients. The other libraries of `simd` still apply. On wasm32 they use SIMD when you build with `-C target-feature=+simd128`.
 
 `simdutf8` and `base64-simd` pick the instructions of the CPU when the program starts. `sonic-rs` picks them at compile time. A plain x86_64 build uses SSE2, which every x86_64 CPU has. `RUSTFLAGS="-C target-cpu=native"` adds AVX2. A binary built that way stops with an illegal instruction on a CPU without AVX2, so target the oldest CPU you deploy to. aarch64 needs no flag.
 
