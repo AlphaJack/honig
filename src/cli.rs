@@ -39,11 +39,17 @@ enum Command {
         /// Write nothing: fail when a module is stale
         #[arg(long)]
         check: bool,
+        /// Fail on a warning as on an error
+        #[arg(long)]
+        deny_warnings: bool,
     },
     /// Validate under its own OpenAPI version and print diagnostics
     Validate {
         /// A description file, or a module name for its spec. Default: all modules
         spec: Option<String>,
+        /// Fail on a warning as on an error
+        #[arg(long)]
+        deny_warnings: bool,
     },
 }
 
@@ -75,9 +81,12 @@ impl From<crate::error::Error> for Failure {
 }
 
 /// The options every command shares.
+#[derive(Clone)]
 struct Args {
     manifest: PathBuf,
     quiet: bool,
+    /// `--deny-warnings` of `generate` and `validate`.
+    deny_warnings: bool,
 }
 
 impl Args {
@@ -97,9 +106,11 @@ fn print(d: &Diagnostics, quiet: bool) {
 
 fn dispatch(command: Command, args: &Args) -> Result<ExitCode, Failure> {
     match command {
-        Command::Validate { spec } => validate(spec.as_deref(), args),
+        Command::Validate { spec, deny_warnings } => validate(spec.as_deref(), &Args { deny_warnings, ..args.clone() }),
         Command::Init { spec } => init(&spec, args),
-        Command::Generate { module, package, check } => in_members(check, module.as_deref(), package.as_deref(), args),
+        Command::Generate { module, package, check, deny_warnings } => {
+            in_members(check, module.as_deref(), package.as_deref(), &Args { deny_warnings, ..args.clone() })
+        }
     }
 }
 
@@ -124,7 +135,10 @@ fn validate(target: Option<&str>, args: &Args) -> Result<ExitCode, Failure> {
     };
     let mut failed = false;
     for spec in specs {
-        let diagnostics = crate::load::validate_path(&spec);
+        let mut diagnostics = crate::load::validate_path(&spec);
+        if args.deny_warnings {
+            diagnostics.deny_warnings();
+        }
         print(&diagnostics, args.quiet);
         if diagnostics.has_errors() {
             failed = true;
@@ -169,7 +183,7 @@ fn in_members(check: bool, module: Option<&str>, package: Option<&str>, args: &A
     }
     let mut code = ExitCode::SUCCESS;
     for manifest in chosen {
-        let member = Args { manifest, quiet: args.quiet };
+        let member = Args { manifest, ..args.clone() };
         if generate_or_check(check, module, &member)? != ExitCode::SUCCESS {
             code = ExitCode::FAILURE;
         }
@@ -242,7 +256,7 @@ fn generate_modules(manifest: &settings::Manifest, only: Option<&str>, args: &Ar
                 crates: manifest.dependency_names(),
             },
         };
-        let generated = match generate_all(&cfg.spec_paths()?, &opts) {
+        let mut generated = match generate_all(&cfg.spec_paths()?, &opts) {
             Ok(g) => g,
             Err(d) => {
                 print(&d, false);
@@ -252,6 +266,10 @@ fn generate_modules(manifest: &settings::Manifest, only: Option<&str>, args: &Ar
                 return Ok(None);
             }
         };
+        if args.deny_warnings && generated.diagnostics.deny_warnings() {
+            print(&generated.diagnostics, false);
+            return Ok(None);
+        }
         // honig features every module needs: the halves and the codecs of its description.
         for feature in &generated.runtime_features {
             if !runtime.contains(feature) {
@@ -393,7 +411,7 @@ pub fn run(args: impl IntoIterator<Item = String>) -> ExitCode {
             return ExitCode::from(u8::try_from(e.exit_code()).unwrap_or(2));
         }
     };
-    let args = Args { manifest: cli.manifest, quiet: cli.quiet };
+    let args = Args { manifest: cli.manifest, quiet: cli.quiet, deny_warnings: false };
     match dispatch(cli.command, &args) {
         Ok(code) => code,
         Err(e) => {

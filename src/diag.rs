@@ -78,6 +78,16 @@ impl Diagnostics {
         self.has_errors()
     }
 
+    /// Makes an error of every warning, for `--deny-warnings`, and says whether there was one.
+    pub(crate) fn deny_warnings(&mut self) -> bool {
+        let mut any = false;
+        for d in self.0.iter_mut().filter(|d| d.level == Level::Warning) {
+            d.level = Level::Error;
+            any = true;
+        }
+        any
+    }
+
     /// Is any diagnostic an error?
     pub fn has_errors(&self) -> bool {
         self.0.iter().any(|d| d.level == Level::Error)
