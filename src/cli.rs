@@ -206,18 +206,20 @@ struct Plan {
 /// Generates or checks every module, or only the module `only`.
 ///
 /// the honig dependency serves every module. So it needs the features of every module, also when `only` writes one
-/// module. Nothing is written when it lacks one.
+/// module. Nothing is written when it lacks one. A crate without the dependency gets its modules and a hint.
 fn generate_or_check(check: bool, only: Option<&str>, args: &Args) -> Result<ExitCode, Failure> {
     let manifest = settings::Manifest::load(&args.manifest)?;
     let Some(Plan { runtime, selected }) = generate_modules(&manifest, only, args)? else {
         return Ok(ExitCode::FAILURE);
     };
     print_diagnostics(&selected, args);
-    crate::manifest::check_runtime(&manifest, &runtime)?;
+    if check || manifest.runtime().is_some() {
+        crate::manifest::check_runtime(&manifest, &runtime)?;
+    }
     if check {
         return Ok(check_modules(&selected, args));
     }
-    write_modules(&selected, args)
+    write_modules(&selected, &runtime, args)
 }
 
 /// Returns every module generated in memory, and honig features that all of them need. Only the module `only` is
@@ -310,7 +312,7 @@ fn check_modules(selected: &[Module], args: &Args) -> ExitCode {
 }
 
 /// Runs `generate`: writes each module.
-fn write_modules(selected: &[Module], args: &Args) -> Result<ExitCode, Failure> {
+fn write_modules(selected: &[Module], runtime: &[&str], args: &Args) -> Result<ExitCode, Failure> {
     // A file `src/<module>.rs` of yours next to the directory would make `mod <module>;` ambiguous. Nothing is written
     // then. One that honig wrote is the root of the module, or a root that an earlier run wrote there.
     let beside = |m: &&Module| m.cfg.output_path().with_extension("rs");
@@ -339,14 +341,17 @@ fn write_modules(selected: &[Module], args: &Args) -> Result<ExitCode, Failure> 
     }
     if !args.quiet {
         let cfgs: Vec<&settings::Settings> = selected.iter().map(|m| &m.cfg).collect();
-        hints(&cfgs, &args.manifest);
+        hints(&cfgs, runtime, &args.manifest);
     }
     Ok(ExitCode::SUCCESS)
 }
 
-/// Tells the user what is still missing in their crate.
-fn hints(cfgs: &[&settings::Settings], manifest: &Path) {
+/// Tells the user what is still missing in their crate. `runtime` lists the honig features that the modules need.
+fn hints(cfgs: &[&settings::Settings], runtime: &[&str], manifest: &Path) {
     let deps = settings::Manifest::load(manifest).unwrap_or_default();
+    if deps.runtime().is_none() {
+        eprintln!("hint: run `{}`", crate::manifest::add_line(runtime));
+    }
     for line in serde_lines(&deps) {
         eprintln!("hint: run `{line}`");
     }

@@ -117,9 +117,17 @@ fn init_then_generate_writes_a_module_that_check_finds_up_to_date() {
     assert_eq!(code, Some(2));
     assert!(err.contains("already has [package.metadata.honig]"), "{err}");
 
-    let (code, _, err) = in_crate(&dir, &["generate"]);
+    // Without the honig dependency `generate` writes the module and says the line that adds the dependency, as it
+    // does for serde. `--check` stops: a module without its dependency does not build.
+    let add = format!("cargo add honig@={version} -F {}", SHOP.join(","));
+    let (code, _, err) = in_crate(&dir, &["generate", "--check"]);
     assert_eq!(code, Some(2));
-    assert!(err.contains(&format!("is missing. Run `cargo add honig@={version} -F {}`", SHOP.join(","))), "{err}");
+    assert!(err.contains(&format!("is missing. Run `{add}`")), "{err}");
+    let (code, _, err) = in_crate(&dir, &["generate"]);
+    assert_eq!(code, Some(0), "{err}");
+    assert!(err.contains(&format!("hint: run `{add}`\nhint: run `cargo add serde -F derive`")), "{err}");
+    assert!(dir.join("src").join("api").join("mod.rs").is_file(), "generate wrote no module");
+    std::fs::remove_dir_all(dir.join("src").join("api")).unwrap();
     add_runtime(&dir, SHOP);
 
     let (code, _, err) = in_crate(&dir, &["generate", "--check"]);
