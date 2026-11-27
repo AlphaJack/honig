@@ -158,11 +158,11 @@ impl<T: ::honig::Transport> Client<T> {
             })
         }
     }
-    pub async fn optional(
+    pub async fn list_deals(
         &self,
-        _p: impl ::honig::__private::IntoArg<'_, ops::optional::Params>,
-    ) -> Result<ops::optional::Response, ::honig::ClientError> {
-        let path = String::from("/optional");
+        _p: impl ::honig::__private::IntoArg<'_, ops::list_deals::Params>,
+    ) -> Result<ops::list_deals::Response, ::honig::ClientError> {
+        let path = String::from("/deals");
         let query = Vec::new();
         let mut req = ::honig::__private::new_request("GET", path, query)?;
         ::honig::__private::apply_auth(
@@ -177,7 +177,7 @@ impl<T: ::honig::Transport> Client<T> {
         let (body, _) = body.into_parts();
         let status = head.status.as_u16();
         if status == 204 {
-            Ok(ops::optional::Response::NoContent)
+            Ok(ops::list_deals::Response::NoContent)
         } else {
             Err(::honig::ClientError::UnexpectedStatus {
                 status: head.status,
@@ -239,13 +239,13 @@ impl<T: ::honig::Transport> Client<T> {
             })
         }
     }
-    pub async fn both(
+    pub async fn checkout(
         &self,
-        _p: impl ::honig::__private::IntoArg<'_, ops::both::Params>,
-    ) -> Result<ops::both::Response, ::honig::ClientError> {
-        let path = String::from("/both");
+        _p: impl ::honig::__private::IntoArg<'_, ops::checkout::Params>,
+    ) -> Result<ops::checkout::Response, ::honig::ClientError> {
+        let path = String::from("/checkout");
         let query = Vec::new();
-        let mut req = ::honig::__private::new_request("GET", path, query)?;
+        let mut req = ::honig::__private::new_request("POST", path, query)?;
         ::honig::__private::apply_auth(
             &mut req,
             &self.credentials,
@@ -258,7 +258,7 @@ impl<T: ::honig::Transport> Client<T> {
         let (body, _) = body.into_parts();
         let status = head.status.as_u16();
         if status == 204 {
-            Ok(ops::both::Response::NoContent)
+            Ok(ops::checkout::Response::NoContent)
         } else {
             Err(::honig::ClientError::UnexpectedStatus {
                 status: head.status,

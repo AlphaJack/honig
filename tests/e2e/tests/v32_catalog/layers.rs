@@ -251,33 +251,33 @@ impl<S: tower::Service<honig::Request>> tower::Service<honig::Request> for Count
 // ANCHOR_END: any-api
 
 /// The scopes fixture: a second API for the same layer.
-struct Issues;
+struct Orders;
 
-impl e2e::v32_scopes::api::Api for Issues {
+impl e2e::v32_scopes::api::Api for Orders {
     type Pat = ();
-    /// The one token is `read`, and it grants `issues:read`.
+    /// The one token is `read`, and it grants `orders:read`.
     async fn verify_pat(
         &self,
         token: &str,
         _: &e2e::v32_scopes::api::Request,
     ) -> Result<Option<honig::Granted<(), e2e::v32_scopes::api::server::PatScope>>, api::ApiError> {
-        let scopes = vec![e2e::v32_scopes::api::server::PatScope::IssuesRead];
+        let scopes = vec![e2e::v32_scopes::api::server::PatScope::OrdersRead];
         Ok((token == "read").then_some(honig::Granted { value: (), scopes }))
     }
 
-    async fn list_issues(
+    async fn list_orders(
         &self,
-        _: e2e::v32_scopes::api::operations::list_issues::Params,
-        _: &e2e::v32_scopes::api::Context<'_, e2e::v32_scopes::api::operations::list_issues::Security<Self>>,
-    ) -> Result<e2e::v32_scopes::api::operations::list_issues::Response, api::ApiError> {
-        Ok(e2e::v32_scopes::api::operations::list_issues::Response::NoContent)
+        _: e2e::v32_scopes::api::operations::list_orders::Params,
+        _: &e2e::v32_scopes::api::Context<'_, e2e::v32_scopes::api::operations::list_orders::Security<Self>>,
+    ) -> Result<e2e::v32_scopes::api::operations::list_orders::Response, api::ApiError> {
+        Ok(e2e::v32_scopes::api::operations::list_orders::Response::NoContent)
     }
-    async fn create_issue(
+    async fn create_order(
         &self,
-        _: e2e::v32_scopes::api::operations::create_issue::Params,
-        _: &e2e::v32_scopes::api::Context<'_, e2e::v32_scopes::api::operations::create_issue::Security<Self>>,
-    ) -> Result<e2e::v32_scopes::api::operations::create_issue::Response, api::ApiError> {
-        Ok(e2e::v32_scopes::api::operations::create_issue::Response::NoContent)
+        _: e2e::v32_scopes::api::operations::create_order::Params,
+        _: &e2e::v32_scopes::api::Context<'_, e2e::v32_scopes::api::operations::create_order::Security<Self>>,
+    ) -> Result<e2e::v32_scopes::api::operations::create_order::Response, api::ApiError> {
+        Ok(e2e::v32_scopes::api::operations::create_order::Response::NoContent)
     }
     async fn open(
         &self,
@@ -293,11 +293,11 @@ impl e2e::v32_scopes::api::Api for Issues {
 async fn one_tower_layer_serves_any_api() {
     let counts = CountByOperationLayer::default();
     let catalog = api::Server::new(Catalog::default()).operation_layer(counts.clone()).into_axum();
-    let issues = e2e::v32_scopes::api::Server::new(Issues).operation_layer(counts.clone()).into_service();
+    let orders = e2e::v32_scopes::api::Server::new(Orders).operation_layer(counts.clone()).into_service();
     assert_eq!(get(catalog, "/v1/products").await.status(), 200);
-    let mut req = honig::__private::new_request("GET", "/issues".to_owned(), vec![]).unwrap();
+    let mut req = honig::__private::new_request("GET", "/orders".to_owned(), vec![]).unwrap();
     req.headers_mut().append("authorization", honig::http::HeaderValue::from_static("Bearer read"));
-    assert_eq!(issues.handle(req).await.status().as_u16(), 204);
+    assert_eq!(orders.handle(req).await.status().as_u16(), 204);
     let seen: Vec<(&str, u32)> = counts.0.lock().unwrap().iter().map(|(k, v)| (*k, *v)).collect();
-    assert_eq!(seen, [("list_issues", 1), ("list_products", 1)]);
+    assert_eq!(seen, [("list_orders", 1), ("list_products", 1)]);
 }

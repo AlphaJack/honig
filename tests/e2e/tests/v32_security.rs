@@ -236,18 +236,18 @@ impl api::Api for Server {
         self.record(Seen::Principal(who.clone()));
         Ok(ops::me::Response::NoContent)
     }
-    async fn optional(
+    async fn list_deals(
         &self,
-        _: ops::optional::Params,
-        ctx: &api::Context<'_, ops::optional::Security<Self>>,
-    ) -> Answer<ops::optional::Response> {
+        _: ops::list_deals::Params,
+        ctx: &api::Context<'_, ops::list_deals::Security<Self>>,
+    ) -> Answer<ops::list_deals::Response> {
         // The caller is owned, as a handler moves it into a task that outlives the request.
-        let caller: ops::optional::Security<Self> = ctx.security.clone();
+        let caller: ops::list_deals::Security<Self> = ctx.security.clone();
         self.record(match caller {
-            ops::optional::Security::Anonymous => Seen::Anonymous,
-            ops::optional::Security::Bearer(who) => Seen::Principal(who),
+            ops::list_deals::Security::Anonymous => Seen::Anonymous,
+            ops::list_deals::Security::Bearer(who) => Seen::Principal(who),
         });
-        Ok(ops::optional::Response::NoContent)
+        Ok(ops::list_deals::Response::NoContent)
     }
     async fn read(
         &self,
@@ -268,14 +268,14 @@ impl api::Api for Server {
         self.record(Seen::Principal(who.clone()));
         Ok(ops::write::Response::NoContent)
     }
-    // ANCHOR: both
-    async fn both(
+    // ANCHOR: checkout
+    async fn checkout(
         &self,
-        _: ops::both::Params,
-        ctx: &api::Context<'_, ops::both::Security<Self>>,
-    ) -> Answer<ops::both::Response> {
+        _: ops::checkout::Params,
+        ctx: &api::Context<'_, ops::checkout::Security<Self>>,
+    ) -> Answer<ops::checkout::Response> {
         // Both credentials must be of one caller: a key of one and a session of another is no one.
-        let ops::both::Security::KeyAndSession(key, session) = &ctx.security;
+        let ops::checkout::Security::KeyAndSession(key, session) = &ctx.security;
         let subject = |value: &str| value.split_once(':').map(|(_, who)| who.to_owned());
         if subject(key) != subject(session) {
             return Err(api::ApiError::new(
@@ -284,9 +284,9 @@ impl api::Api for Server {
             ));
         }
         self.record(Seen::Principal(key.clone()));
-        Ok(ops::both::Response::NoContent)
+        Ok(ops::checkout::Response::NoContent)
     }
-    // ANCHOR_END: both
+    // ANCHOR_END: checkout
     async fn login(
         &self,
         _: ops::login::Params,
@@ -345,10 +345,10 @@ fn leak(s: &str) -> &'static str {
 const OPS: [(api::Operation, &str, &str); 9] = [
     (api::Operation::Public, "GET", "/public"),
     (api::Operation::Me, "GET", "/me"),
-    (api::Operation::Optional, "GET", "/optional"),
+    (api::Operation::ListDeals, "GET", "/deals"),
     (api::Operation::Read, "GET", "/read"),
     (api::Operation::Write, "POST", "/write"),
-    (api::Operation::Both, "GET", "/both"),
+    (api::Operation::Checkout, "POST", "/checkout"),
     (api::Operation::Login, "GET", "/login"),
     (api::Operation::Cert, "GET", "/cert"),
     (api::Operation::Oidc, "GET", "/oidc"),
@@ -399,18 +399,18 @@ fn each_rule_answers_as_stated() {
         ("GET", "/me", NONE, Outcome::Refused(401)),
         ("GET", "/me", bearer("b-ann"), principal("bearer:ann")),
         ("GET", "/me", bearer("o-read"), Outcome::Refused(401)),
-        ("GET", "/optional", NONE, Outcome::Ran(Seen::Anonymous)),
-        ("GET", "/optional", bearer("b-ann"), principal("bearer:ann")),
-        ("GET", "/optional", bearer("forged"), Outcome::Refused(401)),
+        ("GET", "/deals", NONE, Outcome::Ran(Seen::Anonymous)),
+        ("GET", "/deals", bearer("b-ann"), principal("bearer:ann")),
+        ("GET", "/deals", bearer("forged"), Outcome::Refused(401)),
         ("GET", "/read", bearer("o-read"), principal("oauth:app")),
         ("GET", "/read", bearer("o-write"), Outcome::Refused(403)),
         ("GET", "/read", Creds { key: Some("k-bob"), ..bearer("o-write") }, principal("key:bob")),
         ("POST", "/write", bearer("o-read"), Outcome::Refused(403)),
         ("POST", "/write", bearer("o-read+write"), principal("oauth:app")),
-        ("GET", "/both", Creds { key: Some("k-bob"), session: Some("s-bob"), ..NONE }, principal("key:bob")),
-        ("GET", "/both", Creds { key: Some("forged"), session: Some("s-bob"), ..NONE }, Outcome::Refused(401)),
-        ("GET", "/both", Creds { key: Some("k-bob"), session: Some("s-eve"), ..NONE }, Outcome::Refused(401)),
-        ("GET", "/both", Creds { key: Some("k-bob"), ..NONE }, Outcome::Refused(401)),
+        ("POST", "/checkout", Creds { key: Some("k-bob"), session: Some("s-bob"), ..NONE }, principal("key:bob")),
+        ("POST", "/checkout", Creds { key: Some("forged"), session: Some("s-bob"), ..NONE }, Outcome::Refused(401)),
+        ("POST", "/checkout", Creds { key: Some("k-bob"), session: Some("s-eve"), ..NONE }, Outcome::Refused(401)),
+        ("POST", "/checkout", Creds { key: Some("k-bob"), ..NONE }, Outcome::Refused(401)),
         ("GET", "/login", Creds { auth: Auth::Basic("ann:pw"), ..NONE }, principal("login:ann")),
         ("GET", "/login", Creds { auth: Auth::Basic("ann:guess"), ..NONE }, Outcome::Refused(401)),
         (
@@ -470,7 +470,7 @@ proptest! {
 /// the caller: an anonymous request reaches the handler as `Anonymous`.
 #[test]
 fn an_extension_of_a_scheme_type_is_not_the_caller() {
-    let mut req = honig::__private::new_request("GET", "/optional".to_owned(), vec![]).unwrap();
+    let mut req = honig::__private::new_request("GET", "/deals".to_owned(), vec![]).unwrap();
     req.extensions_mut().insert("request-id-123".to_owned());
     let server = Arc::new(Server::default());
     let resp = honig::block_on(api::Server::new(Arc::clone(&server)).into_service().handle(req));
@@ -505,7 +505,7 @@ fn a_handler_gets_only_the_credentials_that_passed() {
 // ANCHOR: optional-rate-limit
 type Filter = std::future::Ready<Result<api::Request, api::ApiError>>;
 
-/// Anonymous callers of `/optional` get at most `limit` requests. A caller whose token passed is never limited: the
+/// Anonymous shoppers of `/deals` get at most `limit` requests. A caller whose token passed is never limited: the
 /// layer runs after the server checked the credentials, so the alternative that passed is in the extensions. A real limiter keys the
 /// anonymous count by the client's address (`honig::peer`) and a time window.
 fn limit_anonymous(limit: u32) -> tower::filter::AsyncFilterLayer<impl Fn(api::Request) -> Filter + Clone> {
@@ -523,7 +523,7 @@ fn limit_anonymous(limit: u32) -> tower::filter::AsyncFilterLayer<impl Fn(api::R
 fn anonymous_callers_are_limited_and_signed_in_ones_are_not() {
     let service = api::Server::new(Server::default()).operation_layer(limit_anonymous(2)).into_service();
     let get = |token: Option<&str>| {
-        let mut req = honig::__private::new_request("GET", "/optional".to_owned(), vec![]).unwrap();
+        let mut req = honig::__private::new_request("GET", "/deals".to_owned(), vec![]).unwrap();
         if let Some(t) = token {
             req.headers_mut()
                 .append("authorization", honig::http::HeaderValue::try_from(format!("Bearer {t}")).unwrap());

@@ -16,16 +16,16 @@ pub trait Api: Send + Sync + Sized + 'static {
     ) -> impl Future<
         Output = Result<Option<::honig::Granted<Self::Pat, PatScope>>, ::honig::ApiError>,
     > + Send;
-    fn list_issues(
+    fn list_orders(
         &self,
-        params: ops::list_issues::Params,
-        ctx: &Context<'_, ops::list_issues::Security<Self>>,
-    ) -> impl Future<Output = ops::list_issues::Result> + Send;
-    fn create_issue(
+        params: ops::list_orders::Params,
+        ctx: &Context<'_, ops::list_orders::Security<Self>>,
+    ) -> impl Future<Output = ops::list_orders::Result> + Send;
+    fn create_order(
         &self,
-        params: ops::create_issue::Params,
-        ctx: &Context<'_, ops::create_issue::Security<Self>>,
-    ) -> impl Future<Output = ops::create_issue::Result> + Send;
+        params: ops::create_order::Params,
+        ctx: &Context<'_, ops::create_order::Security<Self>>,
+    ) -> impl Future<Output = ops::create_order::Result> + Send;
     fn open(
         &self,
         params: ops::open::Params,
@@ -34,15 +34,15 @@ pub trait Api: Send + Sync + Sized + 'static {
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {
-    ListIssues,
-    CreateIssue,
+    ListOrders,
+    CreateOrder,
     Open,
 }
 impl ::honig::Operation for Operation {
     fn op(self) -> &'static ::honig::__private::Op {
         match self {
-            Self::ListIssues => &LIST_ISSUES_OP,
-            Self::CreateIssue => &CREATE_ISSUE_OP,
+            Self::ListOrders => &LIST_ORDERS_OP,
+            Self::CreateOrder => &CREATE_ORDER_OP,
             Self::Open => &OPEN_OP,
         }
     }
@@ -52,7 +52,7 @@ pub type Rejection = ::honig::Rejection<Operation>;
 pub type RequestEvent = ::honig::RequestEvent<Operation>;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Credential<'a> {
-    /// Fine-grained personal access token.
+    /// A personal access token of a shop owner.
     Pat(&'a str),
 }
 #[must_use]
@@ -94,12 +94,12 @@ const fn error_schema(
     None
 }
 static METHODS: &[&[(&str, Operation)]] = &[
-    &[("GET", Operation::ListIssues), ("POST", Operation::CreateIssue)],
+    &[("GET", Operation::ListOrders), ("POST", Operation::CreateOrder)],
     &[("GET", Operation::Open)],
 ];
 static ROUTES: &[::honig::__private::Node] = &[
     ::honig::__private::node(
-        &[("issues", 1), ("public", 2)],
+        &[("orders", 1), ("public", 2)],
         &[],
         ::honig::__private::Node::NONE,
         ::honig::__private::Node::NONE,
@@ -107,7 +107,7 @@ static ROUTES: &[::honig::__private::Node] = &[
     ::honig::__private::node(&[], &[], ::honig::__private::Node::NONE, 0),
     ::honig::__private::node(&[], &[], ::honig::__private::Node::NONE, 1),
 ];
-static PATHS: &[&str] = &["/issues", "/public"];
+static PATHS: &[&str] = &["/orders", "/public"];
 pub struct Routes<A>(std::sync::Arc<A>);
 /// The server of this API: `Server::new(your_api)`, or `Server::new(arc)` to keep a handle on it. Add layers,
 /// then `into_axum` or `into_service`.
@@ -219,22 +219,22 @@ async fn dispatch<A: Api>(
     >,
 ) -> ::honig::Response {
     match op {
-        Operation::ListIssues => Box::pin(list_issues(api, routed, call)).await,
-        Operation::CreateIssue => Box::pin(create_issue(api, routed, call)).await,
+        Operation::ListOrders => Box::pin(list_orders(api, routed, call)).await,
+        Operation::CreateOrder => Box::pin(create_order(api, routed, call)).await,
         Operation::Open => Box::pin(open(api, routed, call)).await,
     }
 }
-static LIST_ISSUES_OP: ::honig::__private::Op = ::honig::__private::Op {
+static LIST_ORDERS_OP: ::honig::__private::Op = ::honig::__private::Op {
     security: ops::SECURITY_0,
     ..::honig::__private::Op::new(
-        "list_issues",
+        "list_orders",
         "GET",
-        "/issues",
-        "GET /issues",
+        "/orders",
+        "GET /orders",
         error_schema,
     )
 };
-async fn list_issues<A: Api>(
+async fn list_orders<A: Api>(
     api: &A,
     routed: ::honig::__private::Routed<'_>,
     call: ::honig::__private::Call<
@@ -245,9 +245,9 @@ async fn list_issues<A: Api>(
 ) -> ::honig::Response {
     let steps = ::honig::__private::Steps {
         api,
-        decode: |_| Ok(ops::list_issues::Params {}),
-        call: |a, p, c| Box::pin(a.list_issues(p, c)),
-        encode: |r, _| Ok(list_issues_encode(&r)),
+        decode: |_| Ok(ops::list_orders::Params {}),
+        call: |a, p, c| Box::pin(a.list_orders(p, c)),
+        encode: |r, _| Ok(list_orders_encode(&r)),
     };
     ::honig::__private::serve_signed_in(
             routed,
@@ -257,7 +257,7 @@ async fn list_issues<A: Api>(
                     let mut values = passed.values.into_iter();
                     match passed.alternative {
                         0usize | 1usize => {
-                            Some(ops::list_issues::Security::Pat(values.next()?.pat()?))
+                            Some(ops::list_orders::Security::Pat(values.next()?.pat()?))
                         }
                         _ => None,
                     }
@@ -266,21 +266,21 @@ async fn list_issues<A: Api>(
         )
         .await
 }
-fn list_issues_encode(resp: &ops::list_issues::Response) -> ::honig::Response {
-    let ops::list_issues::Response::NoContent = resp;
+fn list_orders_encode(resp: &ops::list_orders::Response) -> ::honig::Response {
+    let ops::list_orders::Response::NoContent = resp;
     ::honig::__private::new_response(204)
 }
-static CREATE_ISSUE_OP: ::honig::__private::Op = ::honig::__private::Op {
+static CREATE_ORDER_OP: ::honig::__private::Op = ::honig::__private::Op {
     security: ops::SECURITY_1,
     ..::honig::__private::Op::new(
-        "create_issue",
+        "create_order",
         "POST",
-        "/issues",
-        "POST /issues",
+        "/orders",
+        "POST /orders",
         error_schema,
     )
 };
-async fn create_issue<A: Api>(
+async fn create_order<A: Api>(
     api: &A,
     routed: ::honig::__private::Routed<'_>,
     call: ::honig::__private::Call<
@@ -291,9 +291,9 @@ async fn create_issue<A: Api>(
 ) -> ::honig::Response {
     let steps = ::honig::__private::Steps {
         api,
-        decode: |_| Ok(ops::create_issue::Params {}),
-        call: |a, p, c| Box::pin(a.create_issue(p, c)),
-        encode: |r, _| Ok(create_issue_encode(&r)),
+        decode: |_| Ok(ops::create_order::Params {}),
+        call: |a, p, c| Box::pin(a.create_order(p, c)),
+        encode: |r, _| Ok(create_order_encode(&r)),
     };
     ::honig::__private::serve_signed_in(
             routed,
@@ -303,7 +303,7 @@ async fn create_issue<A: Api>(
                     let mut values = passed.values.into_iter();
                     match passed.alternative {
                         0usize => {
-                            Some(ops::create_issue::Security::Pat(values.next()?.pat()?))
+                            Some(ops::create_order::Security::Pat(values.next()?.pat()?))
                         }
                         _ => None,
                     }
@@ -312,8 +312,8 @@ async fn create_issue<A: Api>(
         )
         .await
 }
-fn create_issue_encode(resp: &ops::create_issue::Response) -> ::honig::Response {
-    let ops::create_issue::Response::NoContent = resp;
+fn create_order_encode(resp: &ops::create_order::Response) -> ::honig::Response {
+    let ops::create_order::Response::NoContent = resp;
     ::honig::__private::new_response(204)
 }
 static OPEN_OP: ::honig::__private::Op = ::honig::__private::Op::new(

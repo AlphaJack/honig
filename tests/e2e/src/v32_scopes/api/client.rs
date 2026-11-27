@@ -21,7 +21,7 @@ impl<T> Client<T> {
         }
     }
     const WITH: &[(&str, &str)] = &[("pat", "Client::with_pat")];
-    /// Fine-grained personal access token.
+    /// A personal access token of a shop owner.
     #[must_use]
     pub fn with_pat(mut self, value: impl Into<String>) -> Self {
         self.credentials.insert("pat".to_owned(), value.into());
@@ -29,11 +29,11 @@ impl<T> Client<T> {
     }
 }
 impl<T: ::honig::Transport> Client<T> {
-    pub async fn list_issues(
+    pub async fn list_orders(
         &self,
-        _p: impl ::honig::__private::IntoArg<'_, ops::list_issues::Params>,
-    ) -> Result<ops::list_issues::Response, ::honig::ClientError> {
-        let path = String::from("/issues");
+        _p: impl ::honig::__private::IntoArg<'_, ops::list_orders::Params>,
+    ) -> Result<ops::list_orders::Response, ::honig::ClientError> {
+        let path = String::from("/orders");
         let query = Vec::new();
         let mut req = ::honig::__private::new_request("GET", path, query)?;
         ::honig::__private::apply_auth(
@@ -48,7 +48,7 @@ impl<T: ::honig::Transport> Client<T> {
         let (body, _) = body.into_parts();
         let status = head.status.as_u16();
         if status == 204 {
-            Ok(ops::list_issues::Response::NoContent)
+            Ok(ops::list_orders::Response::NoContent)
         } else {
             Err(::honig::ClientError::UnexpectedStatus {
                 status: head.status,
@@ -56,11 +56,11 @@ impl<T: ::honig::Transport> Client<T> {
             })
         }
     }
-    pub async fn create_issue(
+    pub async fn create_order(
         &self,
-        _p: impl ::honig::__private::IntoArg<'_, ops::create_issue::Params>,
-    ) -> Result<ops::create_issue::Response, ::honig::ClientError> {
-        let path = String::from("/issues");
+        _p: impl ::honig::__private::IntoArg<'_, ops::create_order::Params>,
+    ) -> Result<ops::create_order::Response, ::honig::ClientError> {
+        let path = String::from("/orders");
         let query = Vec::new();
         let mut req = ::honig::__private::new_request("POST", path, query)?;
         ::honig::__private::apply_auth(
@@ -75,7 +75,7 @@ impl<T: ::honig::Transport> Client<T> {
         let (body, _) = body.into_parts();
         let status = head.status.as_u16();
         if status == 204 {
-            Ok(ops::create_issue::Response::NoContent)
+            Ok(ops::create_order::Response::NoContent)
         } else {
             Err(::honig::ClientError::UnexpectedStatus {
                 status: head.status,

@@ -29,8 +29,8 @@ impl api::Api for Server {
         let scopes = token
             .split('+')
             .filter_map(|p| match p {
-                "read" => Some(PatScope::IssuesRead),
-                "write" => Some(PatScope::IssuesWrite),
+                "read" => Some(PatScope::OrdersRead),
+                "write" => Some(PatScope::OrdersWrite),
                 _ => None,
             })
             .collect();
@@ -38,19 +38,19 @@ impl api::Api for Server {
     }
     // ANCHOR_END: scopes
 
-    fn list_issues(
+    fn list_orders(
         &self,
-        _: ops::list_issues::Params,
-        _: &api::Context<'_, ops::list_issues::Security<Self>>,
-    ) -> impl Future<Output = Result<ops::list_issues::Response, api::ApiError>> + Send {
-        ok(ops::list_issues::Response::NoContent)
+        _: ops::list_orders::Params,
+        _: &api::Context<'_, ops::list_orders::Security<Self>>,
+    ) -> impl Future<Output = Result<ops::list_orders::Response, api::ApiError>> + Send {
+        ok(ops::list_orders::Response::NoContent)
     }
-    fn create_issue(
+    fn create_order(
         &self,
-        _: ops::create_issue::Params,
-        _: &api::Context<'_, ops::create_issue::Security<Self>>,
-    ) -> impl Future<Output = Result<ops::create_issue::Response, api::ApiError>> + Send {
-        ok(ops::create_issue::Response::NoContent)
+        _: ops::create_order::Params,
+        _: &api::Context<'_, ops::create_order::Security<Self>>,
+    ) -> impl Future<Output = Result<ops::create_order::Response, api::ApiError>> + Send {
+        ok(ops::create_order::Response::NoContent)
     }
     fn open(
         &self,
@@ -75,20 +75,20 @@ fn send(method: &'static str, path: &str, token: Option<&str>) -> u16 {
 
 #[test]
 fn either_permission_passes_an_or_requirement() {
-    assert_eq!(send("GET", "/issues", Some("read")), 204);
-    assert_eq!(send("GET", "/issues", Some("write")), 204, "the second requirement counts too");
-    assert_eq!(send("GET", "/issues", Some("admin")), 403);
+    assert_eq!(send("GET", "/orders", Some("read")), 204);
+    assert_eq!(send("GET", "/orders", Some("write")), 204, "the second requirement counts too");
+    assert_eq!(send("GET", "/orders", Some("admin")), 403);
 }
 
 #[test]
 fn a_single_requirement_needs_its_permission() {
-    assert_eq!(send("POST", "/issues", Some("write")), 204);
-    assert_eq!(send("POST", "/issues", Some("read")), 403);
+    assert_eq!(send("POST", "/orders", Some("write")), 204);
+    assert_eq!(send("POST", "/orders", Some("read")), 403);
 }
 
 #[test]
 fn a_missing_permission_is_403_with_insufficient_scope() {
-    let resp = answer(Server, "POST", "/issues", Some("read"));
+    let resp = answer(Server, "POST", "/orders", Some("read"));
     assert_eq!(resp.status().as_u16(), 403);
     assert_eq!(
         resp.headers().get("www-authenticate").and_then(|v| v.to_str().ok()),
@@ -98,12 +98,12 @@ fn a_missing_permission_is_403_with_insufficient_scope() {
 
 #[test]
 fn a_token_that_the_api_refuses_is_401_not_403() {
-    assert_eq!(send("POST", "/issues", Some("bad")), 401);
+    assert_eq!(send("POST", "/orders", Some("bad")), 401);
 }
 
 #[test]
 fn a_missing_token_is_401_before_any_layer() {
-    assert_eq!(send("GET", "/issues", None), 401);
+    assert_eq!(send("GET", "/orders", None), 401);
 }
 
 #[test]
@@ -113,10 +113,10 @@ fn an_operation_without_security_needs_no_scope() {
 
 #[test]
 fn scopes_roundtrip_their_names() {
-    for s in [PatScope::IssuesRead, PatScope::IssuesWrite] {
+    for s in [PatScope::OrdersRead, PatScope::OrdersWrite] {
         assert_eq!(PatScope::from_name(s.as_str()), Some(s));
     }
-    assert_eq!(PatScope::from_name("issues:admin"), None);
+    assert_eq!(PatScope::from_name("orders:admin"), None);
 }
 
 /// Names who is calling: the text of the token, or nobody for `Bearer anon`.
@@ -130,26 +130,26 @@ impl api::Api for Named {
         token: &str,
         _: &api::Request,
     ) -> Result<Option<honig::Granted<String, PatScope>>, api::ApiError> {
-        let scopes = vec![PatScope::IssuesRead, PatScope::IssuesWrite];
+        let scopes = vec![PatScope::OrdersRead, PatScope::OrdersWrite];
         Ok((token != "anon").then(|| honig::Granted { value: token.to_owned(), scopes }))
     }
 
-    fn list_issues(
+    fn list_orders(
         &self,
-        _: ops::list_issues::Params,
-        ctx: &api::Context<'_, ops::list_issues::Security<Self>>,
-    ) -> impl Future<Output = Result<ops::list_issues::Response, api::ApiError>> + Send {
+        _: ops::list_orders::Params,
+        ctx: &api::Context<'_, ops::list_orders::Security<Self>>,
+    ) -> impl Future<Output = Result<ops::list_orders::Response, api::ApiError>> + Send {
         // A secured operation sees who is calling and not an `Option`.
-        let ops::list_issues::Security::Pat(who) = &ctx.security;
+        let ops::list_orders::Security::Pat(who) = &ctx.security;
         assert!(!who.is_empty());
-        ok(ops::list_issues::Response::NoContent)
+        ok(ops::list_orders::Response::NoContent)
     }
-    fn create_issue(
+    fn create_order(
         &self,
-        _: ops::create_issue::Params,
-        _: &api::Context<'_, ops::create_issue::Security<Self>>,
-    ) -> impl Future<Output = Result<ops::create_issue::Response, api::ApiError>> + Send {
-        ok(ops::create_issue::Response::NoContent)
+        _: ops::create_order::Params,
+        _: &api::Context<'_, ops::create_order::Security<Self>>,
+    ) -> impl Future<Output = Result<ops::create_order::Response, api::ApiError>> + Send {
+        ok(ops::create_order::Response::NoContent)
     }
     fn open(
         &self,
@@ -163,8 +163,8 @@ impl api::Api for Named {
 
 #[test]
 fn each_operation_takes_the_caller_its_security_asks_for() {
-    assert_eq!(answer(Named, "GET", "/issues", Some("ann")).status(), 204, "a principal reaches a secured operation");
-    assert_eq!(answer(Named, "GET", "/issues", Some("anon")).status(), 401, "nobody does not");
+    assert_eq!(answer(Named, "GET", "/orders", Some("ann")).status(), 204, "a principal reaches a secured operation");
+    assert_eq!(answer(Named, "GET", "/orders", Some("anon")).status(), 401, "nobody does not");
     assert_eq!(answer(Named, "GET", "/public", None).status(), 204, "a public operation needs nobody");
 }
 
@@ -178,22 +178,22 @@ impl api::Api for Revoked {
         _: &str,
         _: &api::Request,
     ) -> Result<Option<honig::Granted<(), PatScope>>, api::ApiError> {
-        Ok(Some(honig::Granted { value: (), scopes: vec![PatScope::IssuesRead, PatScope::IssuesWrite] }))
+        Ok(Some(honig::Granted { value: (), scopes: vec![PatScope::OrdersRead, PatScope::OrdersWrite] }))
     }
 
-    fn list_issues(
+    fn list_orders(
         &self,
-        _: ops::list_issues::Params,
-        _: &api::Context<'_, ops::list_issues::Security<Self>>,
-    ) -> impl Future<Output = Result<ops::list_issues::Response, api::ApiError>> + Send {
+        _: ops::list_orders::Params,
+        _: &api::Context<'_, ops::list_orders::Security<Self>>,
+    ) -> impl Future<Output = Result<ops::list_orders::Response, api::ApiError>> + Send {
         std::future::ready(Err(api::ApiError::new(honig::http::StatusCode::UNAUTHORIZED, "the token was revoked")))
     }
-    fn create_issue(
+    fn create_order(
         &self,
-        _: ops::create_issue::Params,
-        _: &api::Context<'_, ops::create_issue::Security<Self>>,
-    ) -> impl Future<Output = Result<ops::create_issue::Response, api::ApiError>> + Send {
-        ok(ops::create_issue::Response::NoContent)
+        _: ops::create_order::Params,
+        _: &api::Context<'_, ops::create_order::Security<Self>>,
+    ) -> impl Future<Output = Result<ops::create_order::Response, api::ApiError>> + Send {
+        ok(ops::create_order::Response::NoContent)
     }
     fn open(
         &self,
@@ -209,7 +209,7 @@ impl api::Api for Revoked {
 #[test]
 fn every_401_carries_a_challenge() {
     let challenge = |token: Option<&str>| {
-        let resp = answer(Revoked, "GET", "/issues", token);
+        let resp = answer(Revoked, "GET", "/orders", token);
         (
             resp.status().as_u16(),
             resp.headers().get("www-authenticate").and_then(|v| v.to_str().ok()).map(str::to_owned),
@@ -232,7 +232,7 @@ fn with_request_id(rejection: api::Rejection) -> api::Response {
 #[test]
 fn a_problem_carries_the_request_id_as_instance() {
     let service = api::Server::new(Server).error_response(with_request_id).into_service();
-    let mut req = honig::__private::new_request("GET", "/issues".to_owned(), vec![]).unwrap();
+    let mut req = honig::__private::new_request("GET", "/orders".to_owned(), vec![]).unwrap();
     req.headers_mut().append("x-request-id", honig::http::HeaderValue::from_static("7f3a"));
     let resp = honig::block_on(service.handle(req));
     assert_eq!(resp.status().as_u16(), 401);
