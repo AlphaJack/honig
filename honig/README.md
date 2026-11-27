@@ -8,8 +8,7 @@ code uses.
 
 ```sh
 cargo binstall cargo-honig
-cargo honig init path/to/openapi.yaml
-cargo add honig@=x.y.z -F client,server
+cargo honig init path/to/openapi.yaml   # then run the `cargo add` line that it prints
 cargo honig generate
 ```
 
