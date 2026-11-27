@@ -38,7 +38,7 @@ enum Command {
         name: String,
         /// The stock keeping unit, such as LMP-0001
         #[arg(long)]
-        sku: Option<String>,
+        sku: Option<types::PhysicalSku>,
         #[arg(long)]
         fragile: bool,
     },
@@ -82,7 +82,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         Command::AddPhysical { name, sku, fragile } => {
-            let sku = sku.map(types::PhysicalSku::try_from).transpose()?;
             let product = types::Physical { sku, fragile: fragile.then_some(true), ..types::Physical::new(name) };
             add(&client, types::Product::Physical(product)).await?;
         }
