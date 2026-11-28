@@ -635,7 +635,7 @@ pub(super) fn reads_several_kinds(space: &Space<'_>, t: &Ty, depth: usize) -> bo
     const MAX_DEPTH: usize = 32;
     match t {
         _ if depth > MAX_DEPTH => true,
-        Ty::Decimal | Ty::Bytes => true,
+        Ty::Decimal | Ty::Decimal128 | Ty::Bytes => true,
         Ty::Option(x) | Ty::Indirect(x) => reads_several_kinds(space, x, depth + 1),
         Ty::Named(id) => match &space.types.get(*id).kind {
             Kind::Alias(x) | Kind::Newtype(x) => reads_several_kinds(space, x, depth + 1),

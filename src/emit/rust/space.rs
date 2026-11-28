@@ -45,6 +45,7 @@ impl<'a> Space<'a> {
             | Ty::F32
             | Ty::F64
             | Ty::Decimal
+            | Ty::Decimal128
             | Ty::String
             | Ty::Bytes
             | Ty::Binary
@@ -173,7 +174,7 @@ fn float_here(ty: &Ty) -> bool {
 
 /// Returns whether `ty` contains a `Decimal` itself. Named types that it refers to do not count.
 fn decimal_here(ty: &Ty) -> bool {
-    *ty == Ty::Decimal || ty.children().iter().any(decimal_here)
+    matches!(ty, Ty::Decimal | Ty::Decimal128) || ty.children().iter().any(decimal_here)
 }
 
 /// The size of a pointer, and of a variant that is boxed.
@@ -237,7 +238,14 @@ fn size_in(ty: &Ty, named: &mut dyn FnMut(TypeId) -> usize) -> usize {
         Ty::I32 | Ty::U32 | Ty::F32 => size_of::<u32>(),
         Ty::I64 | Ty::U64 | Ty::F64 => size_of::<u64>(),
         Ty::Indirect(_) => WORD,
-        Ty::String | Ty::Bytes | Ty::Binary | Ty::Format(_) | Ty::Vec(_) | Ty::Map(_) | Ty::Decimal => COLLECTION,
+        Ty::String
+        | Ty::Bytes
+        | Ty::Binary
+        | Ty::Format(_)
+        | Ty::Vec(_)
+        | Ty::Map(_)
+        | Ty::Decimal
+        | Ty::Decimal128 => COLLECTION,
         Ty::Any => JSON_VALUE,
         Ty::Option(t) => option_size(t, named),
         Ty::Tuple(ts) => ts.iter().map(|t| size_in(t, named)).sum(),

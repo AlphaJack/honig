@@ -516,7 +516,8 @@ pub(super) fn checks(
             integer_checks(t, c, value, path)
         }
         Ty::F32 | Ty::F64 => float_checks(c, value, path),
-        Ty::Decimal => decimal_checks(c, value, path),
+        Ty::Decimal => decimal_checks(c, value, path, c.decimal128),
+        Ty::Decimal128 => decimal_checks(c, value, path, false),
         Ty::Vec(x) => {
             let len = (c.min_items.is_some() || c.max_items.is_some()).then(|| {
                 let (min, max) = (opt_u64(c.min_items), opt_u64(c.max_items));
@@ -981,8 +982,8 @@ fn positive(m: Option<&Number>) -> Option<&Number> {
 }
 
 /// Returns the range and `multipleOf` of a `Decimal` value (an `&Decimal` expression), checked exactly on its digits,
-/// and the limits of IEEE 754 decimal128 on them for `format: decimal128`.
-pub(super) fn decimal_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
+/// and the limits of IEEE 754 decimal128 on them when `limits` (`format: decimal128` on a type that does not hold them).
+pub(super) fn decimal_checks(c: &Constraints, value: &TokenStream, path: &TokenStream, limits: bool) -> TokenStream {
     let r = receiver(value);
     let bounds = [&c.minimum, &c.maximum, &c.exclusive_minimum, &c.exclusive_maximum];
     let range = bounds.iter().any(|b| b.is_some()).then(|| {
@@ -994,7 +995,7 @@ pub(super) fn decimal_checks(c: &Constraints, value: &TokenStream, path: &TokenS
         quote!(::honig::__private::check_multiple_text(out, #path, #r.as_str(), #m);)
     });
     // `format: decimal128`: the digits that IEEE 754 decimal128 represents.
-    let limits = c.decimal128.then(|| quote!(::honig::__private::check_decimal128(out, #path, #r.as_str());));
+    let limits = limits.then(|| quote!(::honig::__private::check_decimal128(out, #path, #r.as_str());));
     quote!(#range #multiple #limits)
 }
 
@@ -1007,7 +1008,7 @@ fn any_checks(c: &Constraints, value: &TokenStream, path: &TokenStream, content:
     });
     let text = string_checks(c, &if content { quote!(text) } else { quote!(text.as_str()) }, path);
     let text = quote!(#text #format);
-    let number_checks = decimal_checks(c, &quote!(&text), path);
+    let number_checks = decimal_checks(c, &quote!(&text), path, c.decimal128);
     let count = |min: Option<u64>, max: Option<u64>, unit: &str| {
         (min.is_some() || max.is_some()).then(|| {
             let (min, max) = (opt_u64(min), opt_u64(max));

@@ -39,7 +39,7 @@ impl StoreNetwork {
         #[optional]
         pub amount: EventAmount,
         #[optional]
-        pub sum: EventSum,
+        pub sum: ::honig::Decimal128,
         #[optional]
         pub initial: char,
         #[serde(
@@ -94,6 +94,21 @@ impl StoreNetwork {
         pub payment: EventPayment,
         #[optional]
         pub payload: EventPayload,
+    }
+}
+::honig::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Invoice {
+        #[optional]
+        pub total: ::honig::Decimal128,
+        #[optional]
+        pub floor: InvoiceFloor,
+    }
+}
+impl Invoice {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self { total: None, floor: None }
     }
 }
 ::honig::object! {
@@ -167,28 +182,7 @@ impl TryFrom<::honig::Decimal> for EventAmount {
             .map_err(::honig::BuildError::value)
     }
 }
-::honig::checked_decimal_impls!(EventAmount);
-#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize)]
-#[serde(transparent)]
-pub struct EventSum(pub(super) ::honig::Decimal);
-impl TryFrom<::honig::Decimal> for EventSum {
-    type Error = ::honig::BuildError;
-    fn try_from(value: ::honig::Decimal) -> Result<Self, ::honig::BuildError> {
-        let mut violations: Vec<::honig::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            ::honig::__private::check_decimal128(
-                out,
-                &::honig::InstanceLocation::Root,
-                value.as_str(),
-            );
-        }
-        ::honig::__private::first(violations)
-            .map(|()| Self(value))
-            .map_err(::honig::BuildError::value)
-    }
-}
-::honig::checked_decimal_impls!(EventSum);
+::honig::checked_decimal_impls!(EventAmount, ::honig::Decimal);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EventCharge {
     Refund(EventChargeRefund),
@@ -305,6 +299,31 @@ impl EventPayloadContent {
         Self { n }
     }
 }
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize)]
+#[serde(transparent)]
+pub struct InvoiceFloor(pub(super) ::honig::Decimal128);
+impl TryFrom<::honig::Decimal128> for InvoiceFloor {
+    type Error = ::honig::BuildError;
+    fn try_from(value: ::honig::Decimal128) -> Result<Self, ::honig::BuildError> {
+        let mut violations: Vec<::honig::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            ::honig::__private::check_decimal_range(
+                out,
+                &::honig::InstanceLocation::Root,
+                value.as_str(),
+                ::honig::__private::Bounds {
+                    min: Some("0"),
+                    ..::honig::__private::Bounds::NONE
+                },
+            );
+        }
+        ::honig::__private::first(violations)
+            .map(|()| Self(value))
+            .map_err(::honig::BuildError::value)
+    }
+}
+::honig::checked_decimal_impls!(InvoiceFloor, ::honig::Decimal128);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct CardMethod;
 impl CardMethod {
@@ -347,7 +366,7 @@ pub mod builders {
             level(level): i8 = "level" => some, None,
             port(port): types::EventPort = "port" => some, None,
             amount(amount): types::EventAmount = "amount" => some, None,
-            sum(sum): types::EventSum = "sum" => some, None,
+            sum(sum): ::honig::Decimal128 = "sum" => some, None,
             initial(initial): char = "initial" => some, None,
             home(home): ::honig::url::Url = "home" => some, None,
             net4(net4): ::honig::ipnet::Ipv4Net = "net4" => some, None,
@@ -369,6 +388,15 @@ pub mod builders {
             charge(charge): types::EventCharge = "charge" => some, None,
             payment(payment): types::EventPayment = "payment" => some, None,
             payload(payload): types::EventPayload = "payload" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        Invoice => super::Invoice;
+        required {}
+        optional {
+            total(total): ::honig::Decimal128 = "total" => some, None,
+            floor(floor): types::InvoiceFloor = "floor" => some, None,
         }
         fixed {}
     }

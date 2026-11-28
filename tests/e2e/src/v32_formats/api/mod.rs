@@ -33,7 +33,7 @@ pub use server::Api;
 pub use server::{Operation, Context, Rejection, RequestEvent, Server};
 pub use ::honig::{
     ApiError, Base64Url, BuildError, ClientError, DateStr, DateTimeLocalStr, DateTimeStr,
-    Decimal, Decimal128Str, DecimalStr, DurationStr, FullTime, HttpDateStr,
+    Decimal, Decimal128, Decimal128Str, DecimalStr, DurationStr, FullTime, HttpDateStr,
     InstanceLocation, IriReferenceStr, IriStr, JsonPointerStr, Message, Passed,
     ProblemSchema, Reason, RegexStr, RelativeJsonPointerStr, Request, Response,
     ServerUrl, TimeLocalStr, Transport, UriReferenceStr, UriTemplateStr, UuidStr,

@@ -8,6 +8,7 @@ paths:
         - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
         - {name: on, in: query, schema: {type: string, format: date}}
         - {name: above, in: query, description: "A decimal travels as its digits in the URL too.", schema: {type: number, format: decimal}}
+        - {name: below, in: query, description: "A decimal128 number in the URL.", schema: {type: number, format: decimal128}}
       responses:
         "200":
           description: The event.
@@ -79,6 +80,13 @@ components:
           type: string
           contentMediaType: application/json
           contentSchema: {type: object, required: [n], properties: {n: {type: integer}}}
+    # A decimal128 number of a second schema: the same `Decimal128` type as `Event.sum`.
+    Invoice:
+      type: object
+      properties:
+        total: {type: number, format: decimal128}
+        # A bound beside the format: a checked type around `Decimal128`.
+        floor: {type: number, format: decimal128, minimum: 0}
     # `Transfer` is `Card` again: the generator declares it as an alias, and the union's arms of the two share one body.
     # Each branch fixes its tag: a value matches exactly one, as `oneOf` requires.
     Card:

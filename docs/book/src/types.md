@@ -138,11 +138,11 @@ Mail addresses and host names are types of honig. Only a valid value can be one 
 
 `contentEncoding: base64url` gives `api::Base64Url`. It stores bytes in the URL-safe alphabet.
 
-`{type: number, format: decimal}` and `decimal128` are `api::Decimal`. It keeps the digits of the number. `12345678901234567.89` arrives and leaves as written. An `f64` would round it.
+`{type: number, format: decimal}` is `api::Decimal`. It keeps the digits of the number. `12345678901234567.89` arrives and leaves as written. An `f64` would round it.
 It parses the exact text wherever the number is. This includes `oneOf` branches. It rounds only in the `Other` of an open union. That variant stores a value that no branch accepts as a `serde_json::Value`.
 
 For arithmetic parse its digits into a decimal type with `d.as_str().parse::<rust_decimal::Decimal>()`.
-`{type: string, format: decimal}` is `api::DecimalStr` with every digit, checked as a decimal. `decimal128` keeps every digit too, as a number or as `api::Decimal128Str`, and enforces the limits of IEEE 754 decimal128: at most 34 significant digits within its exponent range. Use it past the 28 significant digits that `rust_decimal` supports.
+`{type: string, format: decimal}` is `api::DecimalStr` with every digit, checked as a decimal. `decimal128` keeps every digit too, as `api::Decimal128` for a number or `api::Decimal128Str` for a string, and enforces the limits of IEEE 754 decimal128: at most 34 significant digits within its exponent range. Use it past the 28 significant digits that `rust_decimal` supports.
 
 JSON the description leaves untyped is a `serde_json::Value`:
 

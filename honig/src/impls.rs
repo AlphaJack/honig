@@ -236,23 +236,23 @@ macro_rules! checked_impls {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! checked_decimal_impls {
-    ($n:ident) => {
+    ($n:ident, $t:ty) => {
         impl $n {
             #[must_use]
-            pub fn into_inner(self) -> $crate::Decimal {
+            pub fn into_inner(self) -> $t {
                 self.0
             }
         }
         impl std::str::FromStr for $n {
             type Err = $crate::BuildError;
             fn from_str(s: &str) -> Result<Self, $crate::BuildError> {
-                let v: $crate::Decimal = s.parse().map_err(|e| $crate::BuildError::value(format!("{e}")))?;
+                let v: $t = s.parse().map_err(|e| $crate::BuildError::value(format!("{e}")))?;
                 Self::try_from(v)
             }
         }
         impl std::ops::Deref for $n {
-            type Target = $crate::Decimal;
-            fn deref(&self) -> &$crate::Decimal {
+            type Target = $t;
+            fn deref(&self) -> &$t {
                 &self.0
             }
         }
@@ -261,14 +261,14 @@ macro_rules! checked_decimal_impls {
                 std::fmt::Display::fmt(&self.0, f)
             }
         }
-        impl From<$n> for $crate::Decimal {
+        impl From<$n> for $t {
             fn from(value: $n) -> Self {
                 value.0
             }
         }
         impl<'de> ::serde::Deserialize<'de> for $n {
             fn deserialize<D: ::serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                let v = <$crate::Decimal as ::serde::Deserialize>::deserialize(d)?;
+                let v = <$t as ::serde::Deserialize>::deserialize(d)?;
                 Self::try_from(v).map_err(::serde::de::Error::custom)
             }
         }

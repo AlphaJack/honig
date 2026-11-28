@@ -231,6 +231,7 @@ fn yours(types: &TypeSpace, t: &Ty) -> bool {
         | Ty::F32
         | Ty::F64
         | Ty::Decimal
+        | Ty::Decimal128
         | Ty::String
         | Ty::Bytes
         | Ty::Binary
@@ -273,6 +274,7 @@ pub(crate) fn json_held_by_type(types: &TypeSpace, t: &Ty, json: &Constraints, h
         | Ty::F32
         | Ty::F64
         | Ty::Decimal
+        | Ty::Decimal128
         | Ty::String
         | Ty::Bytes
         | Ty::Binary
@@ -334,7 +336,18 @@ pub(crate) fn needs_checks(types: &TypeSpace, t: &Ty, c: &Constraints, hops: usi
     match t {
         Ty::Option(x) | Ty::Indirect(x) => needs_checks(types, x, c, hops),
         Ty::String | Ty::Format(_) | Ty::Binary => length || c.pattern.is_some(),
-        Ty::I8 | Ty::I16 | Ty::I32 | Ty::I64 | Ty::U8 | Ty::U16 | Ty::U32 | Ty::U64 | Ty::F32 | Ty::F64 => range,
+        // `Decimal128` holds the limits of decimal128 itself.
+        Ty::I8
+        | Ty::I16
+        | Ty::I32
+        | Ty::I64
+        | Ty::U8
+        | Ty::U16
+        | Ty::U32
+        | Ty::U64
+        | Ty::F32
+        | Ty::F64
+        | Ty::Decimal128 => range,
         Ty::Decimal => range || c.decimal128,
         Ty::Vec(x) => {
             c.min_items.is_some()

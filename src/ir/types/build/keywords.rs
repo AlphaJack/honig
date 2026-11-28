@@ -427,12 +427,9 @@ pub(crate) fn checked_scalar(o: &serde_json::Map<String, Value>) -> bool {
                 && (o.get("pattern").is_some_and(Value::is_string)
                     || ["minLength", "maxLength"].iter().any(|k| o.get(*k).and_then(json::count).is_some()))
         }
-        "integer" | "number" => {
-            ["minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf"]
-                .iter()
-                .any(|k| o.get(*k).is_some_and(Value::is_number))
-                || (t == "number" && format == Some("decimal128"))
-        }
+        "integer" | "number" => ["minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf"]
+            .iter()
+            .any(|k| o.get(*k).is_some_and(Value::is_number)),
         _ => false,
     }
 }

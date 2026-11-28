@@ -9,11 +9,18 @@ pub mod get_event {
         pub on: Option<::honig::DateStr>,
         /// A decimal travels as its digits in the URL too.
         pub above: Option<::honig::Decimal>,
+        /// A decimal128 number in the URL.
+        pub below: Option<::honig::Decimal128>,
     }
     impl Params {
         #[must_use]
         pub const fn new(id: ::honig::UuidStr) -> Self {
-            Self { id, on: None, above: None }
+            Self {
+                id,
+                on: None,
+                above: None,
+                below: None,
+            }
         }
     }
     pub mod builders {
@@ -25,6 +32,7 @@ pub mod get_event {
             optional {
                 on(on): ::honig::DateStr = "on" => some, None,
                 above(above): ::honig::Decimal = "above" => some, None,
+                below(below): ::honig::Decimal128 = "below" => some, None,
             }
             fixed {}
         }

@@ -84,7 +84,7 @@ pub use client::oauth::{NoRandomness, Pkce};
 pub use client::transport::{Transport, send, send_streaming};
 #[cfg(feature = "multipart")]
 pub use codec::PartTypes;
-pub use decimal::Decimal;
+pub use decimal::{Decimal, Decimal128};
 pub use error::{ApiError, ClientError};
 pub use formatted::Formatted;
 pub use formatted::UuidStr;

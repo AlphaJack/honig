@@ -984,6 +984,7 @@ impl<'a> Builder<'a> {
                 | Ty::F32
                 | Ty::F64
                 | Ty::Decimal
+                | Ty::Decimal128
                 | Ty::String
         )
     }
@@ -1058,7 +1059,8 @@ impl<'a> Builder<'a> {
             // The registry lists the integer formats for `number` too.
             Some("number") if format == "float" => Ty::F32,
             // "A fixed point decimal number of unspecified precision and range". Its digits and never an f64.
-            Some("number") if matches!(format, "decimal" | "decimal128") => Ty::Decimal,
+            Some("number") if format == "decimal" => Ty::Decimal,
+            Some("number") if format == "decimal128" => Ty::Decimal128,
             Some("number") => int_format(format).unwrap_or(Ty::F64),
             // 3.0 `format: byte` is base64 like 3.1 `contentEncoding: base64`; 3.1 writes 3.0's `format: binary`
             // as a `contentMediaType` that is not text.

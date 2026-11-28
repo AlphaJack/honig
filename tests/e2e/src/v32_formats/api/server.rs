@@ -184,6 +184,10 @@ fn get_event_params(
             ::honig::__private::query_text(query, "above", "/query/above")?,
             "/query/above",
         )?,
+        below: ::honig::__private::from_text(
+            ::honig::__private::query_text(query, "below", "/query/below")?,
+            "/query/below",
+        )?,
     })
 }
 fn get_event_encode(

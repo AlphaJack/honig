@@ -1,5 +1,6 @@
 //! Schema constraints and the violations they report.
 
+use crate::decimal::decimal128;
 use std::fmt;
 
 use serde::Serialize;
@@ -158,60 +159,6 @@ fn decimal(s: &str) -> bool {
     let (whole, fraction) = s.split_once('.').unwrap_or((s, "0"));
     let number = |p: &str| !p.is_empty() && p.bytes().all(|b| b.is_ascii_digit());
     number(whole) && number(fraction)
-}
-
-/// The significant digits that IEEE 754 decimal128 represents.
-const DECIMAL128_DIGITS: usize = 34;
-/// The smallest exponent of the last digit that decimal128 represents: its smallest value is `1e-6176`.
-const DECIMAL128_MIN_EXPONENT: i64 = -6176;
-/// The largest exponent of the first digit that decimal128 represents: its largest values are below `1e6145`.
-const DECIMAL128_MAX_EXPONENT: i64 = 6144;
-
-/// Checks that `s` is a decimal number that IEEE 754 decimal128 represents exactly: an optional `-`, digits with an
-/// optional fraction and an optional exponent, at most 34 significant digits, within its exponent range. Zeros before
-/// the first and after the last nonzero digit are not significant: `1.50000` counts as `1.5`.
-///
-/// # Errors
-///
-/// Why it does not fit.
-pub(crate) fn decimal128(s: &str) -> Result<(), String> {
-    let unsigned = s.strip_prefix('-').unwrap_or(s);
-    let (mantissa, exponent) = unsigned.split_once(['e', 'E']).unwrap_or((unsigned, "0"));
-    let (whole, fraction) = match mantissa.split_once('.') {
-        Some((w, f)) if !f.is_empty() => (w, f),
-        Some(_) => return Err("is not a decimal".to_owned()),
-        None => (mantissa, ""),
-    };
-    let digits = |p: &str| p.bytes().all(|b| b.is_ascii_digit());
-    let exponent_digits = exponent.strip_prefix(['+', '-']).unwrap_or(exponent);
-    if whole.is_empty() || !digits(whole) || !digits(fraction) || exponent_digits.is_empty() || !digits(exponent_digits)
-    {
-        return Err("is not a decimal".to_owned());
-    }
-    let all = format!("{whole}{fraction}");
-    let significant = all.trim_start_matches('0');
-    let trimmed = significant.trim_end_matches('0');
-    if trimmed.is_empty() {
-        return Ok(());
-    }
-    // An exponent too long for an `i64` is far out of range either way.
-    let Ok(exponent) = exponent.strip_prefix('+').unwrap_or(exponent).parse::<i64>() else {
-        return Err("is out of the range of decimal128".to_owned());
-    };
-    let count = crate::exact::signed;
-    // The exponent of the last significant digit, and of the first.
-    let last = exponent.saturating_sub(count(fraction.len())).saturating_add(count(significant.len() - trimmed.len()));
-    let first = last.saturating_add(count(trimmed.len()) - 1);
-    if trimmed.len() > DECIMAL128_DIGITS {
-        return Err(format!(
-            "has {} significant digits, more than the {DECIMAL128_DIGITS} of decimal128",
-            trimmed.len()
-        ));
-    }
-    if last < DECIMAL128_MIN_EXPONENT || first > DECIMAL128_MAX_EXPONENT {
-        return Err("is out of the range of decimal128".to_owned());
-    }
-    Ok(())
 }
 
 /// Checks that the decimal number `text` is one that IEEE 754 decimal128 represents exactly (`format: decimal128`).

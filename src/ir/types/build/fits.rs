@@ -122,7 +122,7 @@ fn shape(defs: &[TypeDef], t: &Ty, v: &Value, at: &str, hops: usize) -> Fit {
             Fit::all(members.iter().map(|(k, member)| fits(defs, x, &none, member, &join(at, k), hops)))
         }
         (Ty::Named(id), _) => named(defs, &defs[id.0], v, at, hops + 1),
-        (Ty::Decimal | Ty::Bytes | Ty::Binary | Ty::Format(_), _) => Fit::Unknown,
+        (Ty::Decimal | Ty::Decimal128 | Ty::Bytes | Ty::Binary | Ty::Format(_), _) => Fit::Unknown,
         (Ty::Bool, _) => refused(v, at, "is not a boolean"),
         (Ty::String, _) => refused(v, at, "is not a string"),
         (Ty::F32 | Ty::F64, _) => refused(v, at, "is not a number"),
