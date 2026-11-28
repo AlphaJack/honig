@@ -34,7 +34,11 @@ pub(crate) const SETTINGS: [(&str, Option<&str>, &str); 11] = [
          types that they reach",
     ),
     ("tests", Some("false"), "generate a test that the description's examples decode"),
-    ("keep_unknown_fields", Some("false"), "objects without additionalProperties keep unknown keys in a map"),
+    (
+        "keep_unknown_properties",
+        Some("false"),
+        "objects without additionalProperties keep undeclared properties in a map",
+    ),
     ("overlays", Some("[]"), "Overlays (1.0 to 1.2) applied in order to the spec"),
     ("formats", Some("{}"), "your own types for formats with a check, like { uuid = \"crate::Id\" }"),
     ("derives", Some("{}"), "extra derives on every type or on one type by Rust name, like { \"*\" = [\"Hash\"] }"),
@@ -69,7 +73,7 @@ pub(crate) struct Settings {
     pub allow_unimplemented: bool,
     /// Extra derives as (Rust type name or `*`, derive paths).
     pub derives: Vec<(String, Vec<String>)>,
-    /// `keep_unknown_fields = true`.
+    /// `keep_unknown_properties = true`.
     pub keep_unknown: bool,
     /// `false` with `client = { allow_unknown_values = true }`: response types accept an enum value or a property that
     /// the description does not list. Requests are always strict.
@@ -464,7 +468,7 @@ pub(crate) fn settings<'a>(module: impl Into<Module<'a>>, path: &Path) -> Result
                 .map(PathBuf::from)
                 .collect(),
         },
-        keep_unknown: flag("keep_unknown_fields", false)?,
+        keep_unknown: flag("keep_unknown_properties", false)?,
     })
 }
 
@@ -778,12 +782,15 @@ mod tests {
     }
 
     #[test]
-    fn keep_unknown_fields_is_a_flag() {
+    fn keep_unknown_properties_is_a_flag() {
         let one =
             |module: &str| modules_of(&format!("[package.metadata.honig.api]\ndescriptions = [\"a.yaml\"]\n{module}"));
         assert!(!one("").unwrap()[0].keep_unknown, "dropped unless set");
-        assert!(one("keep_unknown_fields = true\n").unwrap()[0].keep_unknown);
-        assert!(one("keep_unknown_fields = \"keep\"\n").unwrap_err().to_string().contains("true or false"));
+        assert!(one("keep_unknown_properties = true\n").unwrap()[0].keep_unknown);
+        assert!(one("keep_unknown_properties = \"keep\"\n").unwrap_err().to_string().contains("true or false"));
+        // The name before the rename is no setting: the error lists the settings, and the new name is among them.
+        let old = one("keep_unknown_fields = true\n").unwrap_err().to_string();
+        assert!(old.contains("no setting `keep_unknown_fields`") && old.contains("keep_unknown_properties"), "{old}");
         assert!(one("unknown_fields = \"keep\"\n").unwrap_err().to_string().contains("no setting `unknown_fields`"));
     }
 
