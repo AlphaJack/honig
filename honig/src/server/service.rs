@@ -584,7 +584,7 @@ async fn authorize<'r, O: Operations>(
 /// challenge names the scopes that the token needs (RFC 6750 section 3), unless one is no valid header text.
 fn insufficient_scope(required: &[&str], missing: &[&str]) -> ApiError {
     let names: Vec<String> = missing.iter().map(|s| format!("`{s}`")).collect();
-    let message = format!("the credentials lack the scopes that the operation requires: {}", names.join(", "));
+    let message = format!("the credentials lack some required scopes: {}", names.join(", "));
     let challenge = format!("Bearer error=\"insufficient_scope\", scope=\"{}\"", required.join(" "));
     let challenge = http::HeaderValue::from_str(&challenge)
         .unwrap_or_else(|_| http::HeaderValue::from_static("Bearer error=\"insufficient_scope\""));
