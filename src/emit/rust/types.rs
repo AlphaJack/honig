@@ -15,7 +15,7 @@ mod defaults;
 mod enums;
 
 pub(super) use defaults::default_expr;
-use defaults::{const_default, field_default, is_arg, is_unit, struct_default};
+use defaults::{const_default, decoded_default, field_default, is_arg, is_unit, struct_default};
 use enums::{OTHER_DOC, one_of, reads_added, str_enum, union};
 
 /// Returns `types.rs`. A type spelt out twice is declared once and the others are `pub type` aliases of it
@@ -722,8 +722,9 @@ fn structure(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, s: &St
         let funs = defaults.iter().map(|(f, e)| {
             let (fun, t) = (format_ident!("default_{}", snake(&f.name)), ty(space, &f.ty, false));
             let constness = const_default(space, f).then(|| quote!(const));
+            let panics = decoded_default(f).then(|| quote!(#[doc = " # Panics"] #[doc = ""] #[doc = " Never: generation checked that the default decodes."]));
             // Serde's `default = "..."` needs a path; users get defaults through `Default`.
-            quote!(#[doc(hidden)] #[must_use] pub #constness fn #fun() -> #t { #e })
+            quote!(#[doc(hidden)] #panics #[must_use] pub #constness fn #fun() -> #t { #e })
         });
         items.push(quote!(impl #name { #(#funs)* }));
         if can_default {

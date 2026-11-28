@@ -27,8 +27,32 @@ fn documented_examples_decode() {
         types::Pixels,
     >(&mut bad, "/components/schemas/ImageNote/properties/width/default", "64");
     value::<
+        types::ImageNoteFrame,
+    >(
+        &mut bad,
+        "/components/schemas/ImageNote/properties/frame/default",
+        "{\"color\":\"white\",\"width\":2}",
+    );
+    value::<
+        Vec<types::Pixels>,
+    >(&mut bad, "/components/schemas/ImageNote/properties/sizes/default", "[320,640]");
+    value::<
         types::Pixels,
     >(&mut bad, "/components/schemas/Note/oneOf/1/properties/width/default", "64");
+    value::<
+        types::NoteImageNoteFrame,
+    >(
+        &mut bad,
+        "/components/schemas/Note/oneOf/1/properties/frame/default",
+        "{\"color\":\"white\",\"width\":2}",
+    );
+    value::<
+        Vec<types::Pixels>,
+    >(
+        &mut bad,
+        "/components/schemas/Note/oneOf/1/properties/sizes/default",
+        "[320,640]",
+    );
     value::<
         String,
     >(

@@ -677,18 +677,20 @@ fn a_link_parameter_that_the_target_lacks_fails_generation() {
     }
 }
 
-/// A field whose `default` is no string, number or boolean has none: that is a warning, not silence. A literal one
-/// stays quiet.
+/// A field whose object `default` honig cannot check has none: that is a warning, not silence. An object that it checks
+/// and a literal stay quiet.
 #[test]
-fn a_default_that_no_value_writes_is_a_warning() {
+fn a_default_that_cannot_be_checked_is_a_warning() {
     let holder = json!({"type": "object", "properties": {
-        "options": {"type": "object", "properties": {"a": {"type": "string"}}, "default": {"a": "x"}},
+        "options": {"type": "object", "properties": {"on": {"type": "string", "format": "date"}}, "default": {"on": "2026-01-01"}},
+        "frame": {"type": "object", "properties": {"color": {"type": "string"}}, "default": {"color": "white"}},
         "limit": {"type": "integer", "default": 10}}});
     let path = common::write("dropped-default", &doc(&json!({}), &json!({"schemas": {"Holder": holder}})), &[]);
     let made = crate::generate::generate(&path, &Options::default()).expect("generates");
     let warned: Vec<&str> = made.diagnostics.iter().map(|d| d.message.as_str()).collect();
     let at = |p: &str| made.diagnostics.iter().any(|d| d.pointer == p && d.level == crate::diag::Level::Warning);
     assert!(at("/components/schemas/Holder/properties/options/default"), "{warned:?}");
+    assert!(!at("/components/schemas/Holder/properties/frame/default"), "{warned:?}");
     assert!(!at("/components/schemas/Holder/properties/limit/default"), "{warned:?}");
 }
 

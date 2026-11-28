@@ -85,17 +85,23 @@ impl TextNote {
         pub url: String,
         #[serde(default = "ImageNote::default_width")]
         pub width: Pixels,
+        #[serde(default = "ImageNote::default_frame")]
+        pub frame: ImageNoteFrame,
+        #[serde(default = "ImageNote::default_sizes")]
+        pub sizes: Vec<Pixels>,
         #[optional]
         pub crop: Crop,
     }
 }
 impl ImageNote {
     #[must_use]
-    pub const fn new(url: String) -> Self {
+    pub fn new(url: String) -> Self {
         Self {
             kind: ImageNoteKind {},
             url,
             width: Self::default_width(),
+            frame: Self::default_frame(),
+            sizes: Self::default_sizes(),
             crop: None,
         }
     }
@@ -105,6 +111,27 @@ impl ImageNote {
     #[must_use]
     pub const fn default_width() -> Pixels {
         64i64
+    }
+    #[doc(hidden)]
+    /// # Panics
+    ///
+    /// Never: generation checked that the default decodes.
+    #[must_use]
+    pub fn default_frame() -> ImageNoteFrame {
+        ::honig::__private::json_decode(
+                None,
+                "{\"color\":\"white\",\"width\":2}".as_bytes(),
+            )
+            .expect("generation checked the default")
+    }
+    #[doc(hidden)]
+    /// # Panics
+    ///
+    /// Never: generation checked that the default decodes.
+    #[must_use]
+    pub fn default_sizes() -> Vec<Pixels> {
+        ::honig::__private::json_decode(None, "[320,640]".as_bytes())
+            .expect("generation checked the default")
     }
 }
 pub type Pixels = i64;
@@ -193,6 +220,10 @@ impl NoteTextNoteKind {
         pub url: String,
         #[serde(default = "NoteImageNote::default_width")]
         pub width: Pixels,
+        #[serde(default = "NoteImageNote::default_frame")]
+        pub frame: NoteImageNoteFrame,
+        #[serde(default = "NoteImageNote::default_sizes")]
+        pub sizes: Vec<Pixels>,
         #[optional]
         pub crop: Crop,
         #[optional]
@@ -203,11 +234,13 @@ impl NoteTextNoteKind {
 }
 impl NoteImageNote {
     #[must_use]
-    pub const fn new(url: String) -> Self {
+    pub fn new(url: String) -> Self {
         Self {
             kind: NoteImageNoteKind {},
             url,
             width: Self::default_width(),
+            frame: Self::default_frame(),
+            sizes: Self::default_sizes(),
             crop: None,
             text: None,
             size: None,
@@ -220,6 +253,27 @@ impl NoteImageNote {
     pub const fn default_width() -> Pixels {
         64i64
     }
+    #[doc(hidden)]
+    /// # Panics
+    ///
+    /// Never: generation checked that the default decodes.
+    #[must_use]
+    pub fn default_frame() -> NoteImageNoteFrame {
+        ::honig::__private::json_decode(
+                None,
+                "{\"color\":\"white\",\"width\":2}".as_bytes(),
+            )
+            .expect("generation checked the default")
+    }
+    #[doc(hidden)]
+    /// # Panics
+    ///
+    /// Never: generation checked that the default decodes.
+    #[must_use]
+    pub fn default_sizes() -> Vec<Pixels> {
+        ::honig::__private::json_decode(None, "[320,640]".as_bytes())
+            .expect("generation checked the default")
+    }
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct NoteImageNoteKind;
@@ -227,8 +281,24 @@ impl NoteImageNoteKind {
     pub const VALUE: &'static str = "image";
 }
 ::honig::const_impls!(NoteImageNoteKind, VALUE);
+::honig::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct NoteImageNoteFrame {
+        #[optional]
+        pub color: String,
+        #[optional]
+        pub width: Pixels,
+    }
+}
+impl NoteImageNoteFrame {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self { color: None, width: None }
+    }
+}
 pub use NoteTextNoteKind as TextNoteKind;
 pub use NoteImageNoteKind as ImageNoteKind;
+pub type ImageNoteFrame = NoteImageNoteFrame;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CropVariant1 {
     Integer(i64),
@@ -649,6 +719,8 @@ pub mod builders {
         }
         optional {
             width(width): types::Pixels = "width" => value, super::ImageNote::default_width(),
+            frame(frame): types::ImageNoteFrame = "frame" => value, super::ImageNote::default_frame(),
+            sizes(sizes): Vec<types::Pixels> = "sizes" => value, super::ImageNote::default_sizes(),
             crop(crop): types::Crop = "crop" => some, None,
         }
         fixed {
@@ -675,6 +747,8 @@ pub mod builders {
         }
         optional {
             width(width): types::Pixels = "width" => value, super::NoteImageNote::default_width(),
+            frame(frame): types::NoteImageNoteFrame = "frame" => value, super::NoteImageNote::default_frame(),
+            sizes(sizes): Vec<types::Pixels> = "sizes" => value, super::NoteImageNote::default_sizes(),
             crop(crop): types::Crop = "crop" => some, None,
             text(text): String = "text" => some, None,
             size(size): i64 = "size" => some, None,
@@ -682,6 +756,15 @@ pub mod builders {
         fixed {
             kind: types::NoteImageNoteKind {},
         }
+    }
+    ::honig::typestate_builder! {
+        NoteImageNoteFrame => super::NoteImageNoteFrame;
+        required {}
+        optional {
+            color(color): String = "color" => some, None,
+            width(width): types::Pixels = "width" => some, None,
+        }
+        fixed {}
     }
     ::honig::typestate_builder! {
         CropVariant1Variant2 => super::CropVariant1Variant2;
