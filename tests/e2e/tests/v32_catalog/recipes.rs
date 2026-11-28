@@ -126,7 +126,7 @@ async fn the_web_app_and_its_api_share_one_port() {
     assert_eq!(products.headers()["content-type"], "application/json");
     let unknown = get(web_app(), "/v1/nothing-here", None).await;
     assert_eq!(unknown.status(), 404, "an unknown API path is the API's 404, not the app");
-    assert!(text(unknown).await.contains("\"code\":404"));
+    assert!(text(unknown).await.starts_with("{\"message\":"));
     let script = get(web_app(), "/assets/app.js", None).await;
     assert_eq!(text(script).await, "console.log(\"shop\");\n");
     let deep_link = get(web_app(), "/products/7", None).await;
@@ -148,7 +148,7 @@ async fn errors_of_outer_layers_go_out_in_the_error_schema() {
     let full = get(guarded(0), "/v1/products", None).await;
     assert_eq!(full.status(), 503);
     let body = text(full).await;
-    assert!(body.contains("\"code\":503") && body.contains("overloaded"), "{body}");
+    assert!(body.starts_with("{\"message\":") && body.contains("overloaded"), "{body}");
 }
 
 #[tokio::test]
@@ -159,7 +159,7 @@ async fn the_full_stack_runs_in_order() {
     assert_eq!(ann.headers()["x-next"], "ann");
     let mallory = get(full_stack(), "/v1/products", Some("mallory")).await;
     assert_eq!(mallory.status(), 403, "the filter sees who sent the request");
-    assert!(text(mallory).await.contains("\"code\":403"));
+    assert!(text(mallory).await.starts_with("{\"message\":"));
 }
 
 // ANCHOR: storage

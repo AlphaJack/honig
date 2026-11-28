@@ -9,7 +9,7 @@ publish = false
 
 [dependencies]
 honig = { path = "../../honig", version = "=0.0.3", features = ["client", "server", "reqwest", "axum", "regress", "xml", "simd"] }
-clap = { version = "4", features = ["derive"] }
+clap = { version = "4", features = ["derive", "env"] }
 axum = { version = "0.8", default-features = false, features = ["http1", "tokio"] }
 reqwest = { version = "0.13", default-features = false, features = ["rustls"] }
 serde = { version = "1", features = ["derive"] }

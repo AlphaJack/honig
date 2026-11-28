@@ -93,7 +93,7 @@ goes through `error_response` of your `Api`. honig fills an error body only wher
 - A text body: the detail and nothing else.
 
 Where every error body of the description is one of these, or there is none, `error_response` has a default and you
-write nothing: refusals go out as RFC 9457 `problem+json`. Any other error body, such as `{code, message}`, names
+write nothing: refusals go out as RFC 9457 `problem+json`. Any other error body, such as `{message}`, names
 fields that only your API defines. Your `Api` writes `error_response` to fill them, and the crate does not compile
 without it:
 

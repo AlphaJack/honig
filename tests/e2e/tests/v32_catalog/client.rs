@@ -207,7 +207,7 @@ async fn into_result_gives_the_success_and_errs_with_the_rest() -> Result<(), Bo
     // ANCHOR: into-ok
     gone.delete_product(ops::delete_product::Params::new(7)).await?.into_result()?;
     // ANCHOR_END: into-ok
-    let missing = catalog(|_| std::future::ready(json(404, &serde_json::json!({"code": 404, "message": "gone"}))));
+    let missing = catalog(|_| std::future::ready(json(404, &serde_json::json!({"message": "gone"}))));
     let err = missing.delete_product(ops::delete_product::Params::new(7)).await?.into_result().unwrap_err();
     assert_matches!(*err, ops::delete_product::Response::NotFound(_));
     assert_eq!(err.to_string(), "status 404 (NotFound)");
