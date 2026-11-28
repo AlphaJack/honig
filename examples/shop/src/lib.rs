@@ -107,8 +107,22 @@ impl api::Api for Catalog {
             let error = types::Error::new("only staff members can add products".to_owned());
             return Ok(ops::create_product::Response::Forbidden(error));
         }
-        self.products()?.push(Some(params.body.clone()));
-        Ok(ops::create_product::Response::Created(params.body))
+        let mut products = self.products()?;
+        let id = i64::try_from(products.len()).unwrap_or(i64::MAX);
+        let product = match params.body {
+            types::ProductRequest::Physical(p) => types::Product::Physical(types::Physical {
+                id,
+                kind: p.kind,
+                name: p.name,
+                fragile: p.fragile,
+                sku: p.sku,
+            }),
+            types::ProductRequest::Digital(d) => {
+                types::Product::Digital(types::Digital { id, kind: d.kind, name: d.name, downloads: d.downloads })
+            }
+        };
+        products.push(Some(product.clone()));
+        Ok(ops::create_product::Response::Created(product))
     }
 
     async fn get_product(
