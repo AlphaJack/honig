@@ -56,7 +56,7 @@ A layer that does not call `read_body` runs before the body is consumed. So a re
 
 ## Scopes and roles
 
-A scheme with scopes or roles has an enum of its own: `server::PatScope` for a scheme `pat`. Its `verify_` method returns `api::Granted { value, scopes }`, the scopes that the credential grants. The server checks them against the operation's requirement and answers `403` with `WWW-Authenticate: Bearer error="insufficient_scope"` when one is missing. One enum per scheme keeps a token of one scheme from granting a scope of another. The catalog's API key grants no scopes, so this example is a shop whose orders need a token with `orders:read` or `orders:write`:
+A scheme with scopes or roles has an enum of its own: `server::PatScope` for a scheme `pat`. Its `verify_` method returns `api::Granted { value, scopes }`, the scopes that the credential grants. The server checks them against the operation's requirement and answers `403` when one is missing: `WWW-Authenticate: Bearer error="insufficient_scope", scope="orders:write"` names the scopes that the operation requires, and the message names the missing ones. One enum per scheme keeps a token of one scheme from granting a scope of another. The catalog's API key grants no scopes, so this example is a shop whose orders need a token with `orders:read` or `orders:write`:
 
 ```yaml
 {{#include ../../../tests/fixtures/v32/scopes.yaml:scopes}}
