@@ -128,6 +128,10 @@ pub(crate) fn put_slot<T>(slot: &std::sync::Mutex<Option<T>>, value: T) {
     }
 }
 
+/// The most that collecting a body reserves up front for the length that its source states. A peer that states a
+/// larger one gets a buffer that grows as the bytes arrive.
+const RESERVE_LIMIT: usize = 64 << 20;
+
 impl ByteStream {
     /// Creates a body fed from `source`.
     #[doc(hidden)]
@@ -186,12 +190,26 @@ impl ByteStream {
     ///
     /// # Errors
     /// A chunk that failed: the connection broke off or the body went past the `max_body_bytes` of the server.
-    pub async fn collect(mut self) -> Result<Vec<u8>, ClientError> {
-        let mut out = vec![];
-        while let Some(chunk) = futures_util::StreamExt::next(&mut self).await {
+    pub async fn collect(self) -> Result<Vec<u8>, ClientError> {
+        self.collect_bytes().await.map(Vec::from)
+    }
+
+    /// Returns every byte in one buffer. One chunk is returned as it is. More are copied once into a buffer that is
+    /// reserved for the length when the source knows it, up to [`RESERVE_LIMIT`].
+    pub(crate) async fn collect_bytes(mut self) -> Result<bytes::Bytes, ClientError> {
+        use futures_util::StreamExt as _;
+        let size = self.size().and_then(|s| usize::try_from(s).ok());
+        let Some(first) = self.next().await.transpose()? else { return Ok(bytes::Bytes::new()) };
+        let Some(second) = self.next().await.transpose()? else { return Ok(first) };
+        let both = first.len() + second.len();
+        let mut out = Vec::with_capacity(size.map_or(both, |s| s.min(RESERVE_LIMIT)).max(both));
+        out.extend_from_slice(&first);
+        out.extend_from_slice(&second);
+        drop((first, second));
+        while let Some(chunk) = self.next().await {
             out.extend_from_slice(&chunk?);
         }
-        Ok(out)
+        Ok(out.into())
     }
 }
 
@@ -582,8 +600,13 @@ impl Body {
         if !self.stream.is_some() {
             return Ok(self.bytes);
         }
-        let mut out = Vec::from(self.bytes);
-        out.extend(self.stream.collect().await?);
+        if self.bytes.is_empty() {
+            return self.stream.collect_bytes().await;
+        }
+        let rest = self.stream.collect_bytes().await?;
+        let mut out = Vec::with_capacity(self.bytes.len() + rest.len());
+        out.extend_from_slice(&self.bytes);
+        out.extend_from_slice(&rest);
         Ok(out.into())
     }
 }

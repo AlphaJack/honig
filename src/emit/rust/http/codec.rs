@@ -258,6 +258,8 @@ pub(crate) fn decode_body(space: &Space<'_>, c: &Content, d: &Decode) -> (TokenS
             };
             let typed = match (&d.stream, d.held) {
                 (Some(stream), Held::OwnedCow) => quote!(::honig::Blob::received(#body, &#stream)),
+                // The collected `Bytes` become the blob as they are.
+                (_, Held::Moved) => quote!(::honig::Blob::from(#body)),
                 _ => quote!(::honig::Blob::from(#bytes)),
             };
             // A range (`image/*`) says less than the `Content-Type` that came: the blob keeps that.

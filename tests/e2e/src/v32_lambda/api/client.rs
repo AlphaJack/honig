@@ -109,7 +109,7 @@ impl<T: ::honig::Transport> Client<T> {
                     &body,
                     &["application/octet-stream"],
                 )?;
-                Ok(ops::put_blob::Response::Ok(::honig::Blob::from(Vec::from(body))))
+                Ok(ops::put_blob::Response::Ok(::honig::Blob::from(body)))
             }
         } else {
             Err(::honig::ClientError::UnexpectedStatus {
