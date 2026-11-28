@@ -1,7 +1,8 @@
 //! the honig dependency in the target crate's `Cargo.toml`.
 //!
 //! Generated code needs honig at exactly the version of the generator (`=x.y.z`) with the features that it
-//! calls. The dependency is yours: `generate` and `check` stop and print the `cargo add` line that fixes it.
+//! calls. The dependency is yours: `generate` stops and prints the `cargo add` line that fixes it. A crate without
+//! the dependency gets its modules and that line as a hint. `generate --check` stops for it too.
 
 use crate::emit::rust::RUNTIME_VERSION;
 use crate::error::Error;
