@@ -55,10 +55,10 @@ Notify:
     - {if: {properties: {type: {const: sms}}},   then: {required: [phone], properties: {phone: {type: string}}}}
 ```
 
-This gives `enum Notify { Email(NotifyEmail), Sms(NotifySms), Otherwise(NotifyOtherwise) }`. `NotifyEmail` has `email: String` as required.
+This gives `enum Notify { Email(NotifyEmail), Sms(NotifySms), Else(NotifyElse) }`. `NotifyEmail` has `email: String` as required.
 
-- `Otherwise` contains every other value. Its type has the base properties.
-- A lone `if`/`then`/`else` becomes the same kind of enum. `else` is the `Otherwise` variant. `else: false` leaves none.
+- `Else` contains every value that no `if` tests. Its type has the base properties.
+- A lone `if`/`then`/`else` becomes the same kind of enum. Its `else` is the `Else` variant. `else: false` leaves none.
 - An `if` on `enum: [email, mail]` gives one variant for both values: `EmailOrMail`.
 - Conditions that cannot be typed, such as ranges or `not`, are still enforced. The server checks them on every request.
 
