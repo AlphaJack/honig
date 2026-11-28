@@ -102,7 +102,7 @@ pub mod list_products {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `ApiKey`, with what each `verify_` method found.
         ApiKey(A::ApiKey),
@@ -200,7 +200,7 @@ pub mod create_product {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `ApiKey`, with what each `verify_` method found.
         ApiKey(A::ApiKey),
@@ -294,7 +294,7 @@ pub mod export_products {
         Json(Vec<types::Product>),
         Csv(String),
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `ApiKey`, with what each `verify_` method found.
         ApiKey(A::ApiKey),
@@ -350,7 +350,7 @@ pub mod stream_product_events {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `ApiKey`, with what each `verify_` method found.
         ApiKey(A::ApiKey),
@@ -429,7 +429,7 @@ pub mod get_product {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `ApiKey`, with what each `verify_` method found.
         ApiKey(A::ApiKey),
@@ -516,7 +516,7 @@ pub mod delete_product {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `ApiKey`, with what each `verify_` method found.
         ApiKey(A::ApiKey),
@@ -589,7 +589,7 @@ pub mod get_product_photo {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `ApiKey`, with what each `verify_` method found.
         ApiKey(A::ApiKey),
@@ -663,7 +663,7 @@ pub mod put_product_photo {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `ApiKey`, with what each `verify_` method found.
         ApiKey(A::ApiKey),
@@ -718,7 +718,7 @@ pub mod create_product_product_created_post {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Webhooks> {
         /// The alternative of `ApiKey`, with what each `verify_` method found.
         ApiKey(A::ApiKey),

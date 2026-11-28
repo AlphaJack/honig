@@ -222,8 +222,8 @@ pub struct Context<'a, C = (), Id = ()> {
     pub operation: Id,
     /// The request's wide event: add fields with [`RequestEvent::set`].
     pub event: &'a RequestEvent<Id>,
-    /// Who is calling: the generated `Security` of the operation, with what the `verify_` method of each scheme of
-    /// the alternative that passed found.
+    /// Who sent the request: the generated `Security` of the operation, with what the `verify_` method of each scheme
+    /// of the alternative that passed found.
     pub security: C,
 }
 
@@ -234,7 +234,7 @@ impl<'a, Id> Context<'a, (), Id> {
         Self { request: req, auth: satisfied.auth, operation, event, security: () }
     }
 
-    /// Returns the context with who is calling.
+    /// Returns the context with who sent the request.
     #[must_use]
     pub fn with_security<C>(self, security: C) -> Context<'a, C, Id> {
         let Self { request, auth, operation, event, security: () } = self;

@@ -8,7 +8,7 @@ pub trait Api: Send + Sync + Sized + 'static {
     fn error_response(rejection: ::honig::Rejection<Operation>) -> ::honig::Response {
         rejection.response()
     }
-    /// Checks a credential of `pat`: who is calling, or `None` when it is not valid (401).
+    /// Checks a credential of `pat`: who sent the request, or `None` when it is not valid (401).
     fn verify_pat(
         &self,
         credential: &str,

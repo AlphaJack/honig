@@ -18,7 +18,7 @@ pub trait Api: Send + Sync + Sized + 'static {
     type OpenIdConnect: Clone + Send + Sync + 'static;
     /// Answers a request that the server refuses itself (no route, bad input, missing credentials, a handler `Err`) in the error body of the description. No standard defines its fields, so this maps them: `rejection.json(&body)` sends `body` with the status of the reason as `application/json`, and `rejection.message()` is the detail. `rejection.problem()` goes out as `application/problem+json` instead.
     fn error_response(rejection: ::honig::Rejection<Operation>) -> ::honig::Response;
-    /// Checks a credential of `bearerAuth`: who is calling, or `None` when it is not valid (401).
+    /// Checks a credential of `bearerAuth`: who sent the request, or `None` when it is not valid (401).
     fn verify_bearer_auth(
         &self,
         credential: &str,
@@ -26,13 +26,13 @@ pub trait Api: Send + Sync + Sized + 'static {
     ) -> impl Future<
         Output = Result<Option<Self::BearerAuth>, ::honig::ApiError>,
     > + Send;
-    /// Checks a credential of `basicAuth`: who is calling, or `None` when it is not valid (401).
+    /// Checks a credential of `basicAuth`: who sent the request, or `None` when it is not valid (401).
     fn verify_basic_auth(
         &self,
         login: ::honig::Basic<'_>,
         request: &::honig::Request,
     ) -> impl Future<Output = Result<Option<Self::BasicAuth>, ::honig::ApiError>> + Send;
-    /// Checks a credential of `apiKeyHeader`: who is calling, or `None` when it is not valid (401).
+    /// Checks a credential of `apiKeyHeader`: who sent the request, or `None` when it is not valid (401).
     fn verify_api_key_header(
         &self,
         credential: &str,
@@ -40,7 +40,7 @@ pub trait Api: Send + Sync + Sized + 'static {
     ) -> impl Future<
         Output = Result<Option<Self::ApiKeyHeader>, ::honig::ApiError>,
     > + Send;
-    /// Checks a credential of `apiKeyQuery`: who is calling, or `None` when it is not valid (401).
+    /// Checks a credential of `apiKeyQuery`: who sent the request, or `None` when it is not valid (401).
     fn verify_api_key_query(
         &self,
         credential: &str,
@@ -48,7 +48,7 @@ pub trait Api: Send + Sync + Sized + 'static {
     ) -> impl Future<
         Output = Result<Option<Self::ApiKeyQuery>, ::honig::ApiError>,
     > + Send;
-    /// Checks a credential of `apiKeyCookie`: who is calling, or `None` when it is not valid (401).
+    /// Checks a credential of `apiKeyCookie`: who sent the request, or `None` when it is not valid (401).
     fn verify_api_key_cookie(
         &self,
         credential: &str,
@@ -56,7 +56,7 @@ pub trait Api: Send + Sync + Sized + 'static {
     ) -> impl Future<
         Output = Result<Option<Self::ApiKeyCookie>, ::honig::ApiError>,
     > + Send;
-    /// Checks a credential of `oAuth2`: who is calling, or `None` when it is not valid (401).
+    /// Checks a credential of `oAuth2`: who sent the request, or `None` when it is not valid (401).
     fn verify_o_auth2(
         &self,
         credential: &str,
@@ -67,7 +67,7 @@ pub trait Api: Send + Sync + Sized + 'static {
             ::honig::ApiError,
         >,
     > + Send;
-    /// Checks a credential of `openIdConnect`: who is calling, or `None` when it is not valid (401).
+    /// Checks a credential of `openIdConnect`: who sent the request, or `None` when it is not valid (401).
     fn verify_open_id_connect(
         &self,
         credential: &str,

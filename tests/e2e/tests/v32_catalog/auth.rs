@@ -1,4 +1,4 @@
-//! Who is calling. `verify_api_key` finds them from the key or from what outer layers attached.
+//! Who sent the request. `verify_api_key` finds them from the key or from what outer layers attached.
 
 use std::net::SocketAddr;
 
@@ -13,7 +13,7 @@ struct Principal(&'static str);
 pub(super) struct Server(pub(super) fn(&str, &api::Request) -> Option<String>);
 
 // ANCHOR: request-context
-/// Who is calling: the layer in front of the router and the client's address.
+/// Who sent the request: the layer in front of the router and the client's address.
 fn find_caller(_: &str, req: &api::Request) -> Option<String> {
     let principal = req.extensions().get::<Principal>()?;
     let peer = honig::peer(req.extensions())?;
@@ -27,7 +27,7 @@ impl api::Api for Server {
     }
     type ApiKey = String;
 
-    /// Who is calling, as the function of the server finds it. 401 for nobody.
+    /// Who sent the request, as the function of the server finds it. 401 for nobody.
     async fn verify_api_key(&self, key: &str, req: &api::Request) -> Result<Option<String>, api::ApiError> {
         Ok((self.0)(key, req))
     }

@@ -92,7 +92,7 @@ pub mod submit_form {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// No credentials: the `security` of the operation allows an anonymous request.
         Anonymous,
@@ -220,7 +220,7 @@ pub mod put_blob {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// No credentials: the `security` of the operation allows an anonymous request.
         Anonymous,
@@ -405,7 +405,7 @@ pub mod list_products {
         Json(Vec<types::Product>),
         Jsonl(::honig::Items<types::Product>),
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// No credentials: the `security` of the operation allows an anonymous request.
         Anonymous,
@@ -511,7 +511,7 @@ pub mod create_product {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `Oauth`, with what each `verify_` method found.
         Oauth(A::Oauth),
@@ -608,7 +608,7 @@ pub mod search_products {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// No credentials: the `security` of the operation allows an anonymous request.
         Anonymous,
@@ -679,7 +679,7 @@ pub mod copy_products {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// No credentials: the `security` of the operation allows an anonymous request.
         Anonymous,
@@ -747,7 +747,7 @@ pub mod get_product {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// No credentials: the `security` of the operation allows an anonymous request.
         Anonymous,
@@ -807,7 +807,7 @@ pub mod put_product {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// No credentials: the `security` of the operation allows an anonymous request.
         Anonymous,
@@ -867,7 +867,7 @@ pub mod delete_product {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// No credentials: the `security` of the operation allows an anonymous request.
         Anonymous,
@@ -927,7 +927,7 @@ pub mod options_product {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// No credentials: the `security` of the operation allows an anonymous request.
         Anonymous,
@@ -987,7 +987,7 @@ pub mod head_product {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// No credentials: the `security` of the operation allows an anonymous request.
         Anonymous,
@@ -1047,7 +1047,7 @@ pub mod patch_product {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// No credentials: the `security` of the operation allows an anonymous request.
         Anonymous,
@@ -1107,7 +1107,7 @@ pub mod trace_product {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// No credentials: the `security` of the operation allows an anonymous request.
         Anonymous,
@@ -1179,7 +1179,7 @@ pub mod search {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// No credentials: the `security` of the operation allows an anonymous request.
         Anonymous,
@@ -1242,7 +1242,7 @@ pub mod new_product_post {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Webhooks> {
         /// No credentials: the `security` of the operation allows an anonymous request.
         Anonymous,
@@ -1305,7 +1305,7 @@ pub mod create_product_on_adopt_post {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Webhooks> {
         /// No credentials: the `security` of the operation allows an anonymous request.
         Anonymous,
@@ -1354,7 +1354,7 @@ pub mod create_product_shared_post {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Webhooks> {
         /// No credentials: the `security` of the operation allows an anonymous request.
         Anonymous,

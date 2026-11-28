@@ -434,7 +434,7 @@ pub mod create_product {
     }
     pub type BadRequestBody = super::responses::BadRequest;
     pub type ForbiddenBody = super::responses::Forbidden;
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `BearerAuth`, with what each `verify_` method found.
         BearerAuth(A::BearerAuth),
@@ -972,7 +972,7 @@ pub mod update_product {
     pub type BadRequestBody = super::responses::BadRequest;
     pub type ForbiddenBody = super::responses::Forbidden;
     pub type NotFoundBody = super::responses::NotFound;
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `BearerAuth`, with what each `verify_` method found.
         BearerAuth(A::BearerAuth),
@@ -1081,7 +1081,7 @@ pub mod delete_product {
         }
     }
     pub type NotFoundBody = super::responses::NotFound;
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `BearerAuth`, with what each `verify_` method found.
         BearerAuth(A::BearerAuth),
@@ -1202,7 +1202,7 @@ pub mod copy_product {
         }
     }
     pub type NotFoundBody = super::responses::NotFound;
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `BearerAuth`, with what each `verify_` method found.
         BearerAuth(A::BearerAuth),
@@ -1409,7 +1409,7 @@ pub mod upload_image {
     pub type BadRequestBody = super::responses::BadRequest;
     pub type ForbiddenBody = super::responses::Forbidden;
     pub type NotFoundBody = super::responses::NotFound;
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `BearerAuth`, with what each `verify_` method found.
         BearerAuth(A::BearerAuth),
@@ -1651,7 +1651,7 @@ pub mod upload_photos {
     }
     pub type BadRequestBody = super::responses::BadRequest;
     pub type NotFoundBody = super::responses::NotFound;
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `BearerAuth`, with what each `verify_` method found.
         BearerAuth(A::BearerAuth),
@@ -1737,7 +1737,7 @@ pub mod create_item {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `BearerAuth`, with what each `verify_` method found.
         BearerAuth(A::BearerAuth),
@@ -2241,7 +2241,7 @@ pub mod get_me {
     }
     pub type UnauthorizedBody = super::responses::Unauthorized;
     pub type ForbiddenBody = super::responses::Forbidden;
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `BasicAuth`, with what each `verify_` method found.
         BasicAuth(A::BasicAuth),

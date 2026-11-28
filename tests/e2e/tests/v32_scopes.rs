@@ -119,7 +119,7 @@ fn scopes_roundtrip_their_names() {
     assert_eq!(PatScope::from_name("orders:admin"), None);
 }
 
-/// Names who is calling: the text of the token, or nobody for `Bearer anon`.
+/// Says who sent the request: the text of the token, or nobody for `Bearer anon`.
 struct Named;
 
 impl api::Api for Named {
@@ -139,7 +139,7 @@ impl api::Api for Named {
         _: ops::list_orders::Params,
         ctx: &api::Context<'_, ops::list_orders::Security<Self>>,
     ) -> impl Future<Output = Result<ops::list_orders::Response, api::ApiError>> + Send {
-        // A secured operation sees who is calling and not an `Option`.
+        // A secured operation sees who sent the request and not an `Option`.
         let ops::list_orders::Security::Pat(who) = &ctx.security;
         assert!(!who.is_empty());
         ok(ops::list_orders::Response::NoContent)

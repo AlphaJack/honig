@@ -91,7 +91,7 @@ fn full_stack() -> axum::Router {
         // Inside the server, after routing and the check of the credentials that the description asks for. Their
         // errors go out in the error schema.
         .operation_layer(tower::timeout::TimeoutLayer::new(Duration::from_secs(10)))
-        // The alternative that passed is in the extensions already: this layer sees who is calling.
+        // The alternative that passed is in the extensions already: this layer sees who sent the request.
         .operation_layer(tower::filter::AsyncFilterLayer::new(|req: api::Request| {
             let passed = req.extensions().get::<api::Passed<api::server::SchemeValue<super::auth::Server>>>();
             let mut keys = passed.into_iter().flat_map(|p| p.values.iter().cloned().filter_map(|v| v.api_key()));
@@ -158,7 +158,7 @@ async fn the_full_stack_runs_in_order() {
     assert_eq!(ann.headers()["access-control-allow-origin"], "*");
     assert_eq!(ann.headers()["x-next"], "ann");
     let mallory = get(full_stack(), "/v1/products", Some("mallory")).await;
-    assert_eq!(mallory.status(), 403, "the filter sees who is calling");
+    assert_eq!(mallory.status(), 403, "the filter sees who sent the request");
     assert!(text(mallory).await.contains("\"code\":403"));
 }
 

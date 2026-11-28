@@ -15,14 +15,14 @@ use e2e::v32_security::api::{
 use honig::Operation as _;
 use proptest::prelude::*;
 
-/// What a handler saw of who is calling.
+/// What a handler saw of who sent the request.
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Seen {
     /// An operation without `security`: no principal at all.
     Public,
     /// An operation with an empty alternative and no credential that passed.
     Anonymous,
-    /// Who is calling: the scheme and the subject.
+    /// Who sent the request: the scheme and the subject.
     Principal(String),
 }
 

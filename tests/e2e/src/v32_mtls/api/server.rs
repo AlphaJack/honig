@@ -14,24 +14,24 @@ pub trait Api: Send + Sync + Sized + 'static {
     fn error_response(rejection: ::honig::Rejection<Operation>) -> ::honig::Response {
         rejection.response()
     }
-    /// Checks a credential of `cert`: who is calling, or `None` when it is not valid (401).
+    /// Checks a credential of `cert`: who sent the request, or `None` when it is not valid (401).
     fn verify_cert(
         &self,
         request: &::honig::Request,
     ) -> impl Future<Output = Result<Option<Self::Cert>, ::honig::ApiError>> + Send;
-    /// Checks a credential of `bearer`: who is calling, or `None` when it is not valid (401).
+    /// Checks a credential of `bearer`: who sent the request, or `None` when it is not valid (401).
     fn verify_bearer(
         &self,
         credential: &str,
         request: &::honig::Request,
     ) -> impl Future<Output = Result<Option<Self::Bearer>, ::honig::ApiError>> + Send;
-    /// Checks a credential of `api_key`: who is calling, or `None` when it is not valid (401).
+    /// Checks a credential of `api_key`: who sent the request, or `None` when it is not valid (401).
     fn verify_api_key(
         &self,
         credential: &str,
         request: &::honig::Request,
     ) -> impl Future<Output = Result<Option<Self::ApiKey>, ::honig::ApiError>> + Send;
-    /// Checks a credential of `basic-auth`: who is calling, or `None` when it is not valid (401).
+    /// Checks a credential of `basic-auth`: who sent the request, or `None` when it is not valid (401).
     fn verify_basic_auth(
         &self,
         login: ::honig::Basic<'_>,

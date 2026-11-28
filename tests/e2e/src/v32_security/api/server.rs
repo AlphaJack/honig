@@ -22,13 +22,13 @@ pub trait Api: Send + Sync + Sized + 'static {
     fn error_response(rejection: ::honig::Rejection<Operation>) -> ::honig::Response {
         rejection.response()
     }
-    /// Checks a credential of `bearer`: who is calling, or `None` when it is not valid (401).
+    /// Checks a credential of `bearer`: who sent the request, or `None` when it is not valid (401).
     fn verify_bearer(
         &self,
         credential: &str,
         request: &::honig::Request,
     ) -> impl Future<Output = Result<Option<Self::Bearer>, ::honig::ApiError>> + Send;
-    /// Checks a credential of `oauth`: who is calling, or `None` when it is not valid (401).
+    /// Checks a credential of `oauth`: who sent the request, or `None` when it is not valid (401).
     fn verify_oauth(
         &self,
         credential: &str,
@@ -39,7 +39,7 @@ pub trait Api: Send + Sync + Sized + 'static {
             ::honig::ApiError,
         >,
     > + Send;
-    /// Checks a credential of `oidc`: who is calling, or `None` when it is not valid (401).
+    /// Checks a credential of `oidc`: who sent the request, or `None` when it is not valid (401).
     fn verify_oidc(
         &self,
         credential: &str,
@@ -50,31 +50,31 @@ pub trait Api: Send + Sync + Sized + 'static {
             ::honig::ApiError,
         >,
     > + Send;
-    /// Checks a credential of `key`: who is calling, or `None` when it is not valid (401).
+    /// Checks a credential of `key`: who sent the request, or `None` when it is not valid (401).
     fn verify_key(
         &self,
         credential: &str,
         request: &::honig::Request,
     ) -> impl Future<Output = Result<Option<Self::Key>, ::honig::ApiError>> + Send;
-    /// Checks a credential of `query_key`: who is calling, or `None` when it is not valid (401).
+    /// Checks a credential of `query_key`: who sent the request, or `None` when it is not valid (401).
     fn verify_query_key(
         &self,
         credential: &str,
         request: &::honig::Request,
     ) -> impl Future<Output = Result<Option<Self::QueryKey>, ::honig::ApiError>> + Send;
-    /// Checks a credential of `session`: who is calling, or `None` when it is not valid (401).
+    /// Checks a credential of `session`: who sent the request, or `None` when it is not valid (401).
     fn verify_session(
         &self,
         credential: &str,
         request: &::honig::Request,
     ) -> impl Future<Output = Result<Option<Self::Session>, ::honig::ApiError>> + Send;
-    /// Checks a credential of `login`: who is calling, or `None` when it is not valid (401).
+    /// Checks a credential of `login`: who sent the request, or `None` when it is not valid (401).
     fn verify_login(
         &self,
         login: ::honig::Basic<'_>,
         request: &::honig::Request,
     ) -> impl Future<Output = Result<Option<Self::Login>, ::honig::ApiError>> + Send;
-    /// Checks a credential of `cert`: who is calling, or `None` when it is not valid (401).
+    /// Checks a credential of `cert`: who sent the request, or `None` when it is not valid (401).
     fn verify_cert(
         &self,
         request: &::honig::Request,

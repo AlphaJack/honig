@@ -118,7 +118,7 @@ pub mod list_orders {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `Bearer`, with what each `verify_` method found.
         Bearer(A::Bearer),
@@ -226,7 +226,7 @@ pub mod create_order {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `Bearer`, with what each `verify_` method found.
         Bearer(A::Bearer),
@@ -342,7 +342,7 @@ pub mod get_order {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `Bearer`, with what each `verify_` method found.
         Bearer(A::Bearer),
@@ -423,7 +423,7 @@ pub mod upload_document {
             }
         }
     }
-    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    /// Who sent the request: the alternative of the operation's `security` that the request passed.
     pub enum Security<A: super::super::server::Api> {
         /// The alternative of `Bearer`, with what each `verify_` method found.
         Bearer(A::Bearer),

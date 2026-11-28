@@ -59,7 +59,7 @@ impl<V> Verified<V> {
 /// the generated scope enum of the scheme.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Granted<V, S> {
-    /// Who is calling.
+    /// Who sent the request.
     pub value: V,
     /// The scopes or roles that the credential grants.
     pub scopes: Vec<S>,
