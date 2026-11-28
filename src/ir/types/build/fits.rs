@@ -135,12 +135,8 @@ fn shape(defs: &[TypeDef], t: &Ty, v: &Value, at: &str, hops: usize) -> Fit {
 /// Returns whether `v` is an integer from `min` to `max`. A number with a zero fractional part is one.
 fn integer(v: &Value, at: &str, min: i128, max: i128) -> Fit {
     let Value::Number(n) = v else { return refused(v, at, "is not an integer") };
-    #[expect(clippy::cast_possible_truncation, reason = "a float with a zero fractional part within the range of i64")]
-    let whole = n
-        .as_i64()
-        .map(i128::from)
-        .or_else(|| n.as_u64().map(i128::from))
-        .or_else(|| n.as_f64().filter(|f| f.fract() == 0.0 && f.abs() < 9e18).map(|f| f as i128));
+    #[expect(clippy::cast_possible_truncation, reason = "the cast saturates and the range refuses what it cut")]
+    let whole = n.as_i128().or_else(|| n.as_f64().filter(|f| f.fract() == 0.0).map(|f| f as i128));
     match whole {
         Some(i) if (min..=max).contains(&i) => Fit::Yes,
         Some(_) => refused(v, at, &format!("is not from {min} to {max}")),
