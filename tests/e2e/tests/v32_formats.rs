@@ -226,6 +226,22 @@ fn a_union_checks_its_branch_and_refuses_a_value_no_branch_takes() {
     assert!(event(json!({"charge": {"neither": 1}})).is_err());
 }
 
+/// Every decimal128 number is one type, whatever schema it is in: `Event.sum` goes into `Invoice.total` as it is. It
+/// refuses 39 significant digits however it is built.
+#[test]
+fn every_decimal128_number_is_one_type() {
+    let digits34: api::Decimal128 = "1234567890123456789012345678901234".parse().expect("34 digits fit");
+    let e: types::Event =
+        serde_json::from_str(&format!(r#"{{"id": "{ID}", "at": "{AT}", "sum": {digits34}}}"#)).unwrap();
+    let invoice = types::Invoice { total: e.sum };
+    assert_eq!(invoice.total, Some(digits34));
+    let digits39 = "123456789012345678901234567890123456789";
+    assert!(digits39.parse::<api::Decimal128>().is_err());
+    assert!(api::Decimal128::try_from(digits39.parse::<api::Decimal>().unwrap()).is_err());
+    let decoded = serde_json::from_str::<types::Invoice>(&format!(r#"{{"total": {digits39}}}"#));
+    assert!(decoded.is_err(), "{decoded:?}");
+}
+
 /// `decimal128`, as a number and as a string, represents what IEEE 754 decimal128 represents: at most 34 significant
 /// digits within its exponent range. Past them a value does not decode.
 #[test]

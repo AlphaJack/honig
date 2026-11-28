@@ -270,7 +270,7 @@ impl Base {
         match &c.base {
             Ty::String => Self::Str,
             Ty::F32 | Ty::F64 => Self::Float,
-            Ty::Decimal => Self::Decimal,
+            Ty::Decimal | Ty::Decimal128 => Self::Decimal,
             Ty::I8 | Ty::I16 | Ty::I32 | Ty::I64 | Ty::U8 | Ty::U16 | Ty::U32 | Ty::U64 => Self::Int,
             Ty::Bool
             | Ty::Bytes
@@ -836,6 +836,7 @@ fn holds_checked(space: &Space<'_>, t: &Ty) -> bool {
         | Ty::F32
         | Ty::F64
         | Ty::Decimal
+        | Ty::Decimal128
         | Ty::String
         | Ty::Bytes
         | Ty::Binary
@@ -1093,7 +1094,8 @@ fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def
             (checks, quote!(Copy, PartialOrd,), None)
         }
         Base::Decimal => {
-            let checks = super::checks::decimal_checks(&c.constraints, &quote!(&value), &path);
+            let limits = c.constraints.decimal128 && c.base == Ty::Decimal;
+            let checks = super::checks::decimal_checks(&c.constraints, &quote!(&value), &path, limits);
             (checks, quote!(Eq, Hash,), None)
         }
         Base::Int => {
@@ -1126,7 +1128,7 @@ fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def
     let inner = if literal_str.is_some() { quote!(::std::borrow::Cow<'static, str>) } else { base.clone() };
     let shared = match kind {
         Base::Str => quote!(#literal_str ::honig::checked_str_impls!(#n);),
-        Base::Decimal => quote!(::honig::checked_decimal_impls!(#n);),
+        Base::Decimal => quote!(::honig::checked_decimal_impls!(#n, #base);),
         Base::Int | Base::Float => {
             let literal =
                 (kind == Base::Int).then(|| literal_constructor(&n, &base, &c.base, &c.constraints)).flatten();

@@ -164,6 +164,76 @@ impl<'de> Visitor<'de> for DecimalVisitor {
     }
 }
 
+/// A JSON number that IEEE 754 decimal128 represents exactly (`type: number, format: decimal128`): at most 34
+/// significant digits within its exponent range.
+///
+/// It keeps its digits as written, as [`Decimal`] does. Building one with `parse` or `try_from` and decoding one check
+/// the limits, so every value of it is in range.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+pub struct Decimal128(Decimal);
+
+impl std::ops::Deref for Decimal128 {
+    type Target = Decimal;
+    fn deref(&self) -> &Decimal {
+        &self.0
+    }
+}
+
+impl TryFrom<Decimal> for Decimal128 {
+    type Error = crate::BuildError;
+    fn try_from(d: Decimal) -> Result<Self, crate::BuildError> {
+        match crate::checks::decimal128(d.as_str()) {
+            Ok(()) => Ok(Self(d)),
+            Err(why) => Err(crate::BuildError::value(format!("the number {why}"))),
+        }
+    }
+}
+
+impl FromStr for Decimal128 {
+    type Err = crate::BuildError;
+    fn from_str(s: &str) -> Result<Self, crate::BuildError> {
+        Self::try_from(s.parse::<Decimal>()?)
+    }
+}
+
+impl From<Decimal128> for Decimal {
+    fn from(d: Decimal128) -> Self {
+        d.0
+    }
+}
+
+impl From<i64> for Decimal128 {
+    /// An `i64` has at most 19 digits: decimal128 represents each.
+    fn from(n: i64) -> Self {
+        Self(n.into())
+    }
+}
+
+impl From<u64> for Decimal128 {
+    /// A `u64` has at most 20 digits: decimal128 represents each.
+    fn from(n: u64) -> Self {
+        Self(n.into())
+    }
+}
+
+impl fmt::Display for Decimal128 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.0, f)
+    }
+}
+
+impl Serialize for Decimal128 {
+    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        self.0.serialize(s)
+    }
+}
+
+impl<'de> Deserialize<'de> for Decimal128 {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        Self::try_from(Decimal::deserialize(d)?).map_err(de::Error::custom)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -177,6 +247,20 @@ mod tests {
     }
 
     const WIDE: &str = "12345678901234567.89";
+
+    /// A decimal128 number keeps every digit and refuses one that decimal128 does not represent, however it is built.
+    #[test]
+    fn a_decimal128_holds_to_its_limits() {
+        let at_most = "1234567890123456789012345678901234";
+        let past = "123456789012345678901234567890123456789";
+        let decoded: Decimal128 = serde_json::from_str(at_most).unwrap();
+        assert_eq!((decoded.as_str(), serde_json::to_string(&decoded).unwrap().as_str()), (at_most, at_most));
+        let refused = serde_json::from_str::<Decimal128>(past).unwrap_err().to_string();
+        assert!(refused.contains("39 significant digits") && !refused.contains(past), "{refused}");
+        assert!(past.parse::<Decimal128>().is_err());
+        assert!(Decimal128::try_from(past.parse::<Decimal>().unwrap()).is_err());
+        assert!(at_most.parse::<Decimal128>().is_ok());
+    }
 
     #[test]
     fn every_digit_survives_a_json_body() {

@@ -624,7 +624,7 @@ fn const_default(space: &Space<'_>, p: &Param) -> bool {
         Kind::StrEnum(values) => values.iter().any(|v| d.as_str() == Some(v.wire.as_str())),
         Kind::IntEnum(values) => values.iter().any(|(_, v)| d.as_i64() == Some(*v)),
         // A number default is the tuple of its literal. A string one is built at run time.
-        Kind::Checked(c) => c.base != Ty::String && c.base != Ty::Decimal,
+        Kind::Checked(c) => !matches!(c.base, Ty::String | Ty::Decimal | Ty::Decimal128),
         Kind::Struct(_) | Kind::Alias(_) | Kind::Union(_) | Kind::Newtype(_) | Kind::Const(_) | Kind::Pending => false,
     }
 }

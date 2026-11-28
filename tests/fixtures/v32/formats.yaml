@@ -79,6 +79,11 @@ components:
           type: string
           contentMediaType: application/json
           contentSchema: {type: object, required: [n], properties: {n: {type: integer}}}
+    # A decimal128 number of a second schema: the same `Decimal128` type as `Event.sum`.
+    Invoice:
+      type: object
+      properties:
+        total: {type: number, format: decimal128}
     # `Transfer` is `Card` again: the generator declares it as an alias, and the union's arms of the two share one body.
     # Each branch fixes its tag: a value matches exactly one, as `oneOf` requires.
     Card:

@@ -43,6 +43,7 @@ fn a_decimal_number_keeps_its_digits() {
         &json!({"schemas": {"Price": {"type": "object", "properties": {
             "amount": {"type": "number", "format": "decimal"},
             "total": {"type": "number", "format": "decimal128"},
+            "floor": {"type": "number", "format": "decimal128", "minimum": 0},
             "label": {"type": "string", "format": "decimal"}
         }}}}),
     );
@@ -50,11 +51,11 @@ fn a_decimal_number_keeps_its_digits() {
     assert!(diags.is_empty(), "{diags:#?}");
     let t = types_rs_of("decimal-number-types", &doc);
     assert!(t.contains("#[optional]\n        pub amount: ::honig::Decimal"), "{t}");
-    // `decimal128` keeps its digits too, as a checked type bound to the limits of IEEE 754 decimal128.
-    assert!(
-        t.contains("#[optional]\n        pub total: PriceTotal") && t.contains("::honig::__private::check_decimal128("),
-        "{t}"
-    );
+    // `decimal128` keeps its digits too, as the one type of every decimal128 number.
+    assert!(t.contains("#[optional]\n        pub total: ::honig::Decimal128"), "{t}");
+    assert!(!t.contains("check_decimal128"), "the type holds the limits: {t}");
+    // A bound beside the format is a checked type around it.
+    assert!(t.contains("checked_decimal_impls!(PriceFloor, ::honig::Decimal128)"), "{t}");
     assert!(t.contains("#[optional]\n        pub label: ::honig::DecimalStr"), "{t}");
 }
 

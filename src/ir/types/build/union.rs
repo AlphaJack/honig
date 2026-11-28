@@ -705,7 +705,7 @@ pub(crate) fn kind_name(ty: &Ty) -> &'static str {
     match ty {
         Ty::Bool => "Bool",
         Ty::I8 | Ty::I16 | Ty::I32 | Ty::I64 | Ty::U8 | Ty::U16 | Ty::U32 | Ty::U64 => "Integer",
-        Ty::F32 | Ty::F64 | Ty::Decimal => "Number",
+        Ty::F32 | Ty::F64 | Ty::Decimal | Ty::Decimal128 => "Number",
         Ty::String => "String",
         Ty::Vec(_) | Ty::Array(..) | Ty::Tuple(_) => "Array",
         Ty::Map(_) => "Object",
@@ -957,7 +957,7 @@ impl<'d> Kinds<'d> {
         match ty {
             Ty::Bool => JsonKind::Bool,
             Ty::I8 | Ty::I16 | Ty::I32 | Ty::I64 | Ty::U8 | Ty::U16 | Ty::U32 | Ty::U64 => JsonKind::Integer,
-            Ty::F32 | Ty::F64 | Ty::Decimal => JsonKind::Number,
+            Ty::F32 | Ty::F64 | Ty::Decimal | Ty::Decimal128 => JsonKind::Number,
             Ty::String | Ty::Bytes | Ty::Binary | Ty::Format(_) => JsonKind::String,
             Ty::Any => JsonKind::Any,
             Ty::Unit => JsonKind::Null,
@@ -1050,6 +1050,7 @@ impl Builder<'_> {
             | Ty::F32
             | Ty::F64
             | Ty::Decimal
+            | Ty::Decimal128
             | Ty::String
             | Ty::Bytes
             | Ty::Binary

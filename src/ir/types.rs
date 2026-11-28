@@ -49,8 +49,10 @@ pub(crate) enum Ty {
     F32,
     /// A 64-bit float: any other `number`.
     F64,
-    /// A number with `format: decimal` or `decimal128` that keeps every digit.
+    /// A number with `format: decimal` that keeps every digit.
     Decimal,
+    /// A number with `format: decimal128`: every digit, within the limits of IEEE 754 decimal128.
+    Decimal128,
     /// A string.
     String,
     /// Raw bytes (non-JSON bodies).
@@ -108,6 +110,7 @@ impl Ty {
             | Self::F32
             | Self::F64
             | Self::Decimal
+            | Self::Decimal128
             | Self::String
             | Self::Bytes
             | Self::Binary
@@ -137,6 +140,7 @@ impl Ty {
             | Self::F32
             | Self::F64
             | Self::Decimal
+            | Self::Decimal128
             | Self::String
             | Self::Bytes
             | Self::Binary

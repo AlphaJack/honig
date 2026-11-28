@@ -2070,7 +2070,7 @@ impl TryFrom<::honig::Decimal> for ExactTenth {
             .map_err(::honig::BuildError::value)
     }
 }
-::honig::checked_decimal_impls!(ExactTenth);
+::honig::checked_decimal_impls!(ExactTenth, ::honig::Decimal);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize)]
 #[serde(transparent)]
 pub struct ExactCents(pub(super) ::honig::Decimal);
@@ -2092,7 +2092,7 @@ impl TryFrom<::honig::Decimal> for ExactCents {
             .map_err(::honig::BuildError::value)
     }
 }
-::honig::checked_decimal_impls!(ExactCents);
+::honig::checked_decimal_impls!(ExactCents, ::honig::Decimal);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct DegenerateHuge(pub(super) i64);

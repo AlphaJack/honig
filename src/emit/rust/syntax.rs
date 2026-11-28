@@ -87,6 +87,7 @@ fn ty_with(space: &Space<'_>, t: &Ty, named: &dyn Fn(TypeId) -> TokenStream) -> 
         Ty::F32 => quote!(f32),
         Ty::F64 => quote!(f64),
         Ty::Decimal => quote!(::honig::Decimal),
+        Ty::Decimal128 => quote!(::honig::Decimal128),
         Ty::String => quote!(String),
         Ty::Bytes => quote!(Vec<u8>),
         Ty::Binary => quote!(::honig::Binary),
@@ -295,6 +296,7 @@ pub(crate) fn holds(space: &Space<'_>, t: &Ty) -> Option<TokenStream> {
         | Ty::F32
         | Ty::F64
         | Ty::Decimal
+        | Ty::Decimal128
         | Ty::String
         | Ty::Bytes
         | Ty::Binary
@@ -317,6 +319,7 @@ pub(crate) fn mentions(t: &Ty) -> (bool, bool) {
         t,
         Ty::Binary
             | Ty::Decimal
+            | Ty::Decimal128
             | Ty::Format(Format::Base64Url | Format::Email | Format::IdnEmail | Format::Hostname | Format::IdnHostname)
     );
     t.children().iter().map(mentions).fold((matches!(t, Ty::Named(_)), runtime), |a, b| (a.0 || b.0, a.1 || b.1))
