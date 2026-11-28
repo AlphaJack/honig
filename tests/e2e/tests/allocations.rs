@@ -64,3 +64,32 @@ fn no_generated_roundtrip_allocates_much_more_than_its_baseline() {
     failed.extend(cost::print_rows(&table, rows, None));
     assert!(failed.is_empty(), "more allocations than the budget:\n{}", failed.join("\n"));
 }
+
+/// Collecting a binary body keeps one copy of it, plus the chunks while they arrive: no buffer grows by doubling and
+/// none is copied again. With a known length the buffer is reserved once; a body of one chunk is not copied at all.
+#[test]
+fn a_collected_body_is_copied_at_most_once() {
+    const CHUNK: usize = 256 * 1024;
+    const CHUNKS: usize = 16;
+    let body = |len: Option<u64>, chunks: usize| {
+        let pieces = (0..chunks).map(|_| Ok(honig::Bytes::from(vec![7_u8; CHUNK])));
+        honig::Body::stream(honig::ByteStream::chunks(futures_util::stream::iter(pieces), len))
+    };
+    let runtime = cost::runtime();
+    let peak = |len: Option<u64>, chunks: usize| {
+        runtime
+            .block_on(cost::heap_of(async || {
+                assert_eq!(body(len, chunks).collect().await.unwrap().len(), chunks * CHUNK);
+            }))
+            .1
+    };
+    let size_kib = (CHUNKS * CHUNK / 1024) as isize;
+    let known = peak(Some((CHUNKS * CHUNK) as u64), CHUNKS);
+    let unknown = peak(None, CHUNKS);
+    let one = peak(None, 1);
+    let chunk_kib = (CHUNK / 1024) as isize;
+    // The first two chunks are held when the buffer is reserved: one chunk alone is not copied.
+    assert!(known <= size_kib + 2 * chunk_kib, "a known length: {known} KiB for {size_kib} KiB");
+    assert!(unknown * 10 <= size_kib * 16 + chunk_kib * 10, "no second copy: {unknown} KiB for {size_kib} KiB");
+    assert!(one <= chunk_kib, "one chunk is not copied: {one} KiB for {chunk_kib} KiB");
+}

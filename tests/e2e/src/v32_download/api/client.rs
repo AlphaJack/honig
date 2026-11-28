@@ -48,7 +48,7 @@ impl<T: ::honig::Transport> Client<T> {
         match status {
             200 => {
                 ::honig::__private::check_media_of(&head, &body, &["application/zip"])?;
-                Ok(ops::get_export::Response::Ok(::honig::Blob::from(Vec::from(body))))
+                Ok(ops::get_export::Response::Ok(::honig::Blob::from(body)))
             }
             404 => Ok(ops::get_export::Response::NotFound),
             _ => {
@@ -140,7 +140,7 @@ impl<T: ::honig::Transport> Client<T> {
                 ::honig::__private::check_media_of(&head, &body, &["image/*"])?;
                 Ok(
                     ops::get_thumbnail::Response::Ok(
-                        ::honig::Blob::from(Vec::from(body)).received_as(ct),
+                        ::honig::Blob::from(body).received_as(ct),
                     ),
                 )
             }
