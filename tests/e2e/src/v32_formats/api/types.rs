@@ -101,12 +101,14 @@ impl StoreNetwork {
     pub struct Invoice {
         #[optional]
         pub total: ::honig::Decimal128,
+        #[optional]
+        pub floor: InvoiceFloor,
     }
 }
 impl Invoice {
     #[must_use]
     pub const fn new() -> Self {
-        Self { total: None }
+        Self { total: None, floor: None }
     }
 }
 ::honig::object! {
@@ -297,6 +299,31 @@ impl EventPayloadContent {
         Self { n }
     }
 }
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize)]
+#[serde(transparent)]
+pub struct InvoiceFloor(pub(super) ::honig::Decimal128);
+impl TryFrom<::honig::Decimal128> for InvoiceFloor {
+    type Error = ::honig::BuildError;
+    fn try_from(value: ::honig::Decimal128) -> Result<Self, ::honig::BuildError> {
+        let mut violations: Vec<::honig::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            ::honig::__private::check_decimal_range(
+                out,
+                &::honig::InstanceLocation::Root,
+                value.as_str(),
+                ::honig::__private::Bounds {
+                    min: Some("0"),
+                    ..::honig::__private::Bounds::NONE
+                },
+            );
+        }
+        ::honig::__private::first(violations)
+            .map(|()| Self(value))
+            .map_err(::honig::BuildError::value)
+    }
+}
+::honig::checked_decimal_impls!(InvoiceFloor, ::honig::Decimal128);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct CardMethod;
 impl CardMethod {
@@ -369,6 +396,7 @@ pub mod builders {
         required {}
         optional {
             total(total): ::honig::Decimal128 = "total" => some, None,
+            floor(floor): types::InvoiceFloor = "floor" => some, None,
         }
         fixed {}
     }

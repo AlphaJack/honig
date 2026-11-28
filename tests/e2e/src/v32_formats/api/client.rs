@@ -49,6 +49,12 @@ impl<T: ::honig::Transport> Client<T> {
             &p.above,
             ::honig::__private::Enc::FORM,
         )?;
+        ::honig::__private::encode_query(
+            &mut query,
+            "below",
+            &p.below,
+            ::honig::__private::Enc::FORM,
+        )?;
         let mut req = ::honig::__private::new_request("GET", path, query)?;
         ::honig::Message::set_header(&mut req, "Accept", "application/json")?;
         ::honig::__private::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;

@@ -190,6 +190,7 @@ fn every_format_round_trips_through_client_and_server() {
     let sent = ops::get_event::Params {
         on: Some("2024-01-31".parse().expect("a date")),
         above: Some(above),
+        below: Some("1234567890123456789012345678901234".parse().expect("34 digits")),
         ..ops::get_event::Params::new(ID.parse().expect("a uuid"))
     };
     let got = honig::block_on(client.get_event(sent.clone()));
@@ -233,13 +234,23 @@ fn every_decimal128_number_is_one_type() {
     let digits34: api::Decimal128 = "1234567890123456789012345678901234".parse().expect("34 digits fit");
     let e: types::Event =
         serde_json::from_str(&format!(r#"{{"id": "{ID}", "at": "{AT}", "sum": {digits34}}}"#)).unwrap();
-    let invoice = types::Invoice { total: e.sum };
+    let invoice = types::Invoice { total: e.sum, floor: None };
     assert_eq!(invoice.total, Some(digits34));
     let digits39 = "123456789012345678901234567890123456789";
     assert!(digits39.parse::<api::Decimal128>().is_err());
     assert!(api::Decimal128::try_from(digits39.parse::<api::Decimal>().unwrap()).is_err());
     let decoded = serde_json::from_str::<types::Invoice>(&format!(r#"{{"total": {digits39}}}"#));
     assert!(decoded.is_err(), "{decoded:?}");
+}
+
+/// A `minimum` beside `decimal128` is checked on top of the limits of decimal128.
+#[test]
+fn a_bounded_decimal128_checks_its_bound_and_its_limits() {
+    let floor = |n: &str| serde_json::from_str::<types::Invoice>(&format!(r#"{{"floor": {n}}}"#)).map(|i| i.floor);
+    let five = floor("5").expect("in range").expect("present");
+    assert_eq!(api::Decimal128::from(five), api::Decimal128::from(5_i64));
+    assert!(floor("-1").is_err(), "below the minimum");
+    assert!(floor("123456789012345678901234567890123456789").is_err(), "39 digits");
 }
 
 /// `decimal128`, as a number and as a string, represents what IEEE 754 decimal128 represents: at most 34 significant
