@@ -785,9 +785,9 @@ pub(super) fn inferred_kind(o: &serde_json::Map<String, Value>) -> Option<&'stat
     ["items", "prefixItems"].iter().any(|k| o.contains_key(*k)).then_some("array")
 }
 
-/// Returns the `default` of a schema when it is a plain literal (string, number or bool). It is written into the code
-/// as it is: one of the wrong type does not compile, and one that breaks a keyword of its schema fails the test of the
-/// documented examples, where it is checked as one ([`property_examples`]).
+/// Returns the `default` of a parameter's schema when it is a plain literal (string, number or bool). It is written into
+/// the code as it is: one of the wrong type does not compile, and one that breaks a keyword of its schema fails the test
+/// of the documented examples, where it is checked as one ([`property_examples`]).
 pub(crate) fn literal_default(s: &Value) -> Option<Value> {
     s.get("default").filter(|d| json::is_scalar(d)).cloned()
 }

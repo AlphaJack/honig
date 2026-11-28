@@ -91,9 +91,8 @@ fn refused(v: &Value, at: &str, why: &str) -> Fit {
 fn shape(defs: &[TypeDef], t: &Ty, v: &Value, at: &str, hops: usize) -> Fit {
     let none = Constraints::default();
     match (t, v) {
-        (Ty::Option(_), Value::Null)
+        (Ty::Option(_) | Ty::Unit, Value::Null)
         | (Ty::Any, _)
-        | (Ty::Unit, Value::Null)
         | (Ty::Bool, Value::Bool(_))
         | (Ty::String, Value::String(_))
         | (Ty::F32 | Ty::F64 | Ty::Decimal, Value::Number(_)) => Fit::Yes,

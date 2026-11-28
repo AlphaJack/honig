@@ -172,6 +172,8 @@ Where the field type is known, `try_into` builds the value. A spec `default` is 
 
 A `default` that its own schema refuses fails generation. JSON Schema leaves a `default` unchecked, but a field that starts at it would hold a value that its type cannot hold. The tests of the JSON Schema test suite that expect such a `default` to pass are listed as known failures in `tests/fixtures/json-schema-test-suite.known`.
 
+An object or a list `default` fills its field when the field is left out. honig checks at generation that it decodes as the type of the field. One that honig cannot check, such as one inside a `format` or a union, is a warning and the field has none.
+
 A builder converts every field and returns the first one that does not convert, from `build`. So the whole value needs one `?`. Each setter accepts anything that converts to the type of its field: a number for a checked number, a `&str` for a string, a checked string or an enum. The catalog's `Physical` has a SKU of a pattern:
 
 ```yaml
