@@ -92,8 +92,11 @@ fn a_missing_permission_is_403_with_insufficient_scope() {
     assert_eq!(resp.status().as_u16(), 403);
     assert_eq!(
         resp.headers().get("www-authenticate").and_then(|v| v.to_str().ok()),
-        Some("Bearer error=\"insufficient_scope\"")
+        Some("Bearer error=\"insufficient_scope\", scope=\"orders:write\""),
+        "the challenge names the scope that the token needs"
     );
+    let body = String::from_utf8_lossy(resp.body().bytes()).into_owned();
+    assert!(body.contains("`orders:write`"), "the message names the missing scope: {body}");
 }
 
 #[test]

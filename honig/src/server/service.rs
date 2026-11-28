@@ -539,7 +539,8 @@ async fn authorize<'r, O: Operations>(
         return Ok((None, &[]));
     }
     let mut verified: Vec<(&'static str, Option<Verified<O::Value>>)> = Vec::new();
-    let (mut refused, mut lacking) = (false, false);
+    // The scopes of the first alternative whose credentials pass but lack one: a 403 names them.
+    let (mut refused, mut lacking) = (false, None::<(&[&'static str], Vec<&'static str>)>);
     'alternative: for (alternative, alt) in requirements.iter().enumerate().filter(|(_, alt)| !alt.is_empty()) {
         let mut values = Vec::with_capacity(alt.len());
         for (scheme, required) in *alt {
@@ -561,7 +562,8 @@ async fn authorize<'r, O: Operations>(
                     continue 'alternative;
                 }
                 Some(v) if !required.iter().all(|s| v.scopes.contains(s)) => {
-                    lacking = true;
+                    let missing = required.iter().copied().filter(|s| !v.scopes.contains(s)).collect();
+                    lacking.get_or_insert((required, missing));
                     continue 'alternative;
                 }
                 Some(v) => values.push(v.value.clone()),
@@ -569,19 +571,24 @@ async fn authorize<'r, O: Operations>(
         }
         return Ok((Some(Passed { alternative, values }), alt));
     }
-    if lacking {
-        let insufficient =
-            ApiError::new(http::StatusCode::FORBIDDEN, "the credentials lack a scope that the operation requires")
-                .with_header(
-                    http::header::WWW_AUTHENTICATE,
-                    http::HeaderValue::from_static("Bearer error=\"insufficient_scope\""),
-                );
-        return Err(Reason::Denied(insufficient));
+    if let Some((required, missing)) = lacking {
+        return Err(Reason::Denied(insufficient_scope(required, &missing)));
     }
     if !refused && requirements.iter().any(|alt| alt.is_empty()) {
         return Ok((None, &[]));
     }
     Err(Reason::Unauthorized)
+}
+
+/// Returns the `403` of credentials that lack the scopes `missing` of an alternative that requires `required`. Its
+/// challenge names the scopes that the token needs (RFC 6750 section 3), unless one is no valid header text.
+fn insufficient_scope(required: &[&str], missing: &[&str]) -> ApiError {
+    let names: Vec<String> = missing.iter().map(|s| format!("`{s}`")).collect();
+    let message = format!("the credentials lack some required scopes: {}", names.join(", "));
+    let challenge = format!("Bearer error=\"insufficient_scope\", scope=\"{}\"", required.join(" "));
+    let challenge = http::HeaderValue::from_str(&challenge)
+        .unwrap_or_else(|_| http::HeaderValue::from_static("Bearer error=\"insufficient_scope\""));
+    ApiError::new(http::StatusCode::FORBIDDEN, message).with_header(http::header::WWW_AUTHENTICATE, challenge)
 }
 
 /// Returns one span per request. Its name and attributes follow the HTTP server conventions of OpenTelemetry.
