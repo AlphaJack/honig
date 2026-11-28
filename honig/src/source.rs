@@ -301,7 +301,7 @@ impl Blob {
     where
         S: Stream<Item = Result<B, E>> + Send + 'static,
         B: Into<bytes::Bytes>,
-        E: std::fmt::Display,
+        E: fmt::Display,
     {
         let chunks = futures_util::StreamExt::map(chunks, |chunk| {
             chunk.map(Into::into).map_err(|e| ClientError::Encode(e.to_string()))
