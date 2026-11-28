@@ -483,9 +483,8 @@ pub(crate) struct Field {
     pub constraints: Constraints,
     /// `deprecated: true` on the property.
     pub deprecated: bool,
-    /// `default` of an optional property with a literal default: the field
-    /// is marked required (always present after decoding) and filled with it
-    /// when absent.
+    /// `default` of an optional property: the field is marked required (always present after decoding) and filled
+    /// with it when absent.
     pub default: Option<Value>,
     /// `readOnly` / `writeOnly`: the direction the property travels in.
     pub access: Access,

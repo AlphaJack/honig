@@ -18,6 +18,7 @@ use crate::json::join;
 use crate::json::{Doc, pointer};
 use crate::validate::v32::indexed;
 
+mod fits;
 mod keywords;
 mod union;
 
@@ -1173,8 +1174,7 @@ impl<'a> Builder<'a> {
         None
     }
 
-    /// Finishes the space: resolves placeholders, drops defaults that the type of their field cannot represent and
-    /// breaks cycles with `Box`.
+    /// Finishes the space: resolves placeholders, checks the defaults of fields and breaks cycles with `Box`.
     pub(crate) fn finish(mut self) -> TypeSpace {
         self.fill_deferred();
         let subschemas = self.build_subschemas();
@@ -1187,26 +1187,7 @@ impl<'a> Builder<'a> {
             }
         }
         by_kind_when_known(&mut self.defs);
-        let unfit: Vec<(usize, usize)> = (self.defs.iter().enumerate())
-            .filter_map(|(i, d)| if let Kind::Struct(s) = &d.kind { Some((i, s)) } else { None })
-            .flat_map(|(i, s)| s.fields.iter().enumerate().map(move |(j, f)| (i, j, f)))
-            .filter(|(_, _, f)| f.default.is_some() && !self.literal_type(&f.ty))
-            .map(|(i, j, _)| (i, j))
-            .collect();
-        for (i, j) in unfit {
-            let owner = self.defs[i].name.words().join("_");
-            if let Kind::Struct(s) = &mut self.defs[i].kind {
-                self.diags.warning(
-                    "",
-                    format!(
-                        "`{owner}.{}` has a `default` that no Rust value of its type writes: the field has none and is optional",
-                        s.fields[j].wire
-                    ),
-                );
-                // Only optional properties carry a default.
-                (s.fields[j].default, s.fields[j].required) = (None, false);
-            }
-        }
+        self.check_defaults();
         let mut space = TypeSpace::new(self.defs);
         space.subschemas = subschemas;
         break_cycles(&mut space);

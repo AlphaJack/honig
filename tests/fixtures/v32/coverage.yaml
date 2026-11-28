@@ -111,6 +111,8 @@ components:
         kind: {const: image}
         url: {type: string}
         width: {$ref: '#/components/schemas/Pixels', default: 64}
+        frame: {type: object, properties: {color: {type: string}, width: {$ref: '#/components/schemas/Pixels'}}, default: {color: white, width: 2}}
+        sizes: {type: array, items: {$ref: '#/components/schemas/Pixels'}, default: [320, 640]}
         crop: {$ref: '#/components/schemas/Crop'}
     Pixels: {type: integer}
     Crop:

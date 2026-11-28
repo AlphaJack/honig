@@ -113,14 +113,26 @@ pub(super) fn enum_default(kind: &Kind, t: &TokenStream, v: &serde_json::Value) 
     Some(quote!(#t::#name))
 }
 
-/// Returns the spec default of a field as an expression when it has one that fits.
+/// Returns the spec default of a field as an expression when it has one that fits. An object or a list decodes from
+/// its JSON text: generation checked that it does.
 pub(super) fn field_default(space: &Space<'_>, f: &Field) -> Option<TokenStream> {
-    default_expr(space, &f.ty, f.default.as_ref()?, false)
+    let v = f.default.as_ref()?;
+    if !decoded_default(f) {
+        return default_expr(space, &f.ty, v, false);
+    }
+    let text = lit(&v.to_string());
+    Some(quote!(::honig::__private::json_decode(None, #text.as_bytes()).expect("generation checked the default")))
 }
 
-/// Returns whether `f`'s `default_<field>` can be a `const fn`. A literal is; `to_owned` and an enum's `From` are not.
+/// Is the default of `f` an object or a list? It decodes from its JSON text.
+pub(super) fn decoded_default(f: &Field) -> bool {
+    f.default.as_ref().is_some_and(|v| v.is_array() || v.is_object())
+}
+
+/// Returns whether `f`'s `default_<field>` can be a `const fn`. A literal is; `to_owned`, an enum's `From` and
+/// decoding are not.
 pub(super) fn const_default(space: &Space<'_>, f: &Field) -> bool {
-    !matches!(space.types.unalias(&f.ty), Ty::String | Ty::Named(_))
+    !matches!(space.types.unalias(&f.ty), Ty::String | Ty::Named(_)) && !decoded_default(f)
 }
 
 /// Does `s` take no required argument? Then it has a `Default`. With one it has none: `..Default::default()` would

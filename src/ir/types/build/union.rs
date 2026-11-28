@@ -11,8 +11,8 @@ use super::super::{
 };
 use super::Builder;
 use super::keywords::{
-    ANNOTATIONS, MAX_SCHEMA_DEPTH, both, dependent_names, literal_default, property_examples, regex, struct_patterns,
-    type_set, union_keyword, value_kind,
+    ANNOTATIONS, MAX_SCHEMA_DEPTH, both, dependent_names, property_examples, regex, struct_patterns, type_set,
+    union_keyword, value_kind,
 };
 use crate::ir::names::{Name, reserved, unique, unique_sorted};
 use crate::json;
@@ -42,12 +42,11 @@ impl Builder<'_> {
                 let read_only = prop.get("readOnly") == Some(&Value::Bool(true));
                 let write_only = prop.get("writeOnly") == Some(&Value::Bool(true));
                 let read_write = read_only || write_only;
-                // A literal default makes an optional field always present. Whether `ty` can represent it
-                // is known once every component is filled: `finish` drops the ones it cannot.
+                // A default makes an optional field always present. Whether it decodes as `ty` is known once
+                // every component is filled: `finish` checks it.
                 // A count of the properties sees the ones sent: a default filled in would count one that was not.
                 let counted = o.contains_key("minProperties") || o.contains_key("maxProperties");
-                self.warn_unapplied_default(prop, &fptr);
-                let default = literal_default(prop).filter(|_| {
+                let default = prop.get("default").cloned().filter(|_| {
                     !required.contains(wire.as_str()) && !read_write && !dependent.contains(wire.as_str()) && !counted
                 });
                 fields.push(Field {
@@ -1015,18 +1014,6 @@ impl<'d> Kinds<'d> {
         }
         self.unsettled |= outer;
         kind
-    }
-}
-
-impl Builder<'_> {
-    /// Warns about the `default` of a property that is no string, number or boolean: no field applies it.
-    fn warn_unapplied_default(&mut self, prop: &Value, ptr: &str) {
-        if let Some(d) = prop.get("default").filter(|d| !json::is_scalar(d)) {
-            self.diags.warning(
-                join(ptr, "default"),
-                format!("the default `{d}` is no string, number or boolean: the field has none"),
-            );
-        }
     }
 }
 

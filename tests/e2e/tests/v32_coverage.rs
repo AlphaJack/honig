@@ -7,7 +7,8 @@ use serde_json::json;
 fn const_properties_are_unit_types() {
     // `kind: {const: image}` is required. It is a unit struct and not a `String`.
     let note = types::ImageNote::new("https://x".to_owned());
-    assert_eq!(serde_json::to_value(&note).unwrap(), json!({"kind": "image", "url": "https://x", "width": 64}));
+    let filled = json!({"kind": "image", "url": "https://x", "width": 64, "frame": {"color": "white", "width": 2}, "sizes": [320, 640]});
+    assert_eq!(serde_json::to_value(&note).unwrap(), filled);
     assert_eq!(types::ImageNoteKind::VALUE, "image");
     let wrong = json!({"kind": "text", "url": "https://x"});
     assert!(serde_json::from_value::<types::ImageNote>(wrong).is_err(), "only `image` decodes");
@@ -39,6 +40,13 @@ fn a_default_next_to_a_ref_fills_the_field() {
     let note: types::ImageNote = serde_json::from_value(json!({"kind": "image", "url": "https://x"})).unwrap();
     let width: types::Pixels = note.width;
     assert_eq!(width, 64);
+}
+
+#[test]
+fn an_object_or_list_default_fills_the_field() {
+    let note: types::ImageNote = serde_json::from_value(json!({"kind": "image", "url": "https://x"})).unwrap();
+    assert_eq!((note.frame.color.as_deref(), note.frame.width), (Some("white"), Some(2)));
+    assert_eq!(note.sizes, [320, 640]);
 }
 
 #[test]

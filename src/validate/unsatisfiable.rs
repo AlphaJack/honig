@@ -85,7 +85,8 @@ fn number(s: &Obj, key: &str) -> Option<Number> {
     s.get(key).and_then(Value::as_number).cloned()
 }
 
-pub(super) fn less(a: &Number, b: &Number) -> bool {
+/// Is the number `a` less than `b`?
+pub(crate) fn less(a: &Number, b: &Number) -> bool {
     match (a.as_i64(), b.as_i64()) {
         (Some(a), Some(b)) => a < b,
         _ => a.as_f64().zip(b.as_f64()).is_some_and(|(a, b)| a < b),
