@@ -119,3 +119,17 @@ components:
       oneOf:
         - {type: string}
         - oneOf: [{type: integer}, {type: object, properties: {x: {type: integer}, y: {type: integer}}}]
+    # Two object branches that one value can match: it decodes as the one that keeps the most of its members.
+    Overlap:
+      anyOf:
+        - {type: object, properties: {name: {type: string}}}
+        - {type: object, properties: {name: {type: string}, price: {type: integer}}}
+    PricedOverlap:
+      anyOf:
+        - {type: object, properties: {name: {type: string}}}
+        - {type: object, properties: {name: {type: string}, amount: {type: number, format: decimal}}}
+    # The same as a `oneOf`: a value that matches both is refused.
+    OneOfOverlap:
+      oneOf:
+        - {type: object, properties: {name: {type: string}}}
+        - {type: object, properties: {name: {type: string}, price: {type: integer}}}

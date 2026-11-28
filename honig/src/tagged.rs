@@ -205,6 +205,19 @@ pub fn fits(v: &Content<'_>, fields: &[(&str, bool, &[Kind])]) -> bool {
     })
 }
 
+/// Returns how many members of the object `v` a branch keeps. Zero for a value that is no object.
+///
+/// A branch keeps the members in `declared`, or every one when it keeps the rest too (`all`). An `anyOf` tries the
+/// branch that keeps the most first, so no member that a matching branch declares is lost.
+#[must_use]
+pub fn kept(v: &Content<'_>, declared: &[&str], all: bool) -> usize {
+    // Raw text keeps its numbers exact. Its names are counted from a buffered copy.
+    if let Content::Raw(text) = v {
+        return serde_json::from_str::<Content<'_>>(text).map_or(0, |buffered| kept(&buffered, declared, all));
+    }
+    v.as_object().map_or(0, |members| members.filter(|(k, _)| all || declared.contains(k)).count())
+}
+
 /// The JSON kind of a buffered value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
@@ -1024,6 +1037,21 @@ mod tests {
     }
 
     const BODY: &str = r#"{"amount": 12345678901234567.89}"#;
+
+    /// A branch keeps the members that it declares, or every one when it keeps the rest, whether the value is buffered
+    /// or raw text.
+    #[test]
+    fn kept_counts_the_members_that_a_branch_keeps() {
+        let text = r#"{"name": "Desk lamp", "price": 900}"#;
+        let buffered: Content<'_> = serde_json::from_str(text).unwrap();
+        let raw = Content::exact(&mut serde_json::Deserializer::from_str(text)).unwrap();
+        for v in [&buffered, &raw] {
+            assert_eq!(kept(v, &["name"], false), 1);
+            assert_eq!(kept(v, &["name", "price"], false), 2);
+            assert_eq!(kept(v, &[], true), 2);
+        }
+        assert_eq!(kept(&Content::Str("x".into()), &["name"], true), 0, "no object");
+    }
 
     #[derive(Debug, Deserialize)]
     struct Fragile {

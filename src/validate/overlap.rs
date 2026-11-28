@@ -1,5 +1,6 @@
-//! Union branches that one value can match. An `anyOf`, or a `oneOf` without a discriminator, whose object branches
-//! nothing tells apart decodes such a value as the first and drops what the others carry: a warning says so.
+//! Union branches that one value can match. An `anyOf` decodes such a value as the branch that keeps the most of its
+//! members. When neither of two branches declares all that the other does, a tie drops what only one declares: a
+//! warning says so. A `oneOf` without a discriminator refuses such a value: a warning says so too.
 //!
 //! A discriminated `oneOf` whose branches can all match one value. 3.2 says a discriminator "MUST NOT change the
 //! validation outcome": `oneOf` still means exactly one. Branches `Book` and `Gadget` that share every property both
@@ -48,6 +49,7 @@ struct Object {
     required: BTreeSet<String>,
     consts: BTreeMap<String, Value>,
     types: BTreeMap<String, Value>,
+    schemas: BTreeMap<String, Value>,
 }
 
 impl Object {
@@ -61,6 +63,12 @@ impl Object {
         };
         let consts = self.consts.iter().any(|(k, v)| other.consts.get(k).is_some_and(|w| w != v));
         missing(self, other) || missing(other, self) || consts
+    }
+
+    /// Does `self` declare every property of `other`, each with the same schema? Then a value of both decodes as `self`
+    /// with nothing lost.
+    fn keeps(&self, other: &Self) -> bool {
+        other.schemas.iter().all(|(k, s)| self.schemas.get(k) == Some(s))
     }
 }
 
@@ -84,6 +92,7 @@ impl Found<'_> {
         let mut o = Object::default();
         for (name, p) in branch.get("properties").and_then(Value::as_object).into_iter().flatten() {
             o.properties.insert(name.clone());
+            o.schemas.insert(name.clone(), p.clone());
             if let Some(c) = p.get("const") {
                 o.consts.insert(name.clone(), c.clone());
             }
@@ -106,6 +115,7 @@ impl Found<'_> {
             o.required.extend(m.required);
             o.consts.extend(m.consts);
             o.types.extend(m.types);
+            o.schemas.extend(m.schemas);
         }
         (!o.properties.is_empty()).then_some(o)
     }
@@ -118,12 +128,18 @@ impl Found<'_> {
             let objects: Vec<(String, Object)> =
                 branches.filter_map(|(i, b)| Some((name(b, i), self.object(b, &mut vec![])?))).collect();
             for (i, (a, x)) in objects.iter().enumerate() {
-                for (b, _) in objects[i + 1..].iter().filter(|(_, y)| !x.apart(y)) {
+                let overlaps = objects[i + 1..].iter().filter(|(_, y)| !x.apart(y));
+                for (b, _) in overlaps.filter(|(_, y)| key == "oneOf" || !(x.keeps(y) || y.keeps(x))) {
+                    let outcome = if key == "oneOf" {
+                        "and `oneOf` refuses it"
+                    } else {
+                        "and on a tie it loses what only one of them declares"
+                    };
                     self.out.push((
                         join(ptr, key),
                         format!(
-                            "a value can match both {a} and {b}, and it decodes as the first: add a required \
-                             property or a `const` tag that tells them apart"
+                            "a value can match both {a} and {b}, {outcome}: add a required property or a `const` tag \
+                             that tells them apart"
                         ),
                     ));
                 }
@@ -298,7 +314,15 @@ mod tests {
                 {"type": "object", "additionalProperties": false, "properties": {"a": {"type": "string"}}}, b]}}}})
         };
         let wider = json!({"type": "object", "properties": {"a": {"type": "string"}, "b": {"type": "string"}}});
-        assert_eq!(warnings(union(wider)).len(), 1, "`{{\"a\": \"x\"}}` matches both");
+        assert_eq!(warnings(union(wider.clone())).len(), 0, "`{{\"a\": \"x\"}}` matches both: the wider keeps all");
+        let other = json!({"type": "object", "properties": {"b": {"type": "string"}}});
+        assert_eq!(warnings(union(other)).len(), 1, "`{{\"a\": \"x\", \"b\": \"y\"}}` keeps one of them on a tie");
+        let one_of = |b: Value| {
+            json!({"openapi": "3.2.0", "components": {"schemas": {"U": {"oneOf": [
+                {"type": "object", "properties": {"a": {"type": "string"}}}, b]}}}})
+        };
+        let refused = warnings(one_of(wider));
+        assert!(refused.len() == 1 && refused[0].contains("`oneOf` refuses it"), "{refused:?}");
         let needs_b = json!({"type": "object", "required": ["b"], "properties": {"b": {"type": "string"}}});
         assert_eq!(warnings(union(needs_b)), Vec::<String>::new());
     }

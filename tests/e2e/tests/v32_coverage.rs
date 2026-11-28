@@ -64,3 +64,29 @@ fn a_value_that_does_not_write_out_does_not_build() {
     let err = types::TextNote::try_from(fields).expect_err("NaN is no JSON number");
     assert!(err.to_string().contains("NaN") || err.to_string().contains("finite"), "{err}");
 }
+
+/// A value that matches both object branches of an `anyOf` decodes as the one that keeps the most of its members, so
+/// it encodes back whole. A value that only one branch's properties fill decodes as that one.
+#[test]
+fn an_any_of_keeps_every_member_that_a_matching_branch_declares() {
+    let lamp = json!({"name": "Desk lamp", "price": 900});
+    let decoded: types::Overlap = serde_json::from_value(lamp.clone()).unwrap();
+    assert_eq!(serde_json::to_value(&decoded).unwrap(), lamp);
+    let named = json!({"name": "Desk lamp"});
+    assert_eq!(serde_json::to_value(serde_json::from_value::<types::Overlap>(named.clone()).unwrap()).unwrap(), named);
+}
+
+/// A branch with a decimal decodes from the JSON text: the ranking holds there too, and every digit stays.
+#[test]
+fn an_any_of_with_a_decimal_branch_keeps_its_members_and_digits() {
+    let text = r#"{"name":"Desk lamp","amount":12345678901234567.89}"#;
+    let decoded: types::PricedOverlap = serde_json::from_str(text).unwrap();
+    assert_eq!(serde_json::to_string(&decoded).unwrap(), text);
+}
+
+/// A `oneOf` without a discriminator refuses a value that two branches match: it never decodes it as the first.
+#[test]
+fn a_one_of_refuses_a_value_that_two_branches_match() {
+    let refused = serde_json::from_value::<types::OneOfOverlap>(json!({"name": "Desk lamp", "price": 900}));
+    assert!(refused.unwrap_err().to_string().contains("matches 2 of `oneOf`"));
+}

@@ -434,6 +434,7 @@ pub(super) fn untagged(space: &Space<'_>, u: &Union, memo: bool) -> TokenStream 
     let counts = u.exclusive && !u.open;
     let mut order: Vec<(usize, &crate::ir::types::Variant)> = u.variants.iter().enumerate().collect();
     order.sort_by_key(|(_, v)| pascal(&v.name));
+    let scores = (!counts).then(|| kept_scores(space, &order, &value)).flatten();
     let tries = order.into_iter().map(|(i, v)| {
         let (name, t) = (pascal_ident(&v.name), ty(space, &v.ty, false));
         // An open union always decodes because its `Other` accepts anything. As a branch it matches only through one
@@ -472,11 +473,12 @@ pub(super) fn untagged(space: &Space<'_>, u: &Union, memo: bool) -> TokenStream 
         // that does not decode keeps its error, so that a closed union says what is wrong with the closest one.
         let won = memo.then(|| quote!(won.is_none_or(|w| w == #i)));
         let f = guards[i].is_some().then(|| fit(i)).map(|f| quote!(#f));
-        match (won, f) {
-            (Some(w), Some(f)) => quote!(if #w && #f { #attempt }),
-            (Some(c), None) | (None, Some(c)) => quote!(if #c { #attempt }),
-            (None, None) => quote!({ #attempt }),
-        }
+        let condition = match (won, f) {
+            (Some(w), Some(f)) => Some(quote!(#w && #f)),
+            (Some(c), None) | (None, Some(c)) => Some(c),
+            (None, None) => None,
+        };
+        (condition, attempt)
     });
     // When none decodes, an open union has a branch that accepts any value: `Other` stores it.
     let end = if u.open {
@@ -485,13 +487,89 @@ pub(super) fn untagged(space: &Space<'_>, u: &Union, memo: bool) -> TokenStream 
         quote!(Err(serde::de::Error::custom(first.unwrap_or_else(|| "matches no variant".to_owned()))))
     };
     let (count, counted) = counting(counts);
+    let tries = in_order(tries, scores);
     quote! {
         #(#lets)*
         let mut first: Option<String> = None;
         #count
-        #(#tries)*
+        #tries
         #counted
         #end
+    }
+}
+
+/// Returns the attempts, each `(condition, attempt)`, in the order of the names, or by `scores` when there are some:
+/// the one that keeps the most members first.
+fn in_order(
+    tries: impl Iterator<Item = (Option<TokenStream>, TokenStream)>,
+    scores: Option<Vec<TokenStream>>,
+) -> TokenStream {
+    let Some(scores) = scores else {
+        let each = tries.map(|(c, attempt)| match c {
+            Some(c) => quote!(if #c { #attempt }),
+            None => quote!({ #attempt }),
+        });
+        return quote!(#(#each)*);
+    };
+    let arms = tries.enumerate().map(|(p, (c, attempt))| {
+        let p = proc_macro2::Literal::usize_unsuffixed(p);
+        let guard = c.map(|c| quote!(if #c));
+        quote!(#p #guard => { #attempt })
+    });
+    let at = (0..scores.len()).map(proc_macro2::Literal::usize_unsuffixed);
+    quote! {
+        let mut ranked = [#((#scores, #at)),*];
+        ranked.sort_by_key(|(kept, _)| ::std::cmp::Reverse(*kept));
+        for (_, branch) in ranked {
+            match branch { #(#arms)* _ => {} }
+        }
+    }
+}
+
+/// Returns, per branch in `order`, how many members of the value it keeps, when two branches or more are objects. An
+/// `anyOf` tries the branch that keeps the most first: a value that matches several loses no member that one of them
+/// declares. A tie keeps the order of the names.
+fn kept_scores(
+    space: &Space<'_>,
+    order: &[(usize, &crate::ir::types::Variant)],
+    value: &TokenStream,
+) -> Option<Vec<TokenStream>> {
+    let members: Vec<Option<(Vec<String>, bool)>> =
+        order.iter().map(|(_, v)| object_members(space, &v.ty, 0)).collect();
+    (members.iter().flatten().count() > 1).then(|| {
+        members
+            .into_iter()
+            .map(|m| match m {
+                Some((names, all)) => {
+                    let names = names.iter().map(|n| lit(n));
+                    quote!(::honig::__private::kept(#value, &[#(#names),*], #all))
+                }
+                None => quote!(0_usize),
+            })
+            .collect()
+    })
+}
+
+/// Returns the names that the object type `t` declares, and whether it keeps every other member too (a map of the
+/// rest). `None` for a type that is no struct.
+fn object_members(space: &Space<'_>, t: &Ty, hops: usize) -> Option<(Vec<String>, bool)> {
+    const MAX_HOPS: usize = 32;
+    let t = if let Ty::Indirect(i) = t { i.as_ref() } else { t };
+    let Ty::Named(id) = space.types.unalias(t) else { return None };
+    match &space.types.get(*id).kind {
+        Kind::Struct(s) => {
+            let names = s.fields.iter().map(|f| f.wire.clone()).collect();
+            Some((names, s.additional.is_some() || !s.patterns.is_empty()))
+        }
+        Kind::Checked(c) if hops < MAX_HOPS => object_members(space, &c.base, hops + 1),
+        Kind::Checked(_)
+        | Kind::StrEnum(_)
+        | Kind::IntEnum(_)
+        | Kind::Union(_)
+        | Kind::Alias(_)
+        | Kind::Newtype(_)
+        | Kind::Const(_)
+        | Kind::Pending => None,
     }
 }
 

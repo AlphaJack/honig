@@ -656,20 +656,30 @@ impl<'de> serde::Deserialize<'de> for LooseKind {
                 ],
             );
         let mut first: Option<String> = None;
-        if fit_0 {
-            match v.decode_ref::<LooseKindKind>() {
-                Ok(x) => return Ok(Self::Kind(x)),
-                Err(e) => {
-                    first.get_or_insert(e.to_string());
+        let mut ranked = [
+            (::honig::__private::kept(&v, &["kind"], false), 0),
+            (::honig::__private::kept(&v, &["kind", "n"], false), 1),
+        ];
+        ranked.sort_by_key(|(kept, _)| ::std::cmp::Reverse(*kept));
+        for (_, branch) in ranked {
+            match branch {
+                0 if fit_0 => {
+                    match v.decode_ref::<LooseKindKind>() {
+                        Ok(x) => return Ok(Self::Kind(x)),
+                        Err(e) => {
+                            first.get_or_insert(e.to_string());
+                        }
+                    }
                 }
-            }
-        }
-        if fit_1 {
-            match v.decode_ref::<LooseKindVariant2>() {
-                Ok(x) => return Ok(Self::Variant2(x)),
-                Err(e) => {
-                    first.get_or_insert(e.to_string());
+                1 if fit_1 => {
+                    match v.decode_ref::<LooseKindVariant2>() {
+                        Ok(x) => return Ok(Self::Variant2(x)),
+                        Err(e) => {
+                            first.get_or_insert(e.to_string());
+                        }
+                    }
                 }
+                _ => {}
             }
         }
         Err(
@@ -3822,20 +3832,30 @@ impl<'de> serde::Deserialize<'de> for TaggedVariants {
                 ],
             );
         let mut first: Option<String> = None;
-        if fit_1 {
-            match v.decode_ref::<TaggedColour>() {
-                Ok(x) => return Ok(Self::Colour(x)),
-                Err(e) => {
-                    first.get_or_insert(e.to_string());
+        let mut ranked = [
+            (::honig::__private::kept(&v, &["colour", "size"], true), 0),
+            (::honig::__private::kept(&v, &["label", "size"], true), 1),
+        ];
+        ranked.sort_by_key(|(kept, _)| ::std::cmp::Reverse(*kept));
+        for (_, branch) in ranked {
+            match branch {
+                0 if fit_1 => {
+                    match v.decode_ref::<TaggedColour>() {
+                        Ok(x) => return Ok(Self::Colour(x)),
+                        Err(e) => {
+                            first.get_or_insert(e.to_string());
+                        }
+                    }
                 }
-            }
-        }
-        if fit_0 {
-            match v.decode_ref::<TaggedLabel>() {
-                Ok(x) => return Ok(Self::Label(x)),
-                Err(e) => {
-                    first.get_or_insert(e.to_string());
+                1 if fit_0 => {
+                    match v.decode_ref::<TaggedLabel>() {
+                        Ok(x) => return Ok(Self::Label(x)),
+                        Err(e) => {
+                            first.get_or_insert(e.to_string());
+                        }
+                    }
                 }
+                _ => {}
             }
         }
         Err(

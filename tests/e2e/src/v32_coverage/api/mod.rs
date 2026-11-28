@@ -36,6 +36,7 @@ pub use server::{Operation, Context, Rejection, RequestEvent, Server};
 #[rustfmt::skip]
 mod documented_examples;
 pub use ::honig::{
-    ApiError, BuildError, ClientError, InstanceLocation, Message, Passed, ProblemSchema,
-    Reason, Request, Response, ServerUrl, Transport, Verified, Violation, send,
+    ApiError, BuildError, ClientError, Decimal, InstanceLocation, Message, Passed,
+    ProblemSchema, Reason, Request, Response, ServerUrl, Transport, Verified, Violation,
+    send,
 };
