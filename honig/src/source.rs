@@ -198,7 +198,7 @@ impl ByteStream {
     /// reserved for the length when the source knows it, up to [`RESERVE_LIMIT`].
     pub(crate) async fn collect_bytes(mut self) -> Result<bytes::Bytes, ClientError> {
         use futures_util::StreamExt as _;
-        let size = self.size().and_then(|s| usize::try_from(s).ok());
+        let size = self.size().map(|s| usize::try_from(s).unwrap_or(usize::MAX));
         let Some(first) = self.next().await.transpose()? else { return Ok(bytes::Bytes::new()) };
         let Some(second) = self.next().await.transpose()? else { return Ok(first) };
         let both = first.len() + second.len();
