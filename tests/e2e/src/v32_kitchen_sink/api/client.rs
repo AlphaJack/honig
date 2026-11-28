@@ -327,7 +327,7 @@ impl<T: ::honig::Transport> Client<T> {
         ::honig::__private::propagate_trace(&mut req);
         let resp = ::honig::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
-        let (body, _) = body.into_parts();
+        let (body, stream) = body.into_parts();
         let status = head.status.as_u16();
         if status == 200 {
             {
@@ -337,7 +337,7 @@ impl<T: ::honig::Transport> Client<T> {
                     &["application/octet-stream"],
                 )?;
                 Ok(ops::put_blob::Response::Ok {
-                    body: ::honig::Blob::from(body.to_vec()),
+                    body: ::honig::Blob::arrived(body.clone(), stream),
                     x_size: ::honig::__private::from_param(
                             ::honig::__private::decode_header(
                                     ::honig::__private::joined_header(&head.headers, "X-Size")
@@ -386,10 +386,7 @@ impl<T: ::honig::Transport> Client<T> {
         &self,
         server: ops::put_blob::Server,
         p: impl ::honig::__private::IntoArg<'_, ops::put_blob::Params>,
-    ) -> Result<
-        ::honig::Streamed<::honig::Response, ops::put_blob::Response>,
-        ::honig::ClientError,
-    > {
+    ) -> Result<ops::put_blob::Response, ::honig::ClientError> {
         let p = ::honig::__private::IntoArg::into_arg(p).into_owned();
         let mut path = String::from("/blobs/");
         path.push_str(
@@ -418,30 +415,70 @@ impl<T: ::honig::Transport> Client<T> {
         )?;
         ::honig::__private::propagate_trace(&mut req);
         let resp = ::honig::send_streaming(&self.transport, req).await?;
-        if resp.status() == 200 {
-            ::honig::__private::check_response_media(
-                200,
-                ::honig::Message::content_type(&resp),
-                None,
-                &["application/octet-stream"],
-            )?;
-            return Ok(::honig::Streamed::Ok(resp));
-        }
-        let (head, body) = resp.into_parts();
-        let resp = ::honig::Response::from_parts(
-            head,
-            ::honig::Body::new(body.collect().await?),
-        );
-        let other: Result<ops::put_blob::Response, ::honig::ClientError> = async move {
+        let resp = if matches!(resp.status().as_u16(), 200) {
+            resp
+        } else {
             let (head, body) = resp.into_parts();
-            let (body, _) = body.into_parts();
+            ::honig::Response::from_parts(
+                head,
+                ::honig::Body::new(body.collect().await?),
+            )
+        };
+        let (head, body) = resp.into_parts();
+        let (body, stream) = body.into_parts();
+        let status = head.status.as_u16();
+        if status == 200 {
+            {
+                ::honig::__private::check_media_of(
+                    &head,
+                    &body,
+                    &["application/octet-stream"],
+                )?;
+                Ok(ops::put_blob::Response::Ok {
+                    body: ::honig::Blob::arrived(body.clone(), stream),
+                    x_size: ::honig::__private::from_param(
+                            ::honig::__private::decode_header(
+                                    ::honig::__private::joined_header(&head.headers, "X-Size")
+                                        .as_deref(),
+                                    "/header/X-Size",
+                                    ::honig::__private::Style::Simple,
+                                    ::honig::__private::Shape::Primitive,
+                                    false,
+                                )
+                                .map_err(|e| ::honig::ClientError::Decode {
+                                    status: Some(status),
+                                    message: e.to_string(),
+                                    body: body.clone(),
+                                    pointer: String::new(),
+                                })?,
+                            "/header/X-Size",
+                        )
+                        .map_err(|e| ::honig::ClientError::Decode {
+                            status: Some(status),
+                            message: e.to_string(),
+                            body: body.clone(),
+                            pointer: String::new(),
+                        })?,
+                    x_quota: ::honig::__private::from_json_param(
+                            ::honig::__private::first_header(&head.headers, "X-Quota")
+                                .as_deref()
+                                .map(::honig::__private::json_header),
+                            "/header/X-Quota",
+                        )
+                        .map_err(|e| ::honig::ClientError::Decode {
+                            status: Some(status),
+                            message: e.to_string(),
+                            body: body.clone(),
+                            pointer: String::new(),
+                        })?,
+                })
+            }
+        } else {
             Err(::honig::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
         }
-            .await;
-        Ok(::honig::Streamed::Whole(other?))
     }
     /// List products
     pub async fn list_products(

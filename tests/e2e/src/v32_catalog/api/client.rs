@@ -462,14 +462,14 @@ impl<T: ::honig::Transport> Client<T> {
         ::honig::__private::propagate_trace(&mut req);
         let resp = ::honig::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
-        let (body, _) = body.into_parts();
+        let (body, stream) = body.into_parts();
         let status = head.status.as_u16();
         let ct = ::honig::__private::content_type_of(&head.headers);
         match status {
             200 => {
                 ::honig::__private::check_media_of(&head, &body, &["image/*"])?;
                 Ok(ops::get_product_photo::Response::Ok {
-                    body: ::honig::Blob::from(body.to_vec()).received_as(ct),
+                    body: ::honig::Blob::arrived(body.clone(), stream).received_as(ct),
                     e_tag: ::honig::__private::from_param(
                             ::honig::__private::decode_header(
                                     ::honig::__private::joined_header(&head.headers, "ETag")
@@ -507,10 +507,7 @@ impl<T: ::honig::Transport> Client<T> {
     pub async fn get_product_photo_stream(
         &self,
         p: impl ::honig::__private::IntoArg<'_, ops::get_product_photo::Params>,
-    ) -> Result<
-        ::honig::Streamed<::honig::Response, ops::get_product_photo::Response>,
-        ::honig::ClientError,
-    > {
+    ) -> Result<ops::get_product_photo::Response, ::honig::ClientError> {
         let p = ::honig::__private::IntoArg::into_arg(p);
         let mut path = String::from("/products/");
         path.push_str(
@@ -532,35 +529,57 @@ impl<T: ::honig::Transport> Client<T> {
         )?;
         ::honig::__private::propagate_trace(&mut req);
         let resp = ::honig::send_streaming(&self.transport, req).await?;
-        if resp.status() == 200 {
-            ::honig::__private::check_response_media(
-                200,
-                ::honig::Message::content_type(&resp),
-                None,
-                &["image/*"],
-            )?;
-            return Ok(::honig::Streamed::Ok(resp));
-        }
-        let (head, body) = resp.into_parts();
-        let resp = ::honig::Response::from_parts(
-            head,
-            ::honig::Body::new(body.collect().await?),
-        );
-        let other: Result<ops::get_product_photo::Response, ::honig::ClientError> = async move {
+        let resp = if matches!(resp.status().as_u16(), 200) {
+            resp
+        } else {
             let (head, body) = resp.into_parts();
-            let (body, _) = body.into_parts();
-            let status = head.status.as_u16();
-            if status == 404 {
-                Ok(ops::get_product_photo::Response::NotFound)
-            } else {
+            ::honig::Response::from_parts(
+                head,
+                ::honig::Body::new(body.collect().await?),
+            )
+        };
+        let (head, body) = resp.into_parts();
+        let (body, stream) = body.into_parts();
+        let status = head.status.as_u16();
+        let ct = ::honig::__private::content_type_of(&head.headers);
+        match status {
+            200 => {
+                ::honig::__private::check_media_of(&head, &body, &["image/*"])?;
+                Ok(ops::get_product_photo::Response::Ok {
+                    body: ::honig::Blob::arrived(body.clone(), stream).received_as(ct),
+                    e_tag: ::honig::__private::from_param(
+                            ::honig::__private::decode_header(
+                                    ::honig::__private::joined_header(&head.headers, "ETag")
+                                        .as_deref(),
+                                    "/header/ETag",
+                                    ::honig::__private::Style::Simple,
+                                    ::honig::__private::Shape::Primitive,
+                                    false,
+                                )
+                                .map_err(|e| ::honig::ClientError::Decode {
+                                    status: Some(status),
+                                    message: e.to_string(),
+                                    body: body.clone(),
+                                    pointer: String::new(),
+                                })?,
+                            "/header/ETag",
+                        )
+                        .map_err(|e| ::honig::ClientError::Decode {
+                            status: Some(status),
+                            message: e.to_string(),
+                            body: body.clone(),
+                            pointer: String::new(),
+                        })?,
+                })
+            }
+            404 => Ok(ops::get_product_photo::Response::NotFound),
+            _ => {
                 Err(::honig::ClientError::UnexpectedStatus {
                     status: head.status,
                     body,
                 })
             }
         }
-            .await;
-        Ok(::honig::Streamed::Whole(other?))
     }
     pub async fn put_product_photo(
         &self,

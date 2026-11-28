@@ -394,6 +394,22 @@ impl Blob {
         }
     }
 
+    /// Returns a binary response body as the client received it: still arriving when `stream` has its source, else
+    /// `bytes`.
+    #[doc(hidden)]
+    pub fn arrived(bytes: bytes::Bytes, stream: ByteStream) -> Self {
+        if !stream.is_some() {
+            return Self::of(BlobBody::Bytes(bytes));
+        }
+        if bytes.is_empty() {
+            return Self::of(BlobBody::Stream(stream));
+        }
+        // Bytes that arrived with the head come first.
+        let size = stream.size().map(|s| s + bytes.len() as u64);
+        let first = futures_util::stream::once(std::future::ready(Ok(bytes)));
+        Self::of(BlobBody::Stream(ByteStream::chunks(futures_util::StreamExt::chain(first, stream), size)))
+    }
+
     /// Returns a binary request body as the server received it: arriving when the adapter left it unread in `stream`,
     /// else `body`.
     pub fn received(body: Cow<'_, [u8]>, stream: &ByteStream) -> Self {

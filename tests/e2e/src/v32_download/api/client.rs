@@ -43,12 +43,12 @@ impl<T: ::honig::Transport> Client<T> {
         ::honig::__private::propagate_trace(&mut req);
         let resp = ::honig::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
-        let (body, _) = body.into_parts();
+        let (body, stream) = body.into_parts();
         let status = head.status.as_u16();
         match status {
             200 => {
                 ::honig::__private::check_media_of(&head, &body, &["application/zip"])?;
-                Ok(ops::get_export::Response::Ok(::honig::Blob::from(body)))
+                Ok(ops::get_export::Response::Ok(::honig::Blob::arrived(body, stream)))
             }
             404 => Ok(ops::get_export::Response::NotFound),
             _ => {
@@ -62,10 +62,7 @@ impl<T: ::honig::Transport> Client<T> {
     pub async fn get_export_stream(
         &self,
         p: impl ::honig::__private::IntoArg<'_, ops::get_export::Params>,
-    ) -> Result<
-        ::honig::Streamed<::honig::Response, ops::get_export::Response>,
-        ::honig::ClientError,
-    > {
+    ) -> Result<ops::get_export::Response, ::honig::ClientError> {
         let p = ::honig::__private::IntoArg::into_arg(p);
         let mut path = String::from("/exports/");
         path.push_str(
@@ -81,35 +78,31 @@ impl<T: ::honig::Transport> Client<T> {
         ::honig::__private::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         ::honig::__private::propagate_trace(&mut req);
         let resp = ::honig::send_streaming(&self.transport, req).await?;
-        if resp.status() == 200 {
-            ::honig::__private::check_response_media(
-                200,
-                ::honig::Message::content_type(&resp),
-                None,
-                &["application/zip"],
-            )?;
-            return Ok(::honig::Streamed::Ok(resp));
-        }
-        let (head, body) = resp.into_parts();
-        let resp = ::honig::Response::from_parts(
-            head,
-            ::honig::Body::new(body.collect().await?),
-        );
-        let other: Result<ops::get_export::Response, ::honig::ClientError> = async move {
+        let resp = if matches!(resp.status().as_u16(), 200) {
+            resp
+        } else {
             let (head, body) = resp.into_parts();
-            let (body, _) = body.into_parts();
-            let status = head.status.as_u16();
-            if status == 404 {
-                Ok(ops::get_export::Response::NotFound)
-            } else {
+            ::honig::Response::from_parts(
+                head,
+                ::honig::Body::new(body.collect().await?),
+            )
+        };
+        let (head, body) = resp.into_parts();
+        let (body, stream) = body.into_parts();
+        let status = head.status.as_u16();
+        match status {
+            200 => {
+                ::honig::__private::check_media_of(&head, &body, &["application/zip"])?;
+                Ok(ops::get_export::Response::Ok(::honig::Blob::arrived(body, stream)))
+            }
+            404 => Ok(ops::get_export::Response::NotFound),
+            _ => {
                 Err(::honig::ClientError::UnexpectedStatus {
                     status: head.status,
                     body,
                 })
             }
         }
-            .await;
-        Ok(::honig::Streamed::Whole(other?))
     }
     pub async fn get_thumbnail(
         &self,
@@ -132,7 +125,7 @@ impl<T: ::honig::Transport> Client<T> {
         ::honig::__private::propagate_trace(&mut req);
         let resp = ::honig::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
-        let (body, _) = body.into_parts();
+        let (body, stream) = body.into_parts();
         let status = head.status.as_u16();
         let ct = ::honig::__private::content_type_of(&head.headers);
         if status == 200 {
@@ -140,7 +133,7 @@ impl<T: ::honig::Transport> Client<T> {
                 ::honig::__private::check_media_of(&head, &body, &["image/*"])?;
                 Ok(
                     ops::get_thumbnail::Response::Ok(
-                        ::honig::Blob::from(body).received_as(ct),
+                        ::honig::Blob::arrived(body, stream).received_as(ct),
                     ),
                 )
             }
@@ -154,10 +147,7 @@ impl<T: ::honig::Transport> Client<T> {
     pub async fn get_thumbnail_stream(
         &self,
         p: impl ::honig::__private::IntoArg<'_, ops::get_thumbnail::Params>,
-    ) -> Result<
-        ::honig::Streamed<::honig::Response, ops::get_thumbnail::Response>,
-        ::honig::ClientError,
-    > {
+    ) -> Result<ops::get_thumbnail::Response, ::honig::ClientError> {
         let p = ::honig::__private::IntoArg::into_arg(p);
         let mut path = String::from("/exports/");
         path.push_str(
@@ -174,30 +164,34 @@ impl<T: ::honig::Transport> Client<T> {
         ::honig::__private::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         ::honig::__private::propagate_trace(&mut req);
         let resp = ::honig::send_streaming(&self.transport, req).await?;
-        if resp.status() == 200 {
-            ::honig::__private::check_response_media(
-                200,
-                ::honig::Message::content_type(&resp),
-                None,
-                &["image/*"],
-            )?;
-            return Ok(::honig::Streamed::Ok(resp));
-        }
-        let (head, body) = resp.into_parts();
-        let resp = ::honig::Response::from_parts(
-            head,
-            ::honig::Body::new(body.collect().await?),
-        );
-        let other: Result<ops::get_thumbnail::Response, ::honig::ClientError> = async move {
+        let resp = if matches!(resp.status().as_u16(), 200) {
+            resp
+        } else {
             let (head, body) = resp.into_parts();
-            let (body, _) = body.into_parts();
+            ::honig::Response::from_parts(
+                head,
+                ::honig::Body::new(body.collect().await?),
+            )
+        };
+        let (head, body) = resp.into_parts();
+        let (body, stream) = body.into_parts();
+        let status = head.status.as_u16();
+        let ct = ::honig::__private::content_type_of(&head.headers);
+        if status == 200 {
+            {
+                ::honig::__private::check_media_of(&head, &body, &["image/*"])?;
+                Ok(
+                    ops::get_thumbnail::Response::Ok(
+                        ::honig::Blob::arrived(body, stream).received_as(ct),
+                    ),
+                )
+            }
+        } else {
             Err(::honig::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
         }
-            .await;
-        Ok(::honig::Streamed::Whole(other?))
     }
     pub async fn get_manifest(
         &self,

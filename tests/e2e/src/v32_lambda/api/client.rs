@@ -100,7 +100,7 @@ impl<T: ::honig::Transport> Client<T> {
         ::honig::__private::propagate_trace(&mut req);
         let resp = ::honig::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
-        let (body, _) = body.into_parts();
+        let (body, stream) = body.into_parts();
         let status = head.status.as_u16();
         if status == 200 {
             {
@@ -109,7 +109,7 @@ impl<T: ::honig::Transport> Client<T> {
                     &body,
                     &["application/octet-stream"],
                 )?;
-                Ok(ops::put_blob::Response::Ok(::honig::Blob::from(body)))
+                Ok(ops::put_blob::Response::Ok(::honig::Blob::arrived(body, stream)))
             }
         } else {
             Err(::honig::ClientError::UnexpectedStatus {
@@ -121,10 +121,7 @@ impl<T: ::honig::Transport> Client<T> {
     pub async fn put_blob_stream(
         &self,
         p: impl ::honig::__private::IntoArg<'_, ops::put_blob::Params>,
-    ) -> Result<
-        ::honig::Streamed<::honig::Response, ops::put_blob::Response>,
-        ::honig::ClientError,
-    > {
+    ) -> Result<ops::put_blob::Response, ::honig::ClientError> {
         let p = ::honig::__private::IntoArg::into_arg(p).into_owned();
         let mut path = String::from("/items/");
         path.push_str(
@@ -142,29 +139,32 @@ impl<T: ::honig::Transport> Client<T> {
         ::honig::__private::apply_auth(&mut req, &self.credentials, &[], Self::WITH)?;
         ::honig::__private::propagate_trace(&mut req);
         let resp = ::honig::send_streaming(&self.transport, req).await?;
-        if resp.status() == 200 {
-            ::honig::__private::check_response_media(
-                200,
-                ::honig::Message::content_type(&resp),
-                None,
-                &["application/octet-stream"],
-            )?;
-            return Ok(::honig::Streamed::Ok(resp));
-        }
-        let (head, body) = resp.into_parts();
-        let resp = ::honig::Response::from_parts(
-            head,
-            ::honig::Body::new(body.collect().await?),
-        );
-        let other: Result<ops::put_blob::Response, ::honig::ClientError> = async move {
+        let resp = if matches!(resp.status().as_u16(), 200) {
+            resp
+        } else {
             let (head, body) = resp.into_parts();
-            let (body, _) = body.into_parts();
+            ::honig::Response::from_parts(
+                head,
+                ::honig::Body::new(body.collect().await?),
+            )
+        };
+        let (head, body) = resp.into_parts();
+        let (body, stream) = body.into_parts();
+        let status = head.status.as_u16();
+        if status == 200 {
+            {
+                ::honig::__private::check_media_of(
+                    &head,
+                    &body,
+                    &["application/octet-stream"],
+                )?;
+                Ok(ops::put_blob::Response::Ok(::honig::Blob::arrived(body, stream)))
+            }
+        } else {
             Err(::honig::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
         }
-            .await;
-        Ok(::honig::Streamed::Whole(other?))
     }
 }
