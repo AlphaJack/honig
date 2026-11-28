@@ -224,23 +224,19 @@ impl<'de> serde::Deserialize<'de> for Overlap {
         ranked.sort_by_key(|(kept, _)| ::std::cmp::Reverse(*kept));
         for (_, branch) in ranked {
             match branch {
-                0 => {
-                    if fit_0 {
-                        match v.decode_ref::<OverlapName>() {
-                            Ok(x) => return Ok(Self::Name(x)),
-                            Err(e) => {
-                                first.get_or_insert(e.to_string());
-                            }
+                0 if fit_0 => {
+                    match v.decode_ref::<OverlapName>() {
+                        Ok(x) => return Ok(Self::Name(x)),
+                        Err(e) => {
+                            first.get_or_insert(e.to_string());
                         }
                     }
                 }
-                1 => {
-                    if fit_1 {
-                        match v.decode_ref::<OverlapVariant1>() {
-                            Ok(x) => return Ok(Self::Variant1(x)),
-                            Err(e) => {
-                                first.get_or_insert(e.to_string());
-                            }
+                1 if fit_1 => {
+                    match v.decode_ref::<OverlapVariant1>() {
+                        Ok(x) => return Ok(Self::Variant1(x)),
+                        Err(e) => {
+                            first.get_or_insert(e.to_string());
                         }
                     }
                 }
@@ -299,23 +295,19 @@ impl<'de> serde::Deserialize<'de> for PricedOverlap {
         ranked.sort_by_key(|(kept, _)| ::std::cmp::Reverse(*kept));
         for (_, branch) in ranked {
             match branch {
-                0 => {
-                    if fit_0 {
-                        match v.decode_ref::<PricedOverlapName>() {
-                            Ok(x) => return Ok(Self::Name(x)),
-                            Err(e) => {
-                                first.get_or_insert(e.to_string());
-                            }
+                0 if fit_0 => {
+                    match v.decode_ref::<PricedOverlapName>() {
+                        Ok(x) => return Ok(Self::Name(x)),
+                        Err(e) => {
+                            first.get_or_insert(e.to_string());
                         }
                     }
                 }
-                1 => {
-                    if fit_1 {
-                        match v.decode_ref::<PricedOverlapVariant1>() {
-                            Ok(x) => return Ok(Self::Variant1(x)),
-                            Err(e) => {
-                                first.get_or_insert(e.to_string());
-                            }
+                1 if fit_1 => {
+                    match v.decode_ref::<PricedOverlapVariant1>() {
+                        Ok(x) => return Ok(Self::Variant1(x)),
+                        Err(e) => {
+                            first.get_or_insert(e.to_string());
                         }
                     }
                 }

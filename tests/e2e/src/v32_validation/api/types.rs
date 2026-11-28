@@ -663,23 +663,19 @@ impl<'de> serde::Deserialize<'de> for LooseKind {
         ranked.sort_by_key(|(kept, _)| ::std::cmp::Reverse(*kept));
         for (_, branch) in ranked {
             match branch {
-                0 => {
-                    if fit_0 {
-                        match v.decode_ref::<LooseKindKind>() {
-                            Ok(x) => return Ok(Self::Kind(x)),
-                            Err(e) => {
-                                first.get_or_insert(e.to_string());
-                            }
+                0 if fit_0 => {
+                    match v.decode_ref::<LooseKindKind>() {
+                        Ok(x) => return Ok(Self::Kind(x)),
+                        Err(e) => {
+                            first.get_or_insert(e.to_string());
                         }
                     }
                 }
-                1 => {
-                    if fit_1 {
-                        match v.decode_ref::<LooseKindVariant2>() {
-                            Ok(x) => return Ok(Self::Variant2(x)),
-                            Err(e) => {
-                                first.get_or_insert(e.to_string());
-                            }
+                1 if fit_1 => {
+                    match v.decode_ref::<LooseKindVariant2>() {
+                        Ok(x) => return Ok(Self::Variant2(x)),
+                        Err(e) => {
+                            first.get_or_insert(e.to_string());
                         }
                     }
                 }
@@ -3843,23 +3839,19 @@ impl<'de> serde::Deserialize<'de> for TaggedVariants {
         ranked.sort_by_key(|(kept, _)| ::std::cmp::Reverse(*kept));
         for (_, branch) in ranked {
             match branch {
-                0 => {
-                    if fit_1 {
-                        match v.decode_ref::<TaggedColour>() {
-                            Ok(x) => return Ok(Self::Colour(x)),
-                            Err(e) => {
-                                first.get_or_insert(e.to_string());
-                            }
+                0 if fit_1 => {
+                    match v.decode_ref::<TaggedColour>() {
+                        Ok(x) => return Ok(Self::Colour(x)),
+                        Err(e) => {
+                            first.get_or_insert(e.to_string());
                         }
                     }
                 }
-                1 => {
-                    if fit_0 {
-                        match v.decode_ref::<TaggedLabel>() {
-                            Ok(x) => return Ok(Self::Label(x)),
-                            Err(e) => {
-                                first.get_or_insert(e.to_string());
-                            }
+                1 if fit_0 => {
+                    match v.decode_ref::<TaggedLabel>() {
+                        Ok(x) => return Ok(Self::Label(x)),
+                        Err(e) => {
+                            first.get_or_insert(e.to_string());
                         }
                     }
                 }

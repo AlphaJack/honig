@@ -205,18 +205,17 @@ pub fn fits(v: &Content<'_>, fields: &[(&str, bool, &[Kind])]) -> bool {
     })
 }
 
-/// Returns how many members of the object `v` a branch keeps: those in `declared`, or every one when it keeps the rest
-/// too (`all`). An `anyOf` tries the branch that keeps the most first, so no member that a matching branch declares is
-/// lost. Zero for a value that is no object.
+/// Returns how many members of the object `v` a branch keeps. Zero for a value that is no object.
+///
+/// A branch keeps the members in `declared`, or every one when it keeps the rest too (`all`). An `anyOf` tries the
+/// branch that keeps the most first, so no member that a matching branch declares is lost.
 #[must_use]
 pub fn kept(v: &Content<'_>, declared: &[&str], all: bool) -> usize {
-    let keeps = |k: &str| all || declared.contains(&k);
-    match v {
-        // Raw text keeps its numbers exact: only the names of its members are parsed.
-        Content::Raw(text) => serde_json::from_str::<std::collections::BTreeMap<Cow<'_, str>, de::IgnoredAny>>(text)
-            .map_or(0, |members| members.keys().filter(|k| keeps(k)).count()),
-        other => other.as_object().map_or(0, |members| members.filter(|(k, _)| keeps(k)).count()),
+    // Raw text keeps its numbers exact. Its names are counted from a buffered copy.
+    if let Content::Raw(text) = v {
+        return serde_json::from_str::<Content<'_>>(text).map_or(0, |buffered| kept(&buffered, declared, all));
     }
+    v.as_object().map_or(0, |members| members.filter(|(k, _)| all || declared.contains(k)).count())
 }
 
 /// The JSON kind of a buffered value.
