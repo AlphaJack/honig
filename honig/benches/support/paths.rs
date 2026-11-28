@@ -970,6 +970,14 @@ pub(crate) const PATHS: &[Path] = &[
             (size, on(content, move |c| runtime::fits(c, fields)))
         },
     },
+    Path {
+        name: "kept",
+        prepare: |size| {
+            let members = (0..size.div_ceil(18)).map(|i| (format!("x-{i:08}").into(), runtime::Content::U64(1)));
+            let content = runtime::Content::Map(members.collect());
+            (size, on(content, |c| runtime::kept(c, &["id", "name"], false)))
+        },
+    },
     #[cfg(feature = "regress")]
     Path {
         name: "pattern_matches",
