@@ -168,6 +168,258 @@ impl Crop {
 }
 ::honig::checked_json!(Crop, CropVariants);
 ::honig::checked_impls!(Crop, CropVariants);
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Overlap {
+    Name(OverlapName),
+    Variant1(OverlapVariant1),
+}
+::honig::union_serialize!(Overlap { Name, Variant1 });
+impl<'de> serde::Deserialize<'de> for Overlap {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let v = <::honig::__private::Content<
+            'de,
+        > as serde::Deserialize>::deserialize(d)?;
+        let fit_0 = v.kind() == ::honig::__private::Kind::Object
+            && ::honig::__private::fits(
+                &v,
+                &[
+                    (
+                        "name",
+                        false,
+                        &[
+                            ::honig::__private::Kind::String,
+                            ::honig::__private::Kind::Null,
+                        ],
+                    ),
+                ],
+            );
+        let fit_1 = v.kind() == ::honig::__private::Kind::Object
+            && ::honig::__private::fits(
+                &v,
+                &[
+                    (
+                        "name",
+                        false,
+                        &[
+                            ::honig::__private::Kind::String,
+                            ::honig::__private::Kind::Null,
+                        ],
+                    ),
+                    (
+                        "price",
+                        false,
+                        &[
+                            ::honig::__private::Kind::Integer,
+                            ::honig::__private::Kind::Number,
+                            ::honig::__private::Kind::Null,
+                        ],
+                    ),
+                ],
+            );
+        let mut first: Option<String> = None;
+        let mut ranked = [
+            (::honig::__private::kept(&v, &["name"], false), 0),
+            (::honig::__private::kept(&v, &["name", "price"], false), 1),
+        ];
+        ranked.sort_by_key(|(kept, _)| ::std::cmp::Reverse(*kept));
+        for (_, branch) in ranked {
+            match branch {
+                0 => {
+                    if fit_0 {
+                        match v.decode_ref::<OverlapName>() {
+                            Ok(x) => return Ok(Self::Name(x)),
+                            Err(e) => {
+                                first.get_or_insert(e.to_string());
+                            }
+                        }
+                    }
+                }
+                1 => {
+                    if fit_1 {
+                        match v.decode_ref::<OverlapVariant1>() {
+                            Ok(x) => return Ok(Self::Variant1(x)),
+                            Err(e) => {
+                                first.get_or_insert(e.to_string());
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+        Err(
+            serde::de::Error::custom(
+                first.unwrap_or_else(|| "matches no variant".to_owned()),
+            ),
+        )
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PricedOverlap {
+    Name(PricedOverlapName),
+    Variant1(PricedOverlapVariant1),
+}
+::honig::union_serialize!(PricedOverlap { Name, Variant1 });
+impl<'de> serde::Deserialize<'de> for PricedOverlap {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let v = ::honig::__private::Content::exact(d)?;
+        let fit_0 = v.kind() == ::honig::__private::Kind::Object
+            && ::honig::__private::fits(
+                &v,
+                &[
+                    (
+                        "name",
+                        false,
+                        &[
+                            ::honig::__private::Kind::String,
+                            ::honig::__private::Kind::Null,
+                        ],
+                    ),
+                ],
+            );
+        let fit_1 = v.kind() == ::honig::__private::Kind::Object
+            && ::honig::__private::fits(
+                &v,
+                &[
+                    (
+                        "name",
+                        false,
+                        &[
+                            ::honig::__private::Kind::String,
+                            ::honig::__private::Kind::Null,
+                        ],
+                    ),
+                ],
+            );
+        let mut first: Option<String> = None;
+        let mut ranked = [
+            (::honig::__private::kept(&v, &["name"], false), 0),
+            (::honig::__private::kept(&v, &["name", "amount"], false), 1),
+        ];
+        ranked.sort_by_key(|(kept, _)| ::std::cmp::Reverse(*kept));
+        for (_, branch) in ranked {
+            match branch {
+                0 => {
+                    if fit_0 {
+                        match v.decode_ref::<PricedOverlapName>() {
+                            Ok(x) => return Ok(Self::Name(x)),
+                            Err(e) => {
+                                first.get_or_insert(e.to_string());
+                            }
+                        }
+                    }
+                }
+                1 => {
+                    if fit_1 {
+                        match v.decode_ref::<PricedOverlapVariant1>() {
+                            Ok(x) => return Ok(Self::Variant1(x)),
+                            Err(e) => {
+                                first.get_or_insert(e.to_string());
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+        Err(
+            serde::de::Error::custom(
+                first.unwrap_or_else(|| "matches no variant".to_owned()),
+            ),
+        )
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OneOfOverlap {
+    Name(OneOfOverlapName),
+    Variant1(OneOfOverlapVariant1),
+}
+::honig::union_serialize!(OneOfOverlap { Name, Variant1 });
+impl<'de> serde::Deserialize<'de> for OneOfOverlap {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let v = <::honig::__private::Content<
+            'de,
+        > as serde::Deserialize>::deserialize(d)?;
+        let fit_0 = v.kind() == ::honig::__private::Kind::Object
+            && ::honig::__private::fits(
+                &v,
+                &[
+                    (
+                        "name",
+                        false,
+                        &[
+                            ::honig::__private::Kind::String,
+                            ::honig::__private::Kind::Null,
+                        ],
+                    ),
+                ],
+            );
+        let fit_1 = v.kind() == ::honig::__private::Kind::Object
+            && ::honig::__private::fits(
+                &v,
+                &[
+                    (
+                        "name",
+                        false,
+                        &[
+                            ::honig::__private::Kind::String,
+                            ::honig::__private::Kind::Null,
+                        ],
+                    ),
+                    (
+                        "price",
+                        false,
+                        &[
+                            ::honig::__private::Kind::Integer,
+                            ::honig::__private::Kind::Number,
+                            ::honig::__private::Kind::Null,
+                        ],
+                    ),
+                ],
+            );
+        let mut first: Option<String> = None;
+        let mut matches = 0usize;
+        let mut found: Option<Self> = None;
+        if fit_0 {
+            match v.decode_ref::<OneOfOverlapName>() {
+                Ok(x) => {
+                    matches += 1;
+                    found.get_or_insert(Self::Name(x));
+                }
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
+            }
+        }
+        if fit_1 {
+            match v.decode_ref::<OneOfOverlapVariant1>() {
+                Ok(x) => {
+                    matches += 1;
+                    found.get_or_insert(Self::Variant1(x));
+                }
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
+            }
+        }
+        match (matches, found) {
+            (1, Some(one)) => return Ok(one),
+            (n, Some(_)) => {
+                return Err(
+                    serde::de::Error::custom(
+                        format!("matches {n} of `oneOf`, not exactly one"),
+                    ),
+                );
+            }
+            (_, None) => {}
+        }
+        Err(
+            serde::de::Error::custom(
+                first.unwrap_or_else(|| "matches no variant".to_owned()),
+            ),
+        )
+    }
+}
 /// `TextNote`
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(transparent)]
@@ -324,6 +576,52 @@ impl CropVariant1Variant2 {
         Self { x: None, y: None }
     }
 }
+::honig::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct OverlapName {
+        #[optional]
+        pub name: String,
+    }
+}
+impl OverlapName {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self { name: None }
+    }
+}
+::honig::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct OverlapVariant1 {
+        #[optional]
+        pub name: String,
+        #[optional]
+        pub price: i64,
+    }
+}
+impl OverlapVariant1 {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self { name: None, price: None }
+    }
+}
+pub type PricedOverlapName = OverlapName;
+::honig::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct PricedOverlapVariant1 {
+        #[optional]
+        pub name: String,
+        #[optional]
+        pub amount: ::honig::Decimal,
+    }
+}
+impl PricedOverlapVariant1 {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self { name: None, amount: None }
+    }
+}
+pub type OneOfOverlapName = OverlapName;
+pub type OneOfOverlapVariant1 = OverlapVariant1;
 ::honig::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct ArchiveConflict {
@@ -772,6 +1070,32 @@ pub mod builders {
         optional {
             x(x): i64 = "x" => some, None,
             y(y): i64 = "y" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        OverlapName => super::OverlapName;
+        required {}
+        optional {
+            name(name): String = "name" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        OverlapVariant1 => super::OverlapVariant1;
+        required {}
+        optional {
+            name(name): String = "name" => some, None,
+            price(price): i64 = "price" => some, None,
+        }
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        PricedOverlapVariant1 => super::PricedOverlapVariant1;
+        required {}
+        optional {
+            name(name): String = "name" => some, None,
+            amount(amount): ::honig::Decimal = "amount" => some, None,
         }
         fixed {}
     }
