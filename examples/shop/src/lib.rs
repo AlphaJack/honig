@@ -34,10 +34,10 @@ pub struct Catalog {
     photos: Mutex<BTreeMap<i64, Photo>>,
 }
 
-/// A photo as it was uploaded. Each upload is a new version, which the `ETag` names.
+/// A photo as it was uploaded, with its media type. Each upload is a new version, which the `ETag` names.
 struct Photo {
-    bytes: Vec<u8>,
-    media: Option<String>,
+    /// A clone shares the bytes: a download copies nothing.
+    blob: api::Blob,
     version: u32,
 }
 
@@ -183,12 +183,7 @@ impl api::Api for Catalog {
         let Some(photo) = photos.get(&params.product_id) else {
             return Ok(ops::get_product_photo::Response::NotFound);
         };
-        let body = api::Blob::from(photo.bytes.clone());
-        let body = match &photo.media {
-            Some(media) => body.with_media(media.clone()),
-            None => body,
-        };
-        Ok(ops::get_product_photo::Response::Ok { body, e_tag: Some(photo.etag()) })
+        Ok(ops::get_product_photo::Response::Ok { body: photo.blob.clone(), e_tag: Some(photo.etag()) })
     }
     // ANCHOR_END: download
 
@@ -205,7 +200,11 @@ impl api::Api for Catalog {
         }
         let media = params.body.media().map(str::to_owned);
         // The chunks as they arrive. One past `max_body_bytes` is an `Err`: `?` answers `413`.
-        let bytes = params.body.collect().await?;
+        let blob = api::Blob::from(params.body.collect().await?);
+        let blob = match media {
+            Some(media) => blob.with_media(media),
+            None => blob,
+        };
         let mut photos = lock(&self.photos)?;
         let current = photos.get(&params.product_id);
         let (version, etag) = (current.map_or(1, |p| p.version + 1), current.map(Photo::etag));
@@ -213,7 +212,7 @@ impl api::Api for Catalog {
         ctx.preconditions(
             etag.as_deref().map(|etag| honig::CacheValidators { etag: Some(etag), last_modified: None }),
         )?;
-        photos.insert(params.product_id, Photo { bytes, media, version });
+        photos.insert(params.product_id, Photo { blob, version });
         Ok(ops::put_product_photo::Response::NoContent)
     }
     // ANCHOR_END: upload
