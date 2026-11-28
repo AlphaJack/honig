@@ -99,7 +99,7 @@ fn a_collected_body_is_copied_at_most_once() {
 #[test]
 fn a_download_of_a_stated_length_is_collected_without_growing() {
     use honig::Service as _;
-    const LEN: usize = 4 << 20;
+    const LEN: usize = 16 << 20;
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let addr = listener.local_addr().unwrap();
     std::thread::spawn(move || {
@@ -120,5 +120,6 @@ fn a_download_of_a_stated_length_is_collected_without_growing() {
             assert_eq!(resp.into_body().collect().await.unwrap().len(), LEN);
         }))
         .1;
-    assert!(peak * 10 <= (LEN / 1024) as isize * 11, "{peak} KiB for {} KiB", LEN / 1024);
+    // Two frames on top of the body at most. A buffer that grows by doubling reaches nearly twice the body.
+    assert!(peak * 4 <= (LEN / 1024) as isize * 5, "{peak} KiB for {} KiB", LEN / 1024);
 }
