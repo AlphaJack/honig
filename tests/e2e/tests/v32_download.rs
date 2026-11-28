@@ -134,10 +134,9 @@ fn a_body_that_fails_partway_is_an_error_and_not_a_short_body() {
     let c = client();
     let broken = || ops::get_export::Params { id: "broken".to_owned() };
     assert!(honig::block_on(c.get_export(broken())).is_err(), "the whole body");
-    let api::Streamed::Ok(resp) = honig::block_on(c.get_export_stream(broken())).unwrap() else {
+    let ops::get_export::Response::Ok(mut chunks) = honig::block_on(c.get_export_stream(broken())).unwrap() else {
         panic!("200 streams")
     };
-    let mut chunks = resp.into_body().into_stream();
     assert_eq!(honig::block_on(futures_util::StreamExt::next(&mut chunks)).unwrap().unwrap(), CHUNKS[0]);
     assert!(honig::block_on(futures_util::StreamExt::next(&mut chunks)).unwrap().is_err(), "the second chunk");
 }
