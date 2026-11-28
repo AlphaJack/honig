@@ -46,7 +46,7 @@ jobs:
           shared-key: mutants
           save-if: ${{ github.event_name != 'pull_request' }}
       - name: Install cargo-nextest
-        uses: taiki-e/install-action@893d6ee8d714b6c7dfe2bcd94e5759e9a7958a7e # v2.90.10
+        uses: taiki-e/install-action@073e1fd0bc889c9aee68dbaaa927cde1b5653a83 # v2.90.11
         with:
           tool: cargo-nextest
       - name: Build the tests
@@ -81,7 +81,7 @@ jobs:
           shared-key: mutants
           save-if: false
       - name: Install cargo-nextest and cargo-mutants
-        uses: taiki-e/install-action@893d6ee8d714b6c7dfe2bcd94e5759e9a7958a7e # v2.90.10
+        uses: taiki-e/install-action@073e1fd0bc889c9aee68dbaaa927cde1b5653a83 # v2.90.11
         with:
           tool: cargo-nextest,cargo-mutants
       - name: Diff against the PR's base
