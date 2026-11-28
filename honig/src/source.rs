@@ -293,6 +293,22 @@ impl Blob {
         Self::of(BlobBody::Stream(ByteStream::chunks(futures_util::StreamExt::map(chunks, |b| Ok(b.into())), None)))
     }
 
+    /// Returns a body of the chunks that `chunks` produces while it is sent, any of which can fail.
+    ///
+    /// An error ends the body as failed: the response breaks off instead of finishing, so the receiver gets an error
+    /// and never takes a short body for a whole one.
+    pub fn try_stream<S, B, E>(chunks: S) -> Self
+    where
+        S: Stream<Item = Result<B, E>> + Send + 'static,
+        B: Into<bytes::Bytes>,
+        E: fmt::Display,
+    {
+        let chunks = futures_util::StreamExt::map(chunks, |chunk| {
+            chunk.map(Into::into).map_err(|e| ClientError::Encode(e.to_string()))
+        });
+        Self::of(BlobBody::Stream(ByteStream::chunks(chunks, None)))
+    }
+
     /// Returns a body of chunks that add up to `len` bytes. It goes out with `Content-Length` and not chunked, so a
     /// server that accepts no chunked body accepts it. Chunks that add up to another length fail the request.
     pub fn sized<S, B>(len: u64, chunks: S) -> Self

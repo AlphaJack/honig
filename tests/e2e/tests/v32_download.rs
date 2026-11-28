@@ -40,6 +40,11 @@ impl api::Api for Server {
                 ops::get_export::Response::Ok(api::Blob::stream(futures_util::stream::iter(CHUNKS.map(<[u8]>::to_vec))))
             }
             "small" => ops::get_export::Response::Ok(b"zip".to_vec().into()),
+            // An export whose second chunk cannot be read: the body breaks off.
+            "broken" => ops::get_export::Response::Ok(api::Blob::try_stream(futures_util::stream::iter([
+                Ok(CHUNKS[0].to_vec()),
+                Err("the archive cannot be read"),
+            ]))),
             // A file opened where the range starts. The bytes before it are never loaded.
             "archive" => ops::get_export::Response::Ok(api::Blob::ranged(ARCHIVE.len() as u64, |first, last| {
                 let (first, last) = (usize::try_from(first).unwrap_or(0), usize::try_from(last).unwrap_or(0));
@@ -121,6 +126,32 @@ fn the_server_streams_a_blob_without_buffering_it() {
     assert_eq!(r.headers().get("content-type").and_then(|v| v.to_str().ok()), Some("application/zip"));
     assert!(r.body().bytes().is_empty() && r.body().is_streamed(), "the chunks are still to come");
     assert_eq!(honig::block_on(r.into_body().collect()).unwrap(), CHUNKS.concat());
+}
+
+/// A body whose stream fails partway reaches the client as an error, whole or as chunks: never as a short body.
+#[test]
+fn a_body_that_fails_partway_is_an_error_and_not_a_short_body() {
+    let c = client();
+    let broken = || ops::get_export::Params { id: "broken".to_owned() };
+    assert!(honig::block_on(c.get_export(broken())).is_err(), "the whole body");
+    let api::Streamed::Ok(resp) = honig::block_on(c.get_export_stream(broken())).unwrap() else {
+        panic!("200 streams")
+    };
+    let mut chunks = resp.into_body().into_stream();
+    assert_eq!(honig::block_on(futures_util::StreamExt::next(&mut chunks)).unwrap().unwrap(), CHUNKS[0]);
+    assert!(honig::block_on(futures_util::StreamExt::next(&mut chunks)).unwrap().is_err(), "the second chunk");
+}
+
+/// Over HTTP the response breaks off too: the client gets an error and not the first chunk as the whole body.
+#[tokio::test]
+async fn a_body_that_fails_partway_breaks_the_connection() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let base_url = format!("http://{}", listener.local_addr().unwrap());
+    let app = api::Server::new(Server::default()).into_axum();
+    tokio::spawn(async move { axum::serve(listener, app).await });
+    let c = Client::new(honig::ReqwestTransport::new(base_url).unwrap());
+    let broken = c.get_export(ops::get_export::Params { id: "broken".to_owned() }).await;
+    assert!(broken.is_err(), "{broken:?}");
 }
 
 #[test]
