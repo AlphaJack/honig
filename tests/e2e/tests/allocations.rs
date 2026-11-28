@@ -93,3 +93,33 @@ fn a_collected_body_is_copied_at_most_once() {
     assert!(unknown * 10 <= size_kib * 16 + chunk_kib * 10, "no second copy: {unknown} KiB for {size_kib} KiB");
     assert!(one <= chunk_kib, "one chunk is not copied: {one} KiB for {chunk_kib} KiB");
 }
+
+/// A download whose `Content-Length` the server states is collected into one buffer of that size: the reqwest
+/// transport hands the length on, so the buffer never grows.
+#[test]
+fn a_download_of_a_stated_length_is_collected_without_growing() {
+    use honig::Service as _;
+    const LEN: usize = 16 << 20;
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    std::thread::spawn(move || {
+        let server = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+        server.block_on(async move {
+            listener.set_nonblocking(true).unwrap();
+            let listener = tokio::net::TcpListener::from_std(listener).unwrap();
+            let app = axum::Router::new().route("/blob", axum::routing::get(|| async { vec![7_u8; LEN] }));
+            axum::serve(listener, app).await.unwrap();
+        });
+    });
+    let runtime = cost::runtime();
+    let transport = honig::ReqwestTransport::new(format!("http://{addr}")).unwrap();
+    let peak = runtime
+        .block_on(cost::heap_of(async || {
+            let req = honig::http::Request::get("/blob").body(honig::Body::default()).unwrap();
+            let resp = transport.clone().call(req).await.unwrap();
+            assert_eq!(resp.into_body().collect().await.unwrap().len(), LEN);
+        }))
+        .1;
+    // Two frames on top of the body at most. A buffer that grows by doubling reaches nearly twice the body.
+    assert!(peak * 4 <= (LEN / 1024) as isize * 5, "{peak} KiB for {} KiB", LEN / 1024);
+}

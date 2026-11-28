@@ -58,7 +58,11 @@ where
             *req.uri_mut() = target.map_err(ClientError::transport)?;
             std::future::poll_fn(|cx| service.poll_ready(cx)).await.map_err(failed)?;
             let resp = service.call(req).await.map_err(failed)?;
-            Ok(resp.map(|body| Body::stream(ByteStream::chunks(Frames(Box::pin(body)), None))))
+            Ok(resp.map(|body| {
+                // An exact size lets `collect` reserve the body once.
+                let len = http_body::Body::size_hint(&body).exact();
+                Body::stream(ByteStream::chunks(Frames(Box::pin(body)), len))
+            }))
         }
     }
 }

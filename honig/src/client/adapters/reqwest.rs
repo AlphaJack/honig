@@ -106,7 +106,9 @@ impl<C: Execute> tower_service::Service<Request> for ReqwestTransport<C> {
         Box::pin(async move {
             let resp = started.await?;
             let head = response(&resp, Body::default());
-            Ok(head.map(|_| Body::stream(ByteStream::chunks(imp::chunks(resp), None))))
+            // The stated length lets `collect` reserve the body once. reqwest gives none while it decompresses.
+            let len = resp.content_length();
+            Ok(head.map(|_| Body::stream(ByteStream::chunks(imp::chunks(resp), len))))
         })
     }
 }
