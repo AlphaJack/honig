@@ -18,7 +18,14 @@ pub(crate) fn check_runtime(manifest: &Manifest, needed: &[&str]) -> Result<(), 
     let Some(dep) = manifest.runtime() else {
         return Err(Error::Runtime(format!("is missing. Run `{}`", add_line(&needed))));
     };
-    if !pins(&dep.req) {
+    // A path dependency without a version is the honig at that path: its own version counts.
+    let local = dep.req == "*" && dep.local.is_some();
+    if let Some(found) = dep.local.as_deref().filter(|v| local && *v != RUNTIME_VERSION) {
+        return Err(Error::Runtime(format!(
+            "at its `path` is `{found}`, generated code needs `{version}`. Point `path` at honig {RUNTIME_VERSION}"
+        )));
+    }
+    if !local && !pins(&dep.req) {
         let fix = if manifest.inherits(&dep.name) {
             format!("Set `{RUNTIME} = \"{version}\"` in [workspace.dependencies]")
         } else {

@@ -145,6 +145,40 @@ fn init_then_generate_writes_a_module_that_check_finds_up_to_date() {
     assert!(out.contains("up to date: "), "{out}");
 }
 
+/// A path dependency on honig without a version is the honig at that path: its own version must be the generator's.
+#[test]
+fn a_path_dependency_counts_with_the_version_at_its_path() {
+    let dir = scratch_crate("cli_path_dependency");
+    in_crate(&dir, &["init", "openapi.yaml"]);
+    let local = |path: &Path| {
+        let features: Vec<String> = SHOP.iter().map(|f| format!("\"{f}\"")).collect();
+        let base = std::fs::read_to_string(dir.join("Cargo.toml")).unwrap();
+        let base = base.split("\n[dependencies]").next().unwrap().to_owned();
+        let line = format!(
+            "\n[dependencies]\nhonig = {{ path = {:?}, features = [{}] }}\n",
+            path.display().to_string(),
+            features.join(", ")
+        );
+        std::fs::write(dir.join("Cargo.toml"), base + &line).unwrap();
+    };
+    local(&Path::new(env!("CARGO_MANIFEST_DIR")).join("honig"));
+    let (code, _, err) = in_crate(&dir, &["generate"]);
+    assert_eq!(code, Some(0), "{err}");
+
+    let other = dir.join("old-honig");
+    std::fs::create_dir_all(other.join("src")).unwrap();
+    std::fs::write(other.join("src").join("lib.rs"), "").unwrap();
+    let features: String = SHOP.iter().map(|f| format!("{f} = []\n")).collect();
+    let manifest =
+        format!("[package]\nname = \"honig\"\nversion = \"0.0.1\"\nedition = \"2024\"\n\n[features]\n{features}");
+    std::fs::write(other.join("Cargo.toml"), manifest).unwrap();
+    local(&other);
+    let (code, _, err) = in_crate(&dir, &["generate"]);
+    assert_eq!(code, Some(2), "{err}");
+    let version = env!("CARGO_PKG_VERSION");
+    assert!(err.contains(&format!("at its `path` is `0.0.1`, generated code needs `={version}`")), "{err}");
+}
+
 #[test]
 fn quiet_prints_no_progress_and_no_hints() {
     let dir = scratch_crate("cli_quiet");

@@ -164,6 +164,23 @@ pub(crate) struct Dependency {
     pub features: Vec<String>,
     /// Its version requirement, such as `=0.0.3`. `*` without one.
     pub req: String,
+    /// The version of the package at its `path`, for a path dependency on honig.
+    pub local: Option<String>,
+}
+
+/// Returns the version of the package whose manifest is at `path`, as cargo resolves it (`version.workspace = true`).
+///
+/// # Errors
+/// Cargo cannot read the manifest.
+fn local_version(path: &Path) -> Result<String, Error> {
+    let metadata = crate::disk::cargo_metadata(path)?;
+    let here = crate::disk::canonical(path.to_path_buf());
+    let package = metadata
+        .packages
+        .iter()
+        .find(|p| crate::disk::canonical(p.manifest_path.clone().into_std_path_buf()) == here)
+        .ok_or_else(|| Error::Metadata { path: path.to_path_buf(), problem: "is no package".to_owned() })?;
+    Ok(package.version.to_string())
 }
 
 impl Manifest {
@@ -185,17 +202,20 @@ impl Manifest {
                 .collect();
             return Ok(Self { members: Some(members), ..Self::default() });
         };
-        let deps = package
-            .dependencies
-            .iter()
-            .filter(|d| d.kind == cargo_metadata::DependencyKind::Normal)
-            .map(|d| Dependency {
+        let mut deps = vec![];
+        for d in package.dependencies.iter().filter(|d| d.kind == cargo_metadata::DependencyKind::Normal) {
+            let local = match &d.path {
+                Some(dir) if d.name == RUNTIME => Some(local_version(&dir.join("Cargo.toml").into_std_path_buf())?),
+                Some(_) | None => None,
+            };
+            deps.push(Dependency {
                 name: d.rename.clone().unwrap_or_else(|| d.name.clone()),
                 package: d.name.clone(),
                 features: d.features.clone(),
                 req: d.req.to_string(),
-            })
-            .collect();
+                local,
+            });
+        }
         Ok(Self {
             doc,
             name: Some(package.name.to_string()),
@@ -220,6 +240,7 @@ impl Manifest {
                     package: entry.and_then(|e| e.get("package")?.as_str()).unwrap_or(name).to_owned(),
                     features: string_array(entry.and_then(|e| e.get("features"))).unwrap_or_default(),
                     req: item.as_str().or_else(|| entry?.get("version")?.as_str()).unwrap_or("*").to_owned(),
+                    local: None,
                 });
             }
         }
