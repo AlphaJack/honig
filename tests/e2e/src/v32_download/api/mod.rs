@@ -33,5 +33,5 @@ pub use server::Api;
 pub use server::{Operation, Context, Rejection, RequestEvent, Server};
 pub use ::honig::{
     ApiError, Blob, Body, ClientError, Message, Passed, ProblemSchema, Reason, Request,
-    Response, ServerUrl, Streamed, Transport, Verified, send, send_streaming,
+    Response, ServerUrl, Transport, Verified, send, send_streaming,
 };

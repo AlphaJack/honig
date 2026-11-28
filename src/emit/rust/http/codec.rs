@@ -175,8 +175,8 @@ pub(crate) struct Decode {
     pub(crate) q: TokenStream,
     /// What the body is. It decides how a binary body becomes its own `Vec<u8>`.
     pub(crate) held: Held,
-    /// The body of a request still to come (`stream`). A binary body consumes it as it arrives. `None` for a
-    /// response.
+    /// The body still to come (`stream`) of a request, or of a response whose operation has a binary body. A binary
+    /// body consumes it as it arrives.
     pub(crate) stream: Option<TokenStream>,
 }
 
@@ -258,6 +258,8 @@ pub(crate) fn decode_body(space: &Space<'_>, c: &Content, d: &Decode) -> (TokenS
             };
             let typed = match (&d.stream, d.held) {
                 (Some(stream), Held::OwnedCow) => quote!(::honig::Blob::received(#body, &#stream)),
+                (Some(stream), Held::Moved) => quote!(::honig::Blob::arrived(#body, #stream)),
+                (Some(stream), Held::Borrowed) => quote!(::honig::Blob::arrived(#body.clone(), #stream)),
                 // The collected `Bytes` become the blob as they are.
                 (_, Held::Moved) => quote!(::honig::Blob::from(#body)),
                 _ => quote!(::honig::Blob::from(#bytes)),

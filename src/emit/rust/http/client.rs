@@ -467,53 +467,48 @@ fn other_statuses(m: &TokenStream, response: &TokenStream) -> TokenStream {
     }
 }
 
-/// Returns `<op>_stream` for binary success responses. It gives the chunks of the body as they
-/// arrive for downloads too large to keep in memory. Every success status whose
-/// body is binary streams (a `200` and a `206` for a range).
+/// Returns `<op>_stream` for binary success responses: the operation's own `Response`, with the `Blob` of such a
+/// status still arriving, for downloads too large to keep in memory. Every success status whose body is binary streams
+/// (a `200` and a `206` for a range). Any other status is read whole and decoded as `<op>` decodes it.
 pub(crate) fn blob_stream_method(
     op: &Operation,
     p: &proc_macro2::Ident,
     prelude: &TokenStream,
     respond: &dyn Fn(&[u16]) -> TokenStream,
 ) -> Option<TokenStream> {
-    let streamed: Vec<(u16, &Resp)> = op
+    let streamed: Vec<u16> = op
         .responses
         .iter()
         .filter(|r| r.is_success() && !r.contents.is_empty() && r.contents.iter().all(blob))
         .filter_map(|r| match r.status {
-            Status::Code(c) => Some((c, r)),
+            Status::Code(c) => Some(c),
             Status::Range(_) | Status::Default => None,
         })
         .collect();
     let server = server_arg(op, &op_path(op));
     // The first success response decides as before. A JSON `200` next to a binary `206` has no stream method.
     let first = op.responses.iter().find(|r| r.is_success())?;
-    if !streamed.iter().any(|(_, r)| std::ptr::eq(*r, first)) {
+    if !matches!(first.status, Status::Code(c) if streamed.contains(&c)) {
         return None;
     }
     let (m, f) = (op_path(op), format_ident!("{}_stream", snake(&op.name)));
-    let branches = streamed.iter().map(|(c, r)| {
-        let (c, media) = (code(*c), r.contents.iter().map(|c| lit(&c.media)));
-        quote! {
-            if resp.status() == #c {
-                ::honig::__private::check_response_media(#c, ::honig::Message::content_type(&resp), None, &[#(#media),*])?;
-                return Ok(::honig::Streamed::Ok(resp));
-            }
-        }
-    });
     let doc = doc_opt(op.doc.as_deref());
     let deprecated = op.deprecated.then(|| quote!(#[deprecated]));
-    // The streamed statuses returned already: the rest of the body decodes every other.
-    let codes: Vec<u16> = streamed.iter().map(|(c, _)| *c).collect();
-    let other = other_statuses(&m, &respond(&codes));
+    let codes = streamed.iter().map(|c| code(*c));
+    let response = respond(&[]);
     Some(quote! {
         #doc
         #deprecated
-        pub async fn #f(&self, #server #p: impl ::honig::__private::IntoArg<'_, #m::Params>) -> Result<::honig::Streamed<::honig::Response, #m::Response>, ::honig::ClientError> {
+        pub async fn #f(&self, #server #p: impl ::honig::__private::IntoArg<'_, #m::Params>) -> Result<#m::Response, ::honig::ClientError> {
             #prelude
             let resp = ::honig::send_streaming(&self.transport, req).await?;
-            #(#branches)*
-            #other
+            let resp = if matches!(resp.status().as_u16(), #(#codes)|*) {
+                resp
+            } else {
+                let (head, body) = resp.into_parts();
+                ::honig::Response::from_parts(head, ::honig::Body::new(body.collect().await?))
+            };
+            #response
         }
     })
 }
@@ -620,10 +615,13 @@ pub(crate) fn client_response(
         .enumerate()
         .filter(|(_, r)| !matches!(r.status, Status::Code(c) if skip.contains(&c)))
         .collect();
-    // The response in parts: its head and its bytes. A body that a transport received whole is not copied.
+    // The response in parts: its head and its bytes. A body that a transport received whole is not copied. A binary
+    // body keeps what is still to come: `<op>_stream` leaves it unread.
+    let streams = kept.iter().any(|(_, r)| r.contents.iter().any(blob));
+    let rest = if streams { quote!(stream) } else { quote!(_) };
     let parts = quote! {
         let (head, body) = resp.into_parts();
-        let (body, _) = body.into_parts();
+        let (body, #rest) = body.into_parts();
     };
     let unexpected = quote!(Err(::honig::ClientError::UnexpectedStatus { status: head.status, body }));
     if kept.is_empty() {
@@ -636,7 +634,7 @@ pub(crate) fn client_response(
     let arms: Vec<(&Resp, TokenStream, TokenStream)> = kept
         .iter()
         .map(|&(i, r)| {
-            let (pat, e) = response_arm(space, op_mod, bx, i, r);
+            let (pat, e) = response_arm(space, op_mod, bx, i, r, streams);
             (r, pat, e)
         })
         .collect();
@@ -658,6 +656,7 @@ fn response_arm(
     bx: &Boxing,
     i: usize,
     r: &Resp,
+    streams: bool,
 ) -> (TokenStream, TokenStream) {
     let pat = match r.status {
         Status::Code(c) => {
@@ -681,7 +680,7 @@ fn response_arm(
         body: quote!(body),
         q: quote!(?),
         held: if r.headers.is_empty() { Held::Moved } else { Held::Borrowed },
-        stream: None,
+        stream: (streams && r.contents.iter().any(blob)).then(|| quote!(stream)),
     };
     // A body of one type in every media type decodes into it whichever arrived.
     let collapsed = crate::emit::rust::http::shared::collapses(space, r);

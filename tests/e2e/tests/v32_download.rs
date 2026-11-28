@@ -163,12 +163,14 @@ fn the_client_reads_a_blob_whole_or_as_chunks() {
     assert_eq!(small, ops::get_export::Response::Ok(b"zip".to_vec().into()));
     let none = honig::block_on(c.get_export(ops::get_export::Params { id: "none".to_owned() }));
     assert_eq!(none.ok(), Some(ops::get_export::Response::NotFound), "the declared 404, whole");
+    // `get_export_stream` answers the same `Response`, with the blob still arriving: one chunk at a time.
     let stream = honig::block_on(c.get_export_stream(ops::get_export::Params { id: "big".to_owned() })).unwrap();
-    let api::Streamed::Ok(resp) = stream else { panic!("200 streams: {stream:?}") };
-    assert_eq!(honig::block_on(resp.into_body().collect()).unwrap(), CHUNKS.concat());
-    // The declared 404 arrives typed as from `get_export`.
+    let ops::get_export::Response::Ok(blob) = stream else { panic!("200 streams: {stream:?}") };
+    let chunks: Vec<_> = honig::block_on(futures_util::StreamExt::collect::<Vec<_>>(blob));
+    let chunks: Vec<Vec<u8>> = chunks.into_iter().map(|c| c.unwrap().to_vec()).collect();
+    assert_eq!(chunks, CHUNKS.map(<[u8]>::to_vec), "each chunk as the server sent it");
     let missing = honig::block_on(c.get_export_stream(ops::get_export::Params { id: "none".to_owned() }));
-    assert_matches!(missing, Ok(api::Streamed::Whole(ops::get_export::Response::NotFound)), "{missing:?}");
+    assert_matches!(missing, Ok(ops::get_export::Response::NotFound), "{missing:?}");
 }
 
 /// A `GET` of the manifest with these request headers through the server.
