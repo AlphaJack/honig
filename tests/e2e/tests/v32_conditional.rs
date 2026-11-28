@@ -12,9 +12,9 @@ fn if_then_decodes_into_variants() {
     assert_matches!(&email, types::IfThen::Email(e) if e.email.as_str() == "a@example.com");
     let sms: types::IfThen = serde_json::from_value(json!({"type":"sms","phone":"+49"})).unwrap();
     assert_matches!(sms, types::IfThen::Sms(_));
-    // Values that no `if` tests fall back to a typed `Otherwise` and not an untyped `Other`.
+    // Values that no `if` tests fall back to a typed `Else` and not an untyped `Other`.
     let fax: types::IfThen = serde_json::from_value(json!({"type":"fax"})).unwrap();
-    assert_matches!(&fax, types::IfThen::Otherwise(o) if o.type_ == "fax");
+    assert_matches!(&fax, types::IfThen::Else(o) if o.type_ == "fax");
     assert_eq!(serde_json::to_value(&email).unwrap(), serde_json::json!({"type": "email", "email": "a@example.com"}));
 }
 
@@ -74,7 +74,7 @@ fn else_is_the_typed_fallback() {
     assert_matches!(&us, types::Shipping::Us(s) if s.zip == "94110");
     let de: types::Shipping = serde_json::from_value(json!({"country": "DE", "postcode": "10115"})).unwrap();
     // `else: {required: [postcode]}` makes it a `String` and not an `Option`.
-    assert_matches!(&de, types::Shipping::Otherwise(s) if s.postcode == "10115");
+    assert_matches!(&de, types::Shipping::Else(s) if s.postcode == "10115");
     assert!(serde_json::from_value::<types::Shipping>(json!({"country": "DE"})).is_err(), "postcode is required");
 }
 

@@ -458,7 +458,7 @@ impl Builder<'_> {
     }
 
     /// Names the variants still named `VariantN` after their tags (`Email`,
-    /// `EmailOrSms` or `Otherwise` for the fallback of a conditional union). Their
+    /// `EmailOrSms` or `Else` for the fallback of a conditional union). Their
     /// inline type does too (`NotifyEmail`).
     pub(super) fn name_by_tag(
         &mut self,
@@ -471,7 +471,7 @@ impl Builder<'_> {
         for (i, v) in out.iter_mut().enumerate() {
             let generic = v.name.is_numbered("variant");
             let new = if Some(i) == fallback {
-                Name::new("Otherwise")
+                Name::new("Else")
             } else if v.tags.is_empty() {
                 match hints.get(i).cloned().flatten() {
                     Some(h) => Name::new(&h),

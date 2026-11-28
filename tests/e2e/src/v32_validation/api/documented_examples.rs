@@ -20,7 +20,7 @@ fn documented_examples_decode() {
         "\"none\"",
     );
     value::<
-        types::ShipmentOtherwiseLabel,
+        types::ShipmentElseLabel,
     >(
         &mut bad,
         "/components/schemas/Shipment/oneOf/1/properties/label/default",

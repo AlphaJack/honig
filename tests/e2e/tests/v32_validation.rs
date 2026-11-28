@@ -348,8 +348,8 @@ fn one_wide_event_per_request() {
 fn pattern_properties_type_their_values() {
     let s: types::Shipment =
         serde_json::from_value(json!({"kind":"domestic","parcels":[{"fragile":true}],"scores":{"speed":3}})).unwrap();
-    // `if kind == international then customs is required`: a domestic shipment is the `Otherwise` variant.
-    let types::ShipmentVariants::Otherwise(s) = s.into_inner() else { panic!("a domestic shipment") };
+    // `if kind == international then customs is required`: a domestic shipment is the `Else` variant.
+    let types::ShipmentVariants::Else(s) = s.into_inner() else { panic!("a domestic shipment") };
     let scores = s.scores.as_ref().expect("present");
     assert_eq!(scores["speed"], 3);
     let bad = shipment(&json!({"kind":"domestic","parcels":[{"fragile":true}],"scores":{"Speed":-1}}));

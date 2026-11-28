@@ -2766,11 +2766,11 @@ impl LabelsPattern1 {
 ::honig::checked_str_impls!(LabelsPattern1);
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(transparent)]
-pub struct ShipmentOtherwise(pub(super) ShipmentOtherwiseFields);
-::honig::checked_deserialize!(ShipmentOtherwise, ShipmentOtherwiseFields, once);
-impl ShipmentOtherwise {
+pub struct ShipmentElse(pub(super) ShipmentElseFields);
+::honig::checked_deserialize!(ShipmentElse, ShipmentElseFields, once);
+impl ShipmentElse {
     fn checked(
-        value: ShipmentOtherwiseFields,
+        value: ShipmentElseFields,
         json: &::honig::__private::Content<'_>,
     ) -> Result<Self, ::honig::BuildError> {
         let mut violations: Vec<::honig::Violation> = Vec::new();
@@ -2797,32 +2797,30 @@ impl ShipmentOtherwise {
             .map_err(::honig::BuildError::value)
     }
 }
-::honig::checked_json!(ShipmentOtherwise, ShipmentOtherwiseFields);
-::honig::checked_impls!(ShipmentOtherwise, ShipmentOtherwiseFields);
+::honig::checked_json!(ShipmentElse, ShipmentElseFields);
+::honig::checked_impls!(ShipmentElse, ShipmentElseFields);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum ShipmentOtherwiseKind {
+pub enum ShipmentElseKind {
     Domestic,
     International,
 }
 ::honig::str_enum_impls!(
-    ShipmentOtherwiseKind { Domestic => "domestic", International => "international" }
+    ShipmentElseKind { Domestic => "domestic", International => "international" }
 );
-pub type ShipmentOtherwiseMeta = ShipmentInternationalMeta;
-pub type ShipmentOtherwiseMetaObject = MetaObject;
-pub type ShipmentOtherwiseLabel = ShipmentInternationalLabel;
-pub type ShipmentOtherwiseParcelsItem = ParcelsItem;
-pub type ShipmentOtherwiseScoresValue = ShipmentInternationalScoresValue;
-pub type ShipmentOtherwisePriority = ShipmentInternationalPriority;
-pub type ShipmentOtherwiseWeight = ShipmentInternationalWeight;
+pub type ShipmentElseMeta = ShipmentInternationalMeta;
+pub type ShipmentElseMetaObject = MetaObject;
+pub type ShipmentElseLabel = ShipmentInternationalLabel;
+pub type ShipmentElseParcelsItem = ParcelsItem;
+pub type ShipmentElseScoresValue = ShipmentInternationalScoresValue;
+pub type ShipmentElsePriority = ShipmentInternationalPriority;
+pub type ShipmentElseWeight = ShipmentInternationalWeight;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
-pub struct ShipmentOtherwiseLabels(pub(super) ShipmentOtherwiseLabelsFields);
-::honig::checked_deserialize!(ShipmentOtherwiseLabels, ShipmentOtherwiseLabelsFields);
-impl TryFrom<ShipmentOtherwiseLabelsFields> for ShipmentOtherwiseLabels {
+pub struct ShipmentElseLabels(pub(super) ShipmentElseLabelsFields);
+::honig::checked_deserialize!(ShipmentElseLabels, ShipmentElseLabelsFields);
+impl TryFrom<ShipmentElseLabelsFields> for ShipmentElseLabels {
     type Error = ::honig::BuildError;
-    fn try_from(
-        value: ShipmentOtherwiseLabelsFields,
-    ) -> Result<Self, ::honig::BuildError> {
+    fn try_from(value: ShipmentElseLabelsFields) -> Result<Self, ::honig::BuildError> {
         let mut violations: Vec<::honig::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -2864,8 +2862,8 @@ impl TryFrom<ShipmentOtherwiseLabelsFields> for ShipmentOtherwiseLabels {
             .map_err(::honig::BuildError::value)
     }
 }
-::honig::checked_impls!(ShipmentOtherwiseLabels, ShipmentOtherwiseLabelsFields);
-pub type ShipmentOtherwiseLabelsPattern1 = LabelsPattern1;
+::honig::checked_impls!(ShipmentElseLabels, ShipmentElseLabelsFields);
+pub type ShipmentElseLabelsPattern1 = LabelsPattern1;
 pub type SettingsPattern1 = LabelsPattern1;
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
@@ -4033,10 +4031,10 @@ impl ::honig::__private::XmlShape for TwoElsesFields {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ShipmentVariants {
     International(ShipmentInternational),
-    Otherwise(ShipmentOtherwise),
+    Else(ShipmentElse),
 }
 ::honig::union_serialize!(
-    ShipmentVariants { Otherwise } "kind" { International => "international" }
+    ShipmentVariants { Else } "kind" { International => "international" }
 );
 ::honig::tagged_deserialize!(ShipmentVariants);
 impl<'de> ::honig::__private::TaggedUnion<'de> for ShipmentVariants {
@@ -4062,7 +4060,7 @@ impl<'de> ::honig::__private::TaggedUnion<'de> for ShipmentVariants {
         };
         match which {
             0 => v.decode_into(Self::International),
-            _ => v.decode_into(Self::Otherwise),
+            _ => v.decode_into(Self::Else),
         }
     }
 }
@@ -4342,8 +4340,8 @@ impl ::honig::__private::XmlShape for LabelsFields {
 }
 ::honig::object! {
     #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-    pub struct ShipmentOtherwiseFields {
-        pub kind: ShipmentOtherwiseKind,
+    pub struct ShipmentElseFields {
+        pub kind: ShipmentElseKind,
         #[optional]
         pub customs: String,
         #[optional]
@@ -4353,35 +4351,35 @@ impl ::honig::__private::XmlShape for LabelsFields {
         #[optional]
         pub options: NoOptions,
         #[optional]
-        pub rating: ShipmentOtherwiseRating,
+        pub rating: ShipmentElseRating,
         #[optional]
-        pub meta: ShipmentOtherwiseMeta,
-        #[serde(default = "ShipmentOtherwiseFields::default_label")]
-        pub label: ShipmentOtherwiseLabel,
-        pub parcels: ShipmentOtherwiseParcels,
+        pub meta: ShipmentElseMeta,
+        #[serde(default = "ShipmentElseFields::default_label")]
+        pub label: ShipmentElseLabel,
+        pub parcels: ShipmentElseParcels,
         #[optional]
-        pub scores: ShipmentOtherwiseScores,
+        pub scores: ShipmentElseScores,
         #[nullable]
-        pub priority: ShipmentOtherwisePriority,
+        pub priority: ShipmentElsePriority,
         #[nullable]
-        pub weight: ShipmentOtherwiseWeight,
+        pub weight: ShipmentElseWeight,
         #[optional]
-        pub labels: ShipmentOtherwiseLabels,
+        pub labels: ShipmentElseLabels,
     }
 }
-impl ShipmentOtherwiseFields {
+impl ShipmentElseFields {
     #[doc(hidden)]
     #[must_use]
-    pub fn default_label() -> ShipmentOtherwiseLabel {
-        ShipmentOtherwiseLabel {
+    pub fn default_label() -> ShipmentElseLabel {
+        ShipmentElseLabel {
             0: ::std::borrow::Cow::Borrowed("none"),
         }
     }
 }
-impl ::honig::__private::XmlShape for ShipmentOtherwiseFields {
+impl ::honig::__private::XmlShape for ShipmentElseFields {
     fn xml() -> &'static ::honig::__private::XmlNode {
         static NODE: ::honig::__private::XmlNode = ::honig::__private::XmlNode {
-            name: "ShipmentOtherwiseFields",
+            name: "ShipmentElseFields",
             namespace: "",
             prefix: "",
             fields: &[
@@ -4421,7 +4419,7 @@ impl ::honig::__private::XmlShape for ShipmentOtherwiseFields {
         &NODE
     }
 }
-pub type ShipmentOtherwiseLabelsFields = LabelsFields;
+pub type ShipmentElseLabelsFields = LabelsFields;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Not2Variants {
     Object(Not2Object),
@@ -4780,16 +4778,16 @@ for ShipmentInternationalScores {
     ShipmentInternationalScores, std::collections::BTreeMap < String,
     ShipmentInternationalScoresValue >
 );
-pub type ShipmentOtherwiseRating = ShipmentInternationalRating;
+pub type ShipmentElseRating = ShipmentInternationalRating;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
-pub struct ShipmentOtherwiseParcels(pub(super) Vec<ShipmentOtherwiseParcelsItem>);
+pub struct ShipmentElseParcels(pub(super) Vec<ShipmentElseParcelsItem>);
 ::honig::checked_deserialize!(
-    ShipmentOtherwiseParcels, Vec < ShipmentOtherwiseParcelsItem >, once
+    ShipmentElseParcels, Vec < ShipmentElseParcelsItem >, once
 );
-impl ShipmentOtherwiseParcels {
+impl ShipmentElseParcels {
     fn checked(
-        value: Vec<ShipmentOtherwiseParcelsItem>,
+        value: Vec<ShipmentElseParcelsItem>,
         json: &::honig::__private::Content<'_>,
     ) -> Result<Self, ::honig::BuildError> {
         let mut violations: Vec<::honig::Violation> = Vec::new();
@@ -4821,22 +4819,21 @@ impl ShipmentOtherwiseParcels {
             .map_err(::honig::BuildError::value)
     }
 }
-::honig::checked_json!(ShipmentOtherwiseParcels, Vec < ShipmentOtherwiseParcelsItem >);
-::honig::checked_impls!(ShipmentOtherwiseParcels, Vec < ShipmentOtherwiseParcelsItem >);
+::honig::checked_json!(ShipmentElseParcels, Vec < ShipmentElseParcelsItem >);
+::honig::checked_impls!(ShipmentElseParcels, Vec < ShipmentElseParcelsItem >);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
-pub struct ShipmentOtherwiseScores(
-    pub(super) std::collections::BTreeMap<String, ShipmentOtherwiseScoresValue>,
+pub struct ShipmentElseScores(
+    pub(super) std::collections::BTreeMap<String, ShipmentElseScoresValue>,
 );
 ::honig::checked_deserialize!(
-    ShipmentOtherwiseScores, std::collections::BTreeMap < String,
-    ShipmentOtherwiseScoresValue >
+    ShipmentElseScores, std::collections::BTreeMap < String, ShipmentElseScoresValue >
 );
-impl TryFrom<std::collections::BTreeMap<String, ShipmentOtherwiseScoresValue>>
-for ShipmentOtherwiseScores {
+impl TryFrom<std::collections::BTreeMap<String, ShipmentElseScoresValue>>
+for ShipmentElseScores {
     type Error = ::honig::BuildError;
     fn try_from(
-        value: std::collections::BTreeMap<String, ShipmentOtherwiseScoresValue>,
+        value: std::collections::BTreeMap<String, ShipmentElseScoresValue>,
     ) -> Result<Self, ::honig::BuildError> {
         let mut violations: Vec<::honig::Violation> = Vec::new();
         {
@@ -4864,8 +4861,7 @@ for ShipmentOtherwiseScores {
     }
 }
 ::honig::checked_impls!(
-    ShipmentOtherwiseScores, std::collections::BTreeMap < String,
-    ShipmentOtherwiseScoresValue >
+    ShipmentElseScores, std::collections::BTreeMap < String, ShipmentElseScoresValue >
 );
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
@@ -5367,28 +5363,28 @@ pub mod builders {
         }
     }
     ::honig::typestate_builder! {
-        ShipmentOtherwise => super::ShipmentOtherwiseFields, try_from super::ShipmentOtherwise;
+        ShipmentElse => super::ShipmentElseFields, try_from super::ShipmentElse;
         required {
-            kind: R0: types::ShipmentOtherwiseKind = "kind",
-            parcels: R1: types::ShipmentOtherwiseParcels = "parcels",
+            kind: R0: types::ShipmentElseKind = "kind",
+            parcels: R1: types::ShipmentElseParcels = "parcels",
         }
         optional {
             customs(customs): String = "customs" => some, None,
             insured(insured): bool = "insured" => some, None,
             insurer(insurer): String = "insurer" => some, None,
             options(options): types::NoOptions = "options" => some, None,
-            rating(rating): types::ShipmentOtherwiseRating = "rating" => some, None,
-            meta(meta): types::ShipmentOtherwiseMeta = "meta" => some, None,
-            label(label): types::ShipmentOtherwiseLabel = "label" => value, super::ShipmentOtherwiseFields::default_label(),
-            scores(scores): types::ShipmentOtherwiseScores = "scores" => some, None,
-            priority(priority): types::ShipmentOtherwisePriority = "priority" => nullable, ::honig::Nullable::Absent,
-            weight(weight): types::ShipmentOtherwiseWeight = "weight" => nullable, ::honig::Nullable::Absent,
-            labels(labels): types::ShipmentOtherwiseLabels = "labels" => some, None,
+            rating(rating): types::ShipmentElseRating = "rating" => some, None,
+            meta(meta): types::ShipmentElseMeta = "meta" => some, None,
+            label(label): types::ShipmentElseLabel = "label" => value, super::ShipmentElseFields::default_label(),
+            scores(scores): types::ShipmentElseScores = "scores" => some, None,
+            priority(priority): types::ShipmentElsePriority = "priority" => nullable, ::honig::Nullable::Absent,
+            weight(weight): types::ShipmentElseWeight = "weight" => nullable, ::honig::Nullable::Absent,
+            labels(labels): types::ShipmentElseLabels = "labels" => some, None,
         }
         fixed {}
     }
     ::honig::typestate_builder! {
-        ShipmentOtherwiseLabels => super::ShipmentOtherwiseLabelsFields, try_from super::ShipmentOtherwiseLabels;
+        ShipmentElseLabels => super::ShipmentElseLabelsFields, try_from super::ShipmentElseLabels;
         required {}
         optional {}
         fixed {
@@ -5596,23 +5592,23 @@ pub mod builders {
         }
     }
     ::honig::typestate_builder! {
-        ShipmentOtherwiseFields => super::ShipmentOtherwiseFields;
+        ShipmentElseFields => super::ShipmentElseFields;
         required {
-            kind: R0: types::ShipmentOtherwiseKind = "kind",
-            parcels: R1: types::ShipmentOtherwiseParcels = "parcels",
+            kind: R0: types::ShipmentElseKind = "kind",
+            parcels: R1: types::ShipmentElseParcels = "parcels",
         }
         optional {
             customs(customs): String = "customs" => some, None,
             insured(insured): bool = "insured" => some, None,
             insurer(insurer): String = "insurer" => some, None,
             options(options): types::NoOptions = "options" => some, None,
-            rating(rating): types::ShipmentOtherwiseRating = "rating" => some, None,
-            meta(meta): types::ShipmentOtherwiseMeta = "meta" => some, None,
-            label(label): types::ShipmentOtherwiseLabel = "label" => value, super::ShipmentOtherwiseFields::default_label(),
-            scores(scores): types::ShipmentOtherwiseScores = "scores" => some, None,
-            priority(priority): types::ShipmentOtherwisePriority = "priority" => nullable, ::honig::Nullable::Absent,
-            weight(weight): types::ShipmentOtherwiseWeight = "weight" => nullable, ::honig::Nullable::Absent,
-            labels(labels): types::ShipmentOtherwiseLabels = "labels" => some, None,
+            rating(rating): types::ShipmentElseRating = "rating" => some, None,
+            meta(meta): types::ShipmentElseMeta = "meta" => some, None,
+            label(label): types::ShipmentElseLabel = "label" => value, super::ShipmentElseFields::default_label(),
+            scores(scores): types::ShipmentElseScores = "scores" => some, None,
+            priority(priority): types::ShipmentElsePriority = "priority" => nullable, ::honig::Nullable::Absent,
+            weight(weight): types::ShipmentElseWeight = "weight" => nullable, ::honig::Nullable::Absent,
+            labels(labels): types::ShipmentElseLabels = "labels" => some, None,
         }
         fixed {}
     }

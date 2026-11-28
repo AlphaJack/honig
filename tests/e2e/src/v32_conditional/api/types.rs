@@ -65,9 +65,9 @@ impl<'de> ::honig::__private::TaggedUnion<'de> for Discriminated {
 pub enum IfThen {
     Email(IfThenEmail),
     Sms(IfThenSms),
-    Otherwise(IfThenOtherwise),
+    Else(IfThenElse),
 }
-::honig::union_serialize!(IfThen { Email, Otherwise, Sms });
+::honig::union_serialize!(IfThen { Else, Email, Sms });
 ::honig::tagged_deserialize!(IfThen);
 impl<'de> ::honig::__private::TaggedUnion<'de> for IfThen {
     const TAG: &'static str = "type";
@@ -94,7 +94,7 @@ impl<'de> ::honig::__private::TaggedUnion<'de> for IfThen {
         match which {
             0 => v.decode_into(Self::Email),
             1 => v.decode_into(Self::Sms),
-            _ => v.decode_into(Self::Otherwise),
+            _ => v.decode_into(Self::Else),
         }
     }
 }
@@ -283,9 +283,9 @@ impl Address {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Shipping {
     Us(ShippingUs),
-    Otherwise(ShippingOtherwise),
+    Else(ShippingElse),
 }
-::honig::union_serialize!(Shipping { Otherwise, Us });
+::honig::union_serialize!(Shipping { Else, Us });
 ::honig::tagged_deserialize!(Shipping);
 impl<'de> ::honig::__private::TaggedUnion<'de> for Shipping {
     const TAG: &'static str = "country";
@@ -307,7 +307,7 @@ impl<'de> ::honig::__private::TaggedUnion<'de> for Shipping {
         };
         match which {
             0 => v.decode_into(Self::Us),
-            _ => v.decode_into(Self::Otherwise),
+            _ => v.decode_into(Self::Else),
         }
     }
 }
@@ -315,9 +315,9 @@ impl<'de> ::honig::__private::TaggedUnion<'de> for Shipping {
 pub enum Contact {
     EmailOrMail(ContactEmailOrMail),
     Sms(ContactSms),
-    Otherwise(ContactOtherwise),
+    Else(ContactElse),
 }
-::honig::union_serialize!(Contact { Otherwise, Sms } "via" { EmailOrMail => "email" });
+::honig::union_serialize!(Contact { Else, Sms } "via" { EmailOrMail => "email" });
 ::honig::tagged_deserialize!(Contact);
 impl<'de> ::honig::__private::TaggedUnion<'de> for Contact {
     const TAG: &'static str = "via";
@@ -345,7 +345,7 @@ impl<'de> ::honig::__private::TaggedUnion<'de> for Contact {
         match which {
             0 => v.decode_into(Self::EmailOrMail),
             1 => v.decode_into(Self::Sms),
-            _ => v.decode_into(Self::Otherwise),
+            _ => v.decode_into(Self::Else),
         }
     }
 }
@@ -390,12 +390,12 @@ impl IfThenSms {
 pub use SmsType as IfThenSmsType;
 ::honig::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-    pub struct IfThenOtherwise {
+    pub struct IfThenElse {
         #[serde(rename = "type")]
         pub type_: String,
     }
 }
-impl IfThenOtherwise {
+impl IfThenElse {
     #[must_use]
     pub const fn new(type_: String) -> Self {
         Self { type_ }
@@ -484,7 +484,7 @@ impl ShippingUsCountry {
 ::honig::const_impls!(ShippingUsCountry, VALUE);
 ::honig::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-    pub struct ShippingOtherwise {
+    pub struct ShippingElse {
         pub country: String,
         #[optional]
         pub zip: String,
@@ -534,11 +534,11 @@ impl ContactSmsVia {
 ::honig::const_impls!(ContactSmsVia, VALUE);
 ::honig::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-    pub struct ContactOtherwise {
+    pub struct ContactElse {
         pub via: String,
     }
 }
-impl ContactOtherwise {
+impl ContactElse {
     #[must_use]
     pub const fn new(via: String) -> Self {
         Self { via }
@@ -597,7 +597,7 @@ pub mod builders {
         }
     }
     ::honig::typestate_builder! {
-        IfThenOtherwise => super::IfThenOtherwise;
+        IfThenElse => super::IfThenElse;
         required {
             type_: R0: String = "type",
         }
@@ -653,7 +653,7 @@ pub mod builders {
         }
     }
     ::honig::typestate_builder! {
-        ShippingOtherwise => super::ShippingOtherwise;
+        ShippingElse => super::ShippingElse;
         required {
             country: R0: String = "country",
             postcode: R1: String = "postcode",
@@ -683,7 +683,7 @@ pub mod builders {
         }
     }
     ::honig::typestate_builder! {
-        ContactOtherwise => super::ContactOtherwise;
+        ContactElse => super::ContactElse;
         required {
             via: R0: String = "via",
         }
