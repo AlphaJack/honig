@@ -64,8 +64,14 @@ impl api::Api for Catalog {
         params: ops::create_product::Params,
         _: &api::Context<'_, ops::create_product::Security<Self>>,
     ) -> Result<ops::create_product::Response, api::ApiError> {
-        self.products()?.push(params.body.clone());
-        Ok(ops::create_product::Response::Created(params.body))
+        let mut products = self.products()?;
+        // The ID is the index: the request has none, the product that the catalog stores has it.
+        let mut product = serde_json::to_value(&params.body).unwrap_or_default();
+        product["id"] = products.len().into();
+        let product: types::Product = serde_json::from_value(product)
+            .map_err(|e| api::ApiError::new(honig::http::StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        products.push(product.clone());
+        Ok(ops::create_product::Response::Created(product))
     }
 
     async fn get_product(
@@ -134,6 +140,11 @@ impl api::Api for Catalog {
 }
 
 /// A desk lamp: the product every recipe creates.
-fn lamp() -> types::Product {
-    types::Product::Physical(types::Physical::new("Desk lamp".to_owned()))
+fn lamp() -> types::ProductRequest {
+    types::ProductRequest::Physical(types::PhysicalRequest::new("Desk lamp".to_owned()))
+}
+
+/// The desk lamp as the catalog stores it: its first product, with the ID 0.
+fn stored_lamp() -> types::Product {
+    types::Product::Physical(types::Physical::new(0, "Desk lamp".to_owned()))
 }

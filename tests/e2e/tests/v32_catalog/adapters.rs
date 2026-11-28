@@ -134,7 +134,7 @@ async fn the_in_memory_client_reaches_the_server() {
     let client = in_memory_client();
     client.create_product(ops::create_product::Params::new(lamp())).await.unwrap();
     let found = client.get_product(ops::get_product::Params::new(0)).await.unwrap();
-    assert_eq!(found, ops::get_product::Response::Ok(lamp()));
+    assert_eq!(found, ops::get_product::Response::Ok(super::stored_lamp()));
 }
 
 // ANCHOR: transport

@@ -123,11 +123,11 @@ pub mod create_product {
     pub struct Params {
         /// Where to send the new product
         pub notify: Option<::honig::UriStr>,
-        pub body: types::Product,
+        pub body: types::ProductRequest,
     }
     impl Params {
         #[must_use]
-        pub const fn new(body: types::Product) -> Self {
+        pub const fn new(body: types::ProductRequest) -> Self {
             Self { notify: None, body }
         }
     }
@@ -136,7 +136,7 @@ pub mod create_product {
         ::honig::typestate_builder! {
             Params => super::Params;
             required {
-                body: R0: types::Product = "body",
+                body: R0: types::ProductRequest = "body",
             }
             optional {
                 notify(notify): ::honig::UriStr = "notify" => some, None,
@@ -691,7 +691,7 @@ pub mod create_product_product_created_post {
     pub const PATH: &str = "";
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
-        pub body: Option<types::Product>,
+        pub body: Option<types::ProductRequest>,
     }
     impl Params {
         #[must_use]
@@ -706,7 +706,7 @@ pub mod create_product_product_created_post {
             Params => super::Params;
             required {}
             optional {
-                body(body): types::Product = "body" => some, None,
+                body(body): types::ProductRequest = "body" => some, None,
             }
             fixed {}
         }

@@ -129,9 +129,9 @@ fn events_response(events: &[(String, types::ProductEvent)], last_event_id: Opti
     resp
 }
 
-/// The event that the catalog sends when it adds `name`.
-fn created(name: &str) -> types::ProductEvent {
-    let product = types::Product::Physical(types::Physical::new(name.to_owned()));
+/// The event that the catalog sends when it adds `name` as the product `id`.
+fn created(id: i64, name: &str) -> types::ProductEvent {
+    let product = types::Product::Physical(types::Physical::new(id, name.to_owned()));
     types::ProductEvent::new(types::ProductEventEvent::Created, product)
 }
 
@@ -155,8 +155,8 @@ async fn product_events(
 
 #[tokio::test]
 async fn the_feed_is_read_to_its_end() {
-    let client = catalog(|_| std::future::ready(events_response(&[("e1".to_owned(), created("Desk lamp"))], None)));
-    assert_eq!(product_events(&client).await.unwrap(), [created("Desk lamp")]);
+    let client = catalog(|_| std::future::ready(events_response(&[("e1".to_owned(), created(0, "Desk lamp"))], None)));
+    assert_eq!(product_events(&client).await.unwrap(), [created(0, "Desk lamp")]);
 }
 
 // ANCHOR: reconnect
@@ -181,7 +181,7 @@ async fn follow(
 
 #[tokio::test]
 async fn the_feed_resumes_after_the_last_event_read() {
-    let events = [("e1".to_owned(), created("Desk lamp")), ("e2".to_owned(), created("Office chair"))];
+    let events = [("e1".to_owned(), created(0, "Desk lamp")), ("e2".to_owned(), created(1, "Office chair"))];
     let asked = std::sync::Arc::new(std::sync::Mutex::new(vec![]));
     let seen = std::sync::Arc::clone(&asked);
     // The first connection sends one event and closes. The second sends the next. The third finds the feed ended.
@@ -196,7 +196,7 @@ async fn the_feed_resumes_after_the_last_event_read() {
     });
     let mut events = vec![];
     follow(&client, |e| events.push(e)).await.unwrap();
-    assert_eq!(events, [created("Desk lamp"), created("Office chair")]);
+    assert_eq!(events, [created(0, "Desk lamp"), created(1, "Office chair")]);
     assert_eq!(*asked.lock().unwrap(), [None, Some("e1".to_owned()), Some("e2".to_owned())]);
 }
 

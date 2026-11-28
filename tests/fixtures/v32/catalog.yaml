@@ -250,9 +250,15 @@ components:
     Physical:
       type: object
       required:
+        - id
         - kind
         - name
       properties:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+          description: Given by the catalog
         kind:
           const: physical
         name:
@@ -267,9 +273,15 @@ components:
     Digital:
       type: object
       required:
+        - id
         - kind
         - name
       properties:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+          description: Given by the catalog
         kind:
           const: digital
         name:

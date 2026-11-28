@@ -40,6 +40,8 @@ impl<'de> ::honig::__private::TaggedUnion<'de> for Product {
 ::honig::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct Physical {
+        /// Given by the catalog
+        pub id: i64,
         pub kind: PhysicalKind,
         pub name: String,
         #[optional]
@@ -51,8 +53,9 @@ impl<'de> ::honig::__private::TaggedUnion<'de> for Product {
 }
 impl Physical {
     #[must_use]
-    pub const fn new(name: String) -> Self {
+    pub const fn new(id: i64, name: String) -> Self {
         Self {
+            id,
             kind: PhysicalKind {},
             name,
             fragile: None,
@@ -63,6 +66,8 @@ impl Physical {
 ::honig::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct Digital {
+        /// Given by the catalog
+        pub id: i64,
         pub kind: DigitalKind,
         pub name: String,
         #[nullable]
@@ -71,8 +76,9 @@ impl Physical {
 }
 impl Digital {
     #[must_use]
-    pub const fn new(name: String) -> Self {
+    pub const fn new(id: i64, name: String) -> Self {
         Self {
+            id,
             kind: DigitalKind {},
             name,
             downloads: ::honig::Nullable::Absent,
@@ -188,6 +194,100 @@ impl ListProductsLimit {
     }
 }
 ::honig::checked_num_impls!(ListProductsLimit, i32);
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ProductRequest {
+    Physical(PhysicalRequest),
+    Digital(DigitalRequest),
+}
+::honig::union_serialize!(ProductRequest { Digital, Physical });
+::honig::tagged_deserialize!(ProductRequest);
+impl<'de> ::honig::__private::TaggedUnion<'de> for ProductRequest {
+    const TAG: &'static str = "kind";
+    fn knows(tag: &str) -> bool {
+        matches!(tag, "physical" | "digital")
+    }
+    fn from_tag<D: serde::Deserializer<'de>>(tag: &str, d: D) -> Result<Self, D::Error> {
+        match tag {
+            "physical" => {
+                <PhysicalRequest as serde::Deserialize>::deserialize(d)
+                    .map(Self::Physical)
+            }
+            "digital" => {
+                <DigitalRequest as serde::Deserialize>::deserialize(d).map(Self::Digital)
+            }
+            _ => Err(serde::de::Error::custom("unknown discriminator")),
+        }
+    }
+    fn from_content(
+        v: ::honig::__private::Content<'de>,
+    ) -> Result<Self, serde_json::Error> {
+        let which = match v.tag("kind").as_deref() {
+            Some("physical") => 0,
+            Some("digital") => 1,
+            _ => 2,
+        };
+        match which {
+            0 => v.decode_into(Self::Physical),
+            1 => v.decode_into(Self::Digital),
+            _ => Err(serde::de::Error::custom("matches no variant")),
+        }
+    }
+}
+::honig::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct PhysicalRequest {
+        pub kind: PhysicalKind,
+        pub name: String,
+        #[optional]
+        pub fragile: bool,
+        #[optional]
+        /// Stock keeping unit
+        pub sku: PhysicalSku,
+    }
+}
+impl PhysicalRequest {
+    #[must_use]
+    pub const fn new(name: String) -> Self {
+        Self {
+            kind: PhysicalKind {},
+            name,
+            fragile: None,
+            sku: None,
+        }
+    }
+}
+::honig::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct DigitalRequest {
+        pub kind: DigitalKind,
+        pub name: String,
+        #[nullable]
+        pub downloads: i32,
+    }
+}
+impl DigitalRequest {
+    #[must_use]
+    pub const fn new(name: String) -> Self {
+        Self {
+            kind: DigitalKind {},
+            name,
+            downloads: ::honig::Nullable::Absent,
+        }
+    }
+}
+::honig::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct ProductEventRequest {
+        pub event: ProductEventEvent,
+        pub product: ProductRequest,
+    }
+}
+impl ProductEventRequest {
+    #[must_use]
+    pub const fn new(event: ProductEventEvent, product: ProductRequest) -> Self {
+        Self { event, product }
+    }
+}
 /// One builder per struct, started by its `builder`. Each setter accepts anything that converts to the type
 /// of its field. `build` returns the first field that did not convert.
 pub mod builders {
@@ -195,7 +295,8 @@ pub mod builders {
     ::honig::typestate_builder! {
         Physical => super::Physical;
         required {
-            name: R0: String = "name",
+            id: R0: i64 = "id",
+            name: R1: String = "name",
         }
         optional {
             fragile(fragile): bool = "fragile" => some, None,
@@ -208,7 +309,8 @@ pub mod builders {
     ::honig::typestate_builder! {
         Digital => super::Digital;
         required {
-            name: R0: String = "name",
+            id: R0: i64 = "id",
+            name: R1: String = "name",
         }
         optional {
             downloads(downloads): i32 = "downloads" => nullable, ::honig::Nullable::Absent,
@@ -230,6 +332,40 @@ pub mod builders {
         Error => super::Error;
         required {
             message: R0: String = "message",
+        }
+        optional {}
+        fixed {}
+    }
+    ::honig::typestate_builder! {
+        PhysicalRequest => super::PhysicalRequest;
+        required {
+            name: R0: String = "name",
+        }
+        optional {
+            fragile(fragile): bool = "fragile" => some, None,
+            sku(sku): types::PhysicalSku = "sku" => some, None,
+        }
+        fixed {
+            kind: types::PhysicalKind {},
+        }
+    }
+    ::honig::typestate_builder! {
+        DigitalRequest => super::DigitalRequest;
+        required {
+            name: R0: String = "name",
+        }
+        optional {
+            downloads(downloads): i32 = "downloads" => nullable, ::honig::Nullable::Absent,
+        }
+        fixed {
+            kind: types::DigitalKind {},
+        }
+    }
+    ::honig::typestate_builder! {
+        ProductEventRequest => super::ProductEventRequest;
+        required {
+            event: R0: types::ProductEventEvent = "event",
+            product: R1: types::ProductRequest = "product",
         }
         optional {}
         fixed {}

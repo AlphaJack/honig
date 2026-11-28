@@ -5,7 +5,7 @@ use e2e::v32_catalog::api::types;
 #[test]
 fn a_struct_starts_from_its_required_properties() {
     // ANCHOR: new
-    let lamp = types::Physical { fragile: Some(true), ..types::Physical::new("Desk lamp".into()) };
+    let lamp = types::PhysicalRequest { fragile: Some(true), ..types::PhysicalRequest::new("Desk lamp".into()) };
     // ANCHOR_END: new
     assert_eq!(lamp.name, "Desk lamp");
 }
@@ -13,7 +13,8 @@ fn a_struct_starts_from_its_required_properties() {
 #[test]
 fn try_into_builds_a_checked_field() -> Result<(), e2e::v32_catalog::api::BuildError> {
     // ANCHOR: try-into
-    let lamp = types::Physical { sku: Some("LMP-0042".try_into()?), ..types::Physical::new("Desk lamp".into()) };
+    let lamp =
+        types::PhysicalRequest { sku: Some("LMP-0042".try_into()?), ..types::PhysicalRequest::new("Desk lamp".into()) };
     // ANCHOR_END: try-into
     assert_eq!(lamp.sku.as_deref(), Some("LMP-0042"));
     Ok(())
@@ -23,10 +24,10 @@ fn try_into_builds_a_checked_field() -> Result<(), e2e::v32_catalog::api::BuildE
 /// `Box<dyn Error>`.
 #[test]
 fn every_way_to_build_a_value_fails_with_build_error() {
-    fn lamp(sku: &str) -> Result<types::Physical, e2e::v32_catalog::api::BuildError> {
+    fn lamp(sku: &str) -> Result<types::PhysicalRequest, e2e::v32_catalog::api::BuildError> {
         let sku: types::PhysicalSku = sku.parse()?;
         let checked: types::PhysicalSku = sku.as_str().try_into()?;
-        types::Physical::builder().name("Desk lamp").sku(checked).build()
+        types::PhysicalRequest::builder().name("Desk lamp").sku(checked).build()
     }
     assert!(lamp("LMP-0042").is_ok());
     let e = lamp("lamp").expect_err("not the pattern");
@@ -60,10 +61,11 @@ fn an_email_is_checked_when_it_is_made() -> Result<(), Box<dyn std::error::Error
 #[test]
 fn a_builder_needs_one_question_mark() -> Result<(), Box<dyn std::error::Error>> {
     // ANCHOR: builder
-    let lamp = types::Physical::builder().name("Desk lamp").sku("LMP-0042").fragile(true).build()?;
+    let lamp = types::PhysicalRequest::builder().name("Desk lamp").sku("LMP-0042").fragile(true).build()?;
     // ANCHOR_END: builder
     assert_eq!(lamp.sku.as_ref().map(types::PhysicalSku::as_str), Some("LMP-0042"));
-    let err = types::Physical::builder().name("Desk lamp").sku("lamp").build().expect_err("a SKU off its pattern");
+    let err =
+        types::PhysicalRequest::builder().name("Desk lamp").sku("lamp").build().expect_err("a SKU off its pattern");
     assert_eq!(err.to_string(), "/sku: does not match `^[A-Z]{3}-[0-9]{4}$`");
     Ok(())
 }

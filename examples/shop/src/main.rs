@@ -90,11 +90,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let product = match kind {
                 Kind::Physical if downloads.is_none() => {
                     let fragile = fragile.then_some(true);
-                    types::Product::Physical(types::Physical { sku, fragile, ..types::Physical::new(name) })
+                    types::ProductRequest::Physical(types::PhysicalRequest {
+                        sku,
+                        fragile,
+                        ..types::PhysicalRequest::new(name)
+                    })
                 }
-                Kind::Digital if sku.is_none() && !fragile => {
-                    types::Product::Digital(types::Digital { downloads: downloads.into(), ..types::Digital::new(name) })
-                }
+                Kind::Digital if sku.is_none() && !fragile => types::ProductRequest::Digital(types::DigitalRequest {
+                    downloads: downloads.into(),
+                    ..types::DigitalRequest::new(name)
+                }),
                 _ => return Err("--sku and --fragile describe a physical product, --downloads a digital one".into()),
             };
             add(&client, product).await?;
@@ -123,10 +128,10 @@ async fn log(resp: axum::response::Response) -> axum::response::Response {
 // ANCHOR_END: server
 
 // ANCHOR: add
-/// Adds `product` to the catalog and prints it as the server stored it.
+/// Adds `product` to the catalog and prints it as the server stored it, with its ID.
 async fn add(
     client: &api::Client<impl api::Transport>,
-    product: types::Product,
+    product: types::ProductRequest,
 ) -> Result<(), Box<dyn std::error::Error>> {
     match client.create_product(ops::create_product::Params::new(product)).await? {
         ops::create_product::Response::Created(product) => println!("{}", serde_json::to_string_pretty(&product)?),

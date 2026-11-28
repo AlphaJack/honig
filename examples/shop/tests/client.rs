@@ -15,13 +15,18 @@ fn staff_client(base_url: &str) -> api::Client<honig::ReqwestTransport> {
 // ANCHOR_END: new-client
 
 // ANCHOR: calls
-/// Adds `product` and returns the first product of the catalog, or `None` when the catalog has none.
+/// Adds `product` and reads it back by the ID that the server gave it. `None` when the server did not add it.
 async fn create_and_read(
     client: &api::Client<impl api::Transport>,
-    product: types::Product,
+    product: types::ProductRequest,
 ) -> Result<Option<types::Product>, api::ClientError> {
-    client.create_product(ops::create_product::Params::new(product)).await?;
-    Ok(match client.get_product(ops::get_product::Params::new(0)).await? {
+    let created = client.create_product(ops::create_product::Params::new(product)).await?;
+    let ops::create_product::Response::Created(created) = created else { return Ok(None) };
+    let id = match created {
+        types::Product::Physical(p) => p.id,
+        types::Product::Digital(d) => d.id,
+    };
+    Ok(match client.get_product(ops::get_product::Params::new(id)).await? {
         ops::get_product::Response::Ok(product) => Some(product),
         ops::get_product::Response::NotFound(_) => None,
     })
@@ -35,8 +40,12 @@ async fn the_client_creates_and_reads_a_product_from_the_server() {
     let base_url = format!("http://{}/v1", listener.local_addr().unwrap());
     let app = api::Server::new(Catalog::default()).into_axum();
     tokio::spawn(async move { axum::serve(listener, app).await });
-    let lamp = types::Product::Physical(types::Physical::new("Desk lamp".to_owned()));
-    assert_eq!(create_and_read(&staff_client(&base_url), lamp.clone()).await.unwrap(), Some(lamp));
+    let client = staff_client(&base_url);
+    let guide = types::ProductRequest::Digital(types::DigitalRequest::new("Repair guide".to_owned()));
+    assert!(create_and_read(&client, guide).await.unwrap().is_some());
+    let lamp = types::ProductRequest::Physical(types::PhysicalRequest::new("Desk lamp".to_owned()));
+    let stored = types::Product::Physical(types::Physical::new(1, "Desk lamp".to_owned()));
+    assert_eq!(create_and_read(&client, lamp).await.unwrap(), Some(stored), "the second product has the ID 1");
 }
 
 /// The server accepts only the shop's key: a request with another one is refused.
@@ -63,7 +72,7 @@ async fn a_photo_comes_back_as_it_went_up() {
     let app = api::Server::new(Catalog::default()).into_axum();
     tokio::spawn(async move { axum::serve(listener, app).await });
     let client = staff_client(&base_url);
-    let lamp = types::Product::Physical(types::Physical::new("Desk lamp".to_owned()));
+    let lamp = types::ProductRequest::Physical(types::PhysicalRequest::new("Desk lamp".to_owned()));
     client.create_product(ops::create_product::Params::new(lamp)).await.unwrap();
     let png = || api::Blob::from(vec![0x89, b'P', b'N', b'G']).with_media("image/png");
     let stored = client.put_product_photo(ops::put_product_photo::Params::new(0, png())).await.unwrap();
@@ -88,7 +97,7 @@ async fn a_partner_reads_and_cannot_add() {
     let app = api::Server::new(Catalog::default()).into_axum();
     tokio::spawn(async move { axum::serve(listener, app).await });
     let client = api::Client::new(honig::ReqwestTransport::new(base_url).unwrap()).with_api_key(shop::PARTNER_KEY);
-    let lamp = types::Product::Physical(types::Physical::new("Desk lamp".to_owned()));
+    let lamp = types::ProductRequest::Physical(types::PhysicalRequest::new("Desk lamp".to_owned()));
     let refused = client.create_product(ops::create_product::Params::new(lamp)).await.unwrap();
     let ops::create_product::Response::Forbidden(error) = refused else { panic!("a partner added a product") };
     assert_eq!(error, types::Error::new("only staff members can add products".to_owned()));
