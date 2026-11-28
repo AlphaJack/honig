@@ -100,6 +100,42 @@ fn a_binary_server_builds_without_warnings() {
     assert!(status.success(), "a binary server has warnings");
 }
 
+/// An `anyOf` whose branches each declare a property that the other lacks ties on a value of both. With
+/// `keep_unknown_properties = true` the branch that it decodes as keeps the other's property too, so it encodes back
+/// whole.
+#[test]
+#[ignore = "compiles generated crates"]
+fn an_any_of_tie_keeps_every_member_with_keep_unknown_properties() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let out = root.join("target").join("gen-tests").join("any-of-tie");
+    std::fs::remove_dir_all(&out).ok();
+    let object = |extra: &str| serde_json::json!({"type": "object", "properties": {"name": {"type": "string"}, extra: {"type": "string"}}});
+    let doc = serde_json::json!({"openapi": "3.2.0", "info": {"title": "t", "version": "1"}, "paths": {},
+        "components": {"schemas": {"Listing": {"anyOf": [object("color"), object("price")]}}}});
+    std::fs::create_dir_all(out.join("tests")).unwrap();
+    let spec = out.join("openapi.json");
+    std::fs::write(&spec, serde_json::to_vec(&doc).unwrap()).unwrap();
+    let opts = crate::emit::Options { keep_unknown: true, tests: false, ..crate::emit::Options::default() };
+    super::common::new_crate(&spec, &out, "any-of-tie", &opts);
+    super::common::use_local_runtime(&out.join("Cargo.toml"));
+    let test = r##"#[test]
+fn a_tie_encodes_back_whole() {
+    let text = r#"{"name":"Desk lamp","color":"black","price":"900"}"#;
+    let listing: any_of_tie::api::types::Listing = serde_json::from_str(text).unwrap();
+    let back: serde_json::Value = serde_json::to_value(&listing).unwrap();
+    assert_eq!(back, serde_json::from_str::<serde_json::Value>(text).unwrap());
+}
+"##;
+    std::fs::write(out.join("tests").join("tie.rs"), test).unwrap();
+    let ran = Command::new(env!("CARGO"))
+        .args(["test", "--quiet"])
+        .current_dir(&out)
+        .env("CARGO_TARGET_DIR", root.join("target").join("gen-tests").join("target"))
+        .output()
+        .expect("cargo runs");
+    assert!(ran.status.success(), "{}{}", String::from_utf8_lossy(&ran.stdout), String::from_utf8_lossy(&ran.stderr));
+}
+
 /// The date and time formats with `jiff`: a `time` keeps its offset and its leap second in `::honig::FullTime`.
 #[test]
 #[ignore = "compiles generated crates"]

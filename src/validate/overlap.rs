@@ -133,7 +133,8 @@ impl Found<'_> {
                     let outcome = if key == "oneOf" {
                         "and `oneOf` refuses it"
                     } else {
-                        "and on a tie it loses what only one of them declares"
+                        "and on a tie it loses what only one of them declares, unless `keep_unknown_properties = true` \
+                         keeps it"
                     };
                     self.out.push((
                         join(ptr, key),
@@ -316,7 +317,9 @@ mod tests {
         let wider = json!({"type": "object", "properties": {"a": {"type": "string"}, "b": {"type": "string"}}});
         assert_eq!(warnings(union(wider.clone())).len(), 0, "`{{\"a\": \"x\"}}` matches both: the wider keeps all");
         let other = json!({"type": "object", "properties": {"b": {"type": "string"}}});
-        assert_eq!(warnings(union(other)).len(), 1, "`{{\"a\": \"x\", \"b\": \"y\"}}` keeps one of them on a tie");
+        let tie = warnings(union(other));
+        assert_eq!(tie.len(), 1, "`{{\"a\": \"x\", \"b\": \"y\"}}` keeps one of them on a tie");
+        assert!(tie[0].contains("unless `keep_unknown_properties = true` keeps it"), "{tie:?}");
         let one_of = |b: Value| {
             json!({"openapi": "3.2.0", "components": {"schemas": {"U": {"oneOf": [
                 {"type": "object", "properties": {"a": {"type": "string"}}}, b]}}}})
